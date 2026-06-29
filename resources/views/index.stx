@@ -155,6 +155,20 @@ const board = events.map((ev) => {
 
 const brandedBooks = bookmakers.map(b => ({ ...b, brand: brandFor(b.slug, b.short) }))
 const arbCount = board.filter(e => e.isArb).length
+
+// Initial price map ("selectionId:bookmakerId" -> decimal) the client
+// hydrates into reactive state; realtime `board:updated` messages patch it.
+const liveMap = {}
+for (const ev of board) {
+  for (const s of ev.selections) {
+    for (const c of s.cells) {
+      if (c.price != null)
+        liveMap[`${s.id}:${c.bookmakerId}`] = c.price
+    }
+  }
+}
+const liveJson = JSON.stringify(liveMap)
+const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 </script>
 
 <!DOCTYPE html>
@@ -261,6 +275,11 @@ const arbCount = board.filter(e => e.isArb).length
       .row-divide { border-top: 1px solid var(--border); }
       .cell { color: var(--muted); }
       .best-cell { background: var(--best-bg); color: var(--best-text); box-shadow: inset 0 0 0 1.5px var(--best-ring); }
+      /* Realtime price-move flashes */
+      .flash-up { animation: flashUp 1.1s ease-out; }
+      .flash-down { animation: flashDown 1.1s ease-out; }
+      @keyframes flashUp { 0% { background: var(--pos); color: #fff; } 100% { background: transparent; } }
+      @keyframes flashDown { 0% { background: var(--neg); color: #fff; } 100% { background: transparent; } }
 
       /* Best price doubles as the add-to-sheet control */
       .pick { border: 1px solid var(--best-ring); background: var(--best-bg); color: var(--best-text); transition: all 0.15s ease; cursor: pointer; }
@@ -285,6 +304,9 @@ const arbCount = board.filter(e => e.isArb).length
     x-data="{
       theme: (localStorage.getItem('ob-theme') || 'light'),
       format: (localStorage.getItem('ob-format') || 'decimal'),
+      live: {{ liveJson }},
+      flash: {},
+      liveUrl: '{{ liveUrl }}',
       cat: 'all',
       stake: 25,
       sheetOpen: false,
@@ -300,13 +322,36 @@ const arbCount = board.filter(e => e.isArb).length
       american(d) { return d >= 2 ? '+' + Math.round((d - 1) * 100) : '' + Math.round(-100 / (d - 1)) },
       fractional(d) { const f = d - 1; if (f <= 0) return '0/1'; let bp = Math.round(f), bq = 1, be = Math.abs(f - bp); for (let q = 1; q <= 20; q++) { const p = Math.round(f * q), e = Math.abs(f - p / q); if (e < be - 1e-9) { bp = p; bq = q; be = e } } const g = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b] } return a || 1 }; const k = g(bp, bq); return (bp / k) + '/' + (bq / k) },
       fmt(d) { return this.format === 'american' ? this.american(d) : this.format === 'fractional' ? this.fractional(d) : this.format === 'implied' ? (100 / d).toFixed(1) + '%' : d.toFixed(2) },
+      px(sel, book, fallback) { const v = this.live[sel + ':' + book]; const d = (v == null ? fallback : v); return d == null ? '—' : this.fmt(d) },
+      flashClass(sel, book) { return this.flash[sel + ':' + book] || '' },
+      connectLive() {
+        try {
+          const ws = new WebSocket(this.liveUrl)
+          ws.onopen = () => ws.send(JSON.stringify({ type: 'subscribe', channel: 'odds' }))
+          ws.onmessage = (e) => {
+            let msg; try { msg = JSON.parse(e.data) } catch { return }
+            if (msg.channel !== 'odds' || msg.event !== 'board:updated' || !(msg.data && msg.data.events)) return
+            const next = { ...this.live }; const flashes = {}
+            for (const ev of msg.data.events) for (const s of ev.selections) for (const q of s.quotes) {
+              if (q.price == null) continue
+              const key = s.id + ':' + q.bookmakerId; const old = this.live[key]
+              next[key] = q.price
+              if (old != null && q.price !== old) flashes[key] = q.price > old ? 'flash-up' : 'flash-down'
+            }
+            this.live = next; this.flash = flashes
+            setTimeout(() => { this.flash = {} }, 1200)
+          }
+          ws.onclose = () => setTimeout(() => this.connectLive(), 5000)
+        }
+        catch (err) { /* no realtime server — board stays on its server-rendered values */ }
+      },
       persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-theme', this.theme); localStorage.setItem('ob-format', this.format) },
       saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); this.saved = [...this.saved, { name, legs: this.sheet, parlay: this.parlay() }]; this.sheetName = '' },
       loadSheet(i) { this.sheet = [...this.saved[i].legs]; this.sheetOpen = true },
       deleteSaved(i) { this.saved = this.saved.filter((_, j) => j !== i) }
     }"
   >
-  <div class="app" :data-theme="theme" x-effect="persist()">
+  <div class="app" :data-theme="theme" x-effect="persist()" x-init="connectLive()">
     <!-- nav -->
     <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-7xl">
@@ -463,12 +508,7 @@ const arbCount = board.filter(e => e.isArb).length
                             :class="inSheet({{ s.id }}) ? 'pick-on' : ''"
                             @click="toggleLeg({ id: {{ s.id }}, league: '{{ ev.league }}', game: '{{ ev.title }}', pick: '{{ s.label }}', price: {{ s.bestPrice }}, book: '{{ s.bestBook.short }}', ta: '{{ s.team.abbr }}', tb: '{{ s.team.bg }}', tf: '{{ s.team.fg }}', tl: '{{ s.team.logo }}', bb: '{{ s.bestBrand.bg }}', bf: '{{ s.bestBrand.fg }}', bm: '{{ s.bestBrand.mark }}' })"
                           >
-                            <span class="leading-none text-base">
-                              <span x-show="format === 'decimal'">{{ s.bestDecimalLabel }}</span>
-                              <span x-show="format === 'american'" style="display:none">{{ s.bestAmerican }}</span>
-                              <span x-show="format === 'fractional'" style="display:none">{{ s.bestFractional }}</span>
-                              <span x-show="format === 'implied'" style="display:none">{{ s.impliedLabel }}</span>
-                            </span>
+                            <span class="leading-none text-base" x-text="px({{ s.id }}, {{ s.bestBookmakerId }}, {{ s.bestPrice }})">{{ s.bestDecimalLabel }}</span>
                             <span class="flex gap-1 items-center mt-1 font-bold text-[10px] tracking-wide uppercase">
                               <span class="logo" style="background:{{ s.bestBrand.bg }};color:{{ s.bestBrand.fg }};height:14px;min-width:14px;padding:0 3px;font-size:8px;border-radius:4px">{{ s.bestBrand.mark }}</span>
                               <span x-show="!inSheet({{ s.id }})">add</span>
@@ -478,12 +518,7 @@ const arbCount = board.filter(e => e.isArb).length
                         </td>
                         @foreach (s.cells as cell)
                           <td class="px-2 py-3 text-center">
-                            <div class="num mx-auto w-16 rounded-lg px-2 py-1.5 font-bold {{ cell.isBest ? 'best-cell' : 'cell' }}" {{ cell.price === null ? 'style=opacity:0.4' : '' }}>
-                              <span x-show="format === 'decimal'">{{ cell.decimalLabel }}</span>
-                              <span x-show="format === 'american'" style="display:none">{{ cell.american ? cell.american : '—' }}</span>
-                              <span x-show="format === 'fractional'" style="display:none">{{ cell.fractional ? cell.fractional : '—' }}</span>
-                              <span x-show="format === 'implied'" style="display:none">{{ cell.impliedLabel }}</span>
-                            </div>
+                            <div class="num mx-auto w-16 rounded-lg px-2 py-1.5 font-bold {{ cell.isBest ? 'best-cell' : 'cell' }}" :class="flashClass({{ s.id }}, {{ cell.bookmakerId }})" {{ cell.price === null ? 'style=opacity:0.4' : '' }} x-text="px({{ s.id }}, {{ cell.bookmakerId }}, {{ cell.price === null ? 'null' : cell.price }})">{{ cell.decimalLabel }}</div>
                           </td>
                         @endforeach
                       </tr>
