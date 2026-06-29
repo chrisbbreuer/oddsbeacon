@@ -152,6 +152,58 @@ const events: SeedEvent[] = [
       { label: 'Yankees', prices: { draftkings: 2.18, fanduel: 2.15, betmgm: 2.20, caesars: 2.16, bet365: 2.19, pinnacle: 2.24 } },
     ],
   },
+  {
+    title: 'Los Angeles Lakers vs Boston Celtics',
+    category: 'Basketball',
+    league: 'NBA',
+    market: 'Spread (-4.5)',
+    startsAt: 'Tonight · 7:30pm ET',
+    updatedMinutesAgo: 2,
+    complete: true,
+    selections: [
+      { label: 'Lakers -4.5', prices: { draftkings: 1.91, fanduel: 1.93, betmgm: 1.90, caesars: 1.92, bet365: 1.91, pinnacle: 1.95 } },
+      { label: 'Celtics +4.5', prices: { draftkings: 1.95, fanduel: 1.92, betmgm: 1.96, caesars: 1.94, bet365: 1.95, pinnacle: 1.98 } },
+    ],
+  },
+  {
+    title: 'Los Angeles Lakers vs Boston Celtics',
+    category: 'Basketball',
+    league: 'NBA',
+    market: 'Total (O/U 220.5)',
+    startsAt: 'Tonight · 7:30pm ET',
+    updatedMinutesAgo: 2,
+    complete: true,
+    selections: [
+      { label: 'Over 220.5', prices: { draftkings: 1.91, fanduel: 1.90, betmgm: 1.92, caesars: 1.91, bet365: 1.90, pinnacle: 1.95 } },
+      { label: 'Under 220.5', prices: { draftkings: 1.95, fanduel: 1.96, betmgm: 1.94, caesars: 1.95, bet365: 1.96, pinnacle: 1.98 } },
+    ],
+  },
+  {
+    title: 'Kansas City Chiefs vs Buffalo Bills',
+    category: 'Football',
+    league: 'NFL',
+    market: 'Spread (-2.5)',
+    startsAt: 'Sun · 4:25pm ET',
+    updatedMinutesAgo: 6,
+    complete: true,
+    selections: [
+      { label: 'Chiefs -2.5', prices: { draftkings: 1.91, fanduel: 1.93, betmgm: 1.90, caesars: 1.92, bet365: 1.91, pinnacle: 1.95 } },
+      { label: 'Bills +2.5', prices: { draftkings: 1.95, fanduel: 1.92, betmgm: 1.96, caesars: 1.94, bet365: 1.95, pinnacle: 1.98 } },
+    ],
+  },
+  {
+    title: 'Kansas City Chiefs vs Buffalo Bills',
+    category: 'Football',
+    league: 'NFL',
+    market: 'Total (O/U 48.5)',
+    startsAt: 'Sun · 4:25pm ET',
+    updatedMinutesAgo: 6,
+    complete: true,
+    selections: [
+      { label: 'Over 48.5', prices: { draftkings: 1.91, fanduel: 1.90, betmgm: 1.92, caesars: 1.91, bet365: 1.90, pinnacle: 1.95 } },
+      { label: 'Under 48.5', prices: { draftkings: 1.95, fanduel: 1.96, betmgm: 1.94, caesars: 1.95, bet365: 1.96, pinnacle: 1.98 } },
+    ],
+  },
 ]
 
 function resolveDbPath(): string {
@@ -166,6 +218,7 @@ export default class OddsSeeder extends Seeder {
 
     try {
       // Idempotent: wipe the board so re-seeding never duplicates rows.
+      db.run('DELETE FROM odds_snapshots')
       db.run('DELETE FROM odds')
       db.run('DELETE FROM selections')
       db.run('DELETE FROM market_events')
@@ -189,6 +242,25 @@ export default class OddsSeeder extends Seeder {
       const insertOdd = db.prepare(
         'INSERT INTO odds (selection_id, bookmaker_id, price, created_at) VALUES (?, ?, ?, ?)',
       )
+      const insertSnapshot = db.prepare(
+        'INSERT INTO odds_snapshots (selection_id, bookmaker_id, price, captured_at, created_at) VALUES (?, ?, ?, ?, ?)',
+      )
+
+      // Seed a short opening→current line-history trail per price so the
+      // UI sparklines have data before the first ingest tick. The final
+      // point equals the current price; earlier points drift around it.
+      const HISTORY_POINTS = 9
+      const STEP_MS = 12 * 60 * 1000
+      const baseTime = Date.parse('2026-06-28T12:00:00Z')
+      const writeHistory = (selectionId: number, bookId: number, current: number) => {
+        for (let i = 0; i < HISTORY_POINTS; i++) {
+          const isLast = i === HISTORY_POINTS - 1
+          const drift = isLast ? 0 : (Math.random() - 0.5) * 0.05
+          const price = isLast ? current : Math.max(1.02, Math.round(current * (1 + drift) * 100) / 100)
+          const at = new Date(baseTime - (HISTORY_POINTS - 1 - i) * STEP_MS).toISOString()
+          insertSnapshot.run(selectionId, bookId, price, at, at)
+        }
+      }
 
       for (const event of events) {
         const { lastInsertRowid: eventRowId } = insertEvent.run(
@@ -209,8 +281,10 @@ export default class OddsSeeder extends Seeder {
 
           for (const [slug, price] of Object.entries(selection.prices)) {
             const bookId = bookmakerId.get(slug)
-            if (bookId !== undefined)
+            if (bookId !== undefined) {
               insertOdd.run(selectionId, bookId, price, now)
+              writeHistory(selectionId, bookId, price)
+            }
           }
         })
       }

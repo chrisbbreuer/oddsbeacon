@@ -176,6 +176,8 @@ export interface SelectionView {
   average: number
   /** % the best price beats the field average by — the value of shopping. */
   edgeVsAvgPct: number
+  /** Recent price history (oldest→newest) for the best book — sparkline data. */
+  bestHistory: number[]
   quotes: QuoteCell[]
 }
 
@@ -231,6 +233,7 @@ function buildEventView(event: MarketEvent, allBookmakers: Bookmaker[]): EventVi
       bestImpliedPct: best ? impliedProbability(best.price) * 100 : 0,
       average,
       edgeVsAvgPct: best && average ? (best.price / average - 1) * 100 : 0,
+      bestHistory: [],
       quotes: bookmakerIds.map((bookmakerId) => {
         const price = byBook.get(bookmakerId) ?? null
         return {
@@ -359,7 +362,23 @@ export function loadBoard(dbPath: string = resolveDbPath()): Board {
       kind: b.kind === 'prediction' ? 'prediction' : 'sportsbook',
     }))
 
-    return assembleBoard(events, normalizedBooks)
+    const board = assembleBoard(events, normalizedBooks)
+
+    // Attach the recent price history for each outcome's best book so the
+    // UI can draw a sparkline and an open→current delta.
+    const historyStmt = db.query(
+      'SELECT price FROM odds_snapshots WHERE selection_id = ?1 AND bookmaker_id = ?2 ORDER BY captured_at ASC LIMIT 40',
+    )
+    for (const ev of board.events) {
+      for (const s of ev.selections) {
+        if (s.bestBookmakerId != null) {
+          const rows = historyStmt.all(s.id, s.bestBookmakerId) as Array<{ price: number }>
+          s.bestHistory = rows.map(r => r.price)
+        }
+      }
+    }
+
+    return board
   }
   finally {
     db.close()

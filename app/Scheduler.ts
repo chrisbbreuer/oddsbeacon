@@ -16,9 +16,12 @@ export default function () {
     .hourly()
     .setTimeZone('America/Los_Angeles')
 
-  // Push the latest odds board to realtime subscribers every minute.
+  // Live data loop: pull fresh odds, persist with history, and broadcast
+  // the refreshed board to realtime subscribers every minute. (IngestOdds
+  // broadcasts on completion, so it replaces a standalone BroadcastOdds
+  // schedule — that job stays available for a manual re-broadcast.)
   schedule
-    .job('BroadcastOdds')
+    .job('IngestOdds')
     .everyMinute()
 
   // Run a custom action every five minutes

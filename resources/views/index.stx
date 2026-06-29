@@ -57,7 +57,20 @@ const teamBrand = {
   Draw: { abbr: 'X', bg: '#94a3b8', fg: '#ffffff', logo: '' },
 }
 function teamFor(label) {
-  const base = teamBrand[label] || { abbr: label.slice(0, 3).toUpperCase(), bg: '#64748b', fg: '#ffffff', logo: '' }
+  let base = teamBrand[label]
+  // Over/Under totals → green/red chips (Kalshi-style), no team logo.
+  if (!base && /^(?:over|under)\b/i.test(label)) {
+    const over = /^over/i.test(label)
+    base = { abbr: over ? 'O' : 'U', bg: over ? '#0a934f' : '#d64550', fg: '#ffffff', logo: '' }
+  }
+  // Spread labels like "Lakers -4.5" reuse the base team's brand + logo.
+  if (!base) {
+    const stripped = label.replace(/\s+[+-]?\d+(?:\.\d+)?$/, '').trim()
+    if (teamBrand[stripped])
+      base = teamBrand[stripped]
+  }
+  if (!base)
+    base = { abbr: label.slice(0, 3).toUpperCase(), bg: '#64748b', fg: '#ffffff', logo: '' }
   const logo = base.logo || ''
   let style = `background-color:${base.bg};color:${base.fg}`
   if (logo)
@@ -75,6 +88,19 @@ const sportIcon = {
 
 function signed(n) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
+}
+
+// Build an SVG polyline points string for a sparkline of the price trail.
+function sparkPoints(history, w, h) {
+  if (!history || history.length < 2)
+    return ''
+  const min = Math.min(...history)
+  const max = Math.max(...history)
+  const range = max - min || 1
+  const n = history.length
+  return history
+    .map((v, i) => `${((i / (n - 1)) * w).toFixed(1)},${(h - ((v - min) / range) * (h - 2) - 1).toFixed(1)}`)
+    .join(' ')
 }
 
 // Ordered, de-duplicated category list with its sport icon for the filter.
@@ -96,6 +122,10 @@ const board = events.map((ev) => {
       bestDecimalLabel: s.bestPrice != null ? s.bestPrice.toFixed(2) : '—',
       impliedLabel: `${s.bestImpliedPct.toFixed(1)}%`,
       edgeLabel: signed(s.edgeVsAvgPct),
+      spark: sparkPoints(s.bestHistory, 60, 16),
+      openLabel: s.bestHistory.length ? s.bestHistory[0].toFixed(2) : '—',
+      sparkColor: (s.bestHistory.length >= 2 && s.bestHistory[s.bestHistory.length - 1] < s.bestHistory[0]) ? 'var(--neg)' : 'var(--pos)',
+      trendArrow: (s.bestHistory.length >= 2 && s.bestHistory[s.bestHistory.length - 1] < s.bestHistory[0]) ? '▼' : '▲',
       cells: s.quotes.map((q) => {
         const book = bookById[q.bookmakerId]
         return {
@@ -418,7 +448,12 @@ const arbCount = board.filter(e => e.isArb).length
                                 <span class="font-bold text-xs muted num">{{ s.impliedLabel }} chance</span>
                               </div>
                               <div class="mt-1.5 prob"><div class="prob-fill" style="width:{{ s.bestImpliedPct.toFixed(0) }}%"></div></div>
-                              <div class="mt-1 text-[11px] muted"><span class="font-semibold pos">{{ s.edgeLabel }}</span> vs market avg</div>
+                              <div class="flex gap-2 items-center mt-1 text-[11px] muted">
+                                <svg width="58" height="16" viewBox="0 0 60 16" preserveAspectRatio="none"><polyline points="{{ s.spark }}" fill="none" stroke="{{ s.sparkColor }}" stroke-width="1.5"></polyline></svg>
+                                <span class="num" style="color:{{ s.sparkColor }}">{{ s.trendArrow }}</span>
+                                <span class="num">{{ s.openLabel }}→<span class="font-bold" style="color:var(--text)">{{ s.bestDecimalLabel }}</span></span>
+                                <span class="font-semibold pos">{{ s.edgeLabel }}</span>
+                              </div>
                             </div>
                           </div>
                         </td>
