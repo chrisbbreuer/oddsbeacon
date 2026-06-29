@@ -27,6 +27,11 @@ route.get('/odds/market/{id}', 'Actions/Odds/GetMarket')
 // Every price a single bookmaker offers, by slug.
 route.get('/odds/book/{slug}', 'Actions/Odds/GetBookmaker')
 
+// Server-side bet sheets (scoped to a signed-in user or an anon token).
+route.get('/sheets', 'Actions/Sheets/ListSheets')
+route.post('/sheets', 'Actions/Sheets/SaveSheet')
+route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
+
 // `/coming-soon` is served as an STX view from
 // `storage/framework/defaults/resources/views/coming-soon.stx`. The
 // view auto-resolves through stx-serve, so no route registration is

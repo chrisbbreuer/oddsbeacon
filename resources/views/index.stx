@@ -310,6 +310,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       live: {{ liveJson }},
       flash: {},
       liveUrl: '{{ liveUrl }}',
+      token: (localStorage.getItem('ob-token') || (self.crypto && crypto.randomUUID ? crypto.randomUUID() : 'tok-' + Math.random().toString(36).slice(2))),
       cat: 'all',
       stake: 25,
       arbStake: 100,
@@ -349,8 +350,8 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         }
         catch (err) { /* no realtime server — board stays on its server-rendered values */ }
       },
-      persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-theme', this.theme); localStorage.setItem('ob-format', this.format) },
-      saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); this.saved = [...this.saved, { name, legs: this.sheet, parlay: this.parlay() }]; this.sheetName = '' },
+      persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-theme', this.theme); localStorage.setItem('ob-format', this.format); localStorage.setItem('ob-token', this.token) },
+      saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); const legs = this.sheet; this.saved = [...this.saved, { name, legs, parlay: this.parlay() }]; this.sheetName = ''; try { fetch('/api/sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: this.token, name, legs }) }).catch(() => {}) } catch (e) { /* offline — kept in localStorage */ } },
       loadSheet(i) { this.sheet = [...this.saved[i].legs]; this.sheetOpen = true },
       deleteSaved(i) { this.saved = this.saved.filter((_, j) => j !== i) }
     }"
