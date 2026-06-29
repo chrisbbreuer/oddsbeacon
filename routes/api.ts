@@ -1,27 +1,31 @@
-import { response, route } from '@stacksjs/router'
-import { loadBoard } from '../app/Support/odds'
+import { route } from '@stacksjs/router'
 
 /**
  * This file is the entry point for your application's API routes.
  * The routes defined here are automatically registered under the `/api`
  * prefix, so `route.get('/odds', …)` is served at `/api/odds`.
  *
+ * The odds endpoints are backed by actions in `app/Actions/Odds/` so the
+ * same query logic is reusable from routes, events (realtime broadcasts),
+ * and the CLI.
+ *
  * @see https://docs.stacksjs.com/routing
  */
 
-// The full comparison board: every market with best lines, edges, and
-// per-market hold/arbitrage already computed.
-route.get('/odds', () => response.json(loadBoard()))
+// Full board across every bookmaker + market.
+route.get('/odds', 'Actions/Odds/GetBoard')
 
-// Just the markets where line-shopping the best price across books
-// yields a guaranteed profit.
-route.get('/odds/arbitrage', () => {
-  const board = loadBoard()
-  return response.json({
-    count: board.summary.arbitrageCount,
-    events: board.events.filter(e => e.hold?.isArbitrage),
-  })
-})
+// Cross-book arbitrage opportunities.
+route.get('/odds/arbitrage', 'Actions/Odds/GetArbitrage')
+
+// Best available price for every outcome, flattened.
+route.get('/odds/best', 'Actions/Odds/GetBestLines')
+
+// One market by id, with the books quoting it.
+route.get('/odds/market/{id}', 'Actions/Odds/GetMarket')
+
+// Every price a single bookmaker offers, by slug.
+route.get('/odds/book/{slug}', 'Actions/Odds/GetBookmaker')
 
 // `/coming-soon` is served as an STX view from
 // `storage/framework/defaults/resources/views/coming-soon.stx`. The
