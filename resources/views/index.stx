@@ -20,17 +20,17 @@ for (const b of bookmakers)
 
 // Brand styling for the bookmaker "logo" tiles (real brand colors + mark).
 const bookBrand = {
-  draftkings: { bg: '#53d337', fg: '#06230f', mark: 'DK' },
-  fanduel: { bg: '#1493ff', fg: '#ffffff', mark: 'FD' },
-  betmgm: { bg: '#caa64f', fg: '#11130f', mark: 'MGM' },
-  caesars: { bg: '#0d5c43', fg: '#e7c884', mark: 'CZR' },
-  bet365: { bg: '#027b5b', fg: '#ffe400', mark: '365' },
-  pinnacle: { bg: '#e4022d', fg: '#ffffff', mark: 'PIN' },
-  polymarket: { bg: '#1652f0', fg: '#ffffff', mark: 'PM' },
-  kalshi: { bg: '#00b894', fg: '#06231c', mark: 'KAL' },
+  draftkings: { bg: '#53d337', fg: '#06230f', mark: 'DK', url: 'https://sportsbook.draftkings.com' },
+  fanduel: { bg: '#1493ff', fg: '#ffffff', mark: 'FD', url: 'https://sportsbook.fanduel.com' },
+  betmgm: { bg: '#caa64f', fg: '#11130f', mark: 'MGM', url: 'https://sports.betmgm.com' },
+  caesars: { bg: '#0d5c43', fg: '#e7c884', mark: 'CZR', url: 'https://www.caesars.com/sportsbook-and-casino' },
+  bet365: { bg: '#027b5b', fg: '#ffe400', mark: '365', url: 'https://www.bet365.com' },
+  pinnacle: { bg: '#e4022d', fg: '#ffffff', mark: 'PIN', url: 'https://www.pinnacle.com' },
+  polymarket: { bg: '#1652f0', fg: '#ffffff', mark: 'PM', url: 'https://polymarket.com' },
+  kalshi: { bg: '#00b894', fg: '#06231c', mark: 'KAL', url: 'https://kalshi.com' },
 }
 function brandFor(slug, short) {
-  return bookBrand[slug] || { bg: '#64748b', fg: '#ffffff', mark: short }
+  return bookBrand[slug] || { bg: '#64748b', fg: '#ffffff', mark: short, url: '#' }
 }
 
 // Team badge styling: abbreviation + colors for the fallback chip, plus a
@@ -512,7 +512,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
                           <button
                             class="inline-flex flex-col items-center px-3 py-1.5 min-w-[92px] font-black rounded-xl num pick"
                             :class="inSheet({{ s.id }}) ? 'pick-on' : ''"
-                            @click="toggleLeg({ id: {{ s.id }}, league: '{{ ev.league }}', game: '{{ ev.title }}', pick: '{{ s.label }}', price: {{ s.bestPrice }}, book: '{{ s.bestBook.short }}', ta: '{{ s.team.abbr }}', tb: '{{ s.team.bg }}', tf: '{{ s.team.fg }}', tl: '{{ s.team.logo }}', bb: '{{ s.bestBrand.bg }}', bf: '{{ s.bestBrand.fg }}', bm: '{{ s.bestBrand.mark }}' })"
+                            @click="toggleLeg({ id: {{ s.id }}, league: '{{ ev.league }}', game: '{{ ev.title }}', pick: '{{ s.label }}', price: {{ s.bestPrice }}, book: '{{ s.bestBook.short }}', ta: '{{ s.team.abbr }}', tb: '{{ s.team.bg }}', tf: '{{ s.team.fg }}', tl: '{{ s.team.logo }}', bb: '{{ s.bestBrand.bg }}', bf: '{{ s.bestBrand.fg }}', bm: '{{ s.bestBrand.mark }}', bu: '{{ s.bestBrand.url }}' })"
                           >
                             <span class="leading-none text-base" x-text="px({{ s.id }}, {{ s.bestBookmakerId }}, {{ s.bestPrice }})">{{ s.bestDecimalLabel }}</span>
                             <span class="flex gap-1 items-center mt-1 font-bold text-[10px] tracking-wide uppercase">
@@ -570,6 +570,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
                           <div class="flex gap-1 items-center text-xs muted">
                             <span class="logo" style="background:{{ s.bestBrand.bg }};color:{{ s.bestBrand.fg }};height:14px;min-width:14px;padding:0 3px;font-size:8px;border-radius:4px">{{ s.bestBrand.mark }}</span>
                             {{ s.bestBook.name }} · <span class="num">{{ s.bestDecimalLabel }}</span>
+                            <a href="{{ s.bestBrand.url }}" target="_blank" rel="sponsored noopener" class="ml-0.5 accent hover:opacity-70" title="Place at {{ s.bestBook.name }}">↗</a>
                           </div>
                         </div>
                       </div>
@@ -612,6 +613,14 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         </div>
       </section>
     </main>
+
+    <!-- responsible gambling -->
+    <section class="border-t bd" style="background:var(--surface-2)">
+      <div class="flex flex-col gap-2 items-center justify-between sm:flex-row mx-auto px-4 py-4 sm:px-6 max-w-7xl text-xs muted">
+        <span><span class="font-bold" style="color:var(--text)">21+</span> · Please gamble responsibly. If you or someone you know has a gambling problem, call <span class="font-bold" style="color:var(--text)">1-800-GAMBLER</span>.</span>
+        <a href="https://www.ncpgambling.org/help-treatment/" target="_blank" rel="noopener" class="font-semibold accent hover:opacity-70">Get help ↗</a>
+      </div>
+    </section>
 
     <footer class="border-t bd">
       <div class="flex flex-col gap-3 items-center justify-between sm:flex-row mx-auto px-4 py-8 sm:px-6 max-w-7xl text-sm faint">
@@ -666,6 +675,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
                   <div class="flex gap-1 items-center mt-0.5 text-xs muted">
                     <span class="logo" :style="`background:${leg.bb};color:${leg.bf};height:14px;min-width:14px;padding:0 3px;font-size:8px;border-radius:4px`" x-text="leg.bm"></span>
                     <span x-text="leg.book"></span>
+                    <a :href="leg.bu" target="_blank" rel="sponsored noopener" class="accent hover:opacity-70" title="Place at book">↗</a>
                   </div>
                 </div>
               </div>
