@@ -1,12 +1,18 @@
 import { Database } from 'bun:sqlite'
 import process from 'node:process'
+import { alertArbitrage } from '../../Notifications/AlertArbitrage'
 import { resolveProvider } from '../../Services/odds/provider'
+import { loadBoard } from '../../Support/odds'
 import BroadcastBoard from './BroadcastBoard'
 
 function dbPath(): string {
   const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
   return p.startsWith('/') ? p : `${process.cwd()}/${p}`
 }
+
+// Market ids we've already alerted on this worker's lifetime, so a
+// standing arbitrage isn't re-notified on every tick.
+const alertedArbs = new Set<number>()
 
 /**
  * Pull the latest prices from the active odds provider, write them to the
@@ -53,6 +59,32 @@ export default {
     }
 
     const bc = await BroadcastBoard.handle()
-    return { provider: provider.name, updated: changed, snapshots, broadcast: bc.broadcast, at: now }
+
+    // Alert on any newly-appeared cross-book arbitrage.
+    let alerts = 0
+    const board = loadBoard()
+    const bookName = new Map(board.bookmakers.map(b => [b.id, b.name]))
+    for (const ev of board.events) {
+      if (ev.hold?.isArbitrage && !alertedArbs.has(ev.id)) {
+        alertedArbs.add(ev.id)
+        await alertArbitrage({
+          marketId: ev.id,
+          title: ev.title,
+          league: ev.league,
+          profitPct: ev.hold.arbitragePct,
+          legs: ev.selections.map(s => ({
+            pick: s.label,
+            book: s.bestBookmakerId != null ? (bookName.get(s.bestBookmakerId) ?? '') : '',
+            price: s.bestPrice ?? 0,
+          })),
+        })
+        alerts++
+      }
+      else if (!ev.hold?.isArbitrage) {
+        alertedArbs.delete(ev.id) // arb closed — allow a fresh alert next time
+      }
+    }
+
+    return { provider: provider.name, updated: changed, snapshots, broadcast: bc.broadcast, alerts, at: now }
   },
 }
