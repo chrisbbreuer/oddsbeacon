@@ -16,6 +16,11 @@ export default function () {
     .hourly()
     .setTimeZone('America/Los_Angeles')
 
+  // Push the latest odds board to realtime subscribers every minute.
+  schedule
+    .job('BroadcastOdds')
+    .everyMinute()
+
   // Run a custom action every five minutes
   // schedule.action('CleanupTempFiles').everyFiveMinutes()
 
