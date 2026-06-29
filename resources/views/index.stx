@@ -132,26 +132,27 @@ const arbCount = board.filter(e => e.isArb).length
       html { scroll-behavior: smooth; }
 
       :root {
-        --bg: #f3f5f8;
-        --bg-2: #e9edf3;
+        --bg: #fbfcfd;
+        --bg-2: #f4f7f9;
         --surface: #ffffff;
-        --surface-2: #f1f4f8;
-        --border: #e2e7ee;
-        --border-strong: #d2d9e3;
-        --text: #0b1220;
-        --muted: #5f6a7d;
-        --faint: #98a2b3;
-        --accent: #0ea66e;
-        --accent-strong: #0a7d4d;
-        --accent-weak: rgba(14, 166, 110, 0.12);
-        --best-bg: rgba(14, 166, 110, 0.12);
-        --best-ring: #0ea66e;
-        --best-text: #0a7d4d;
-        --pos: #0a934f;
-        --neg: #d64550;
-        --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-        --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 12px 30px rgba(16, 24, 40, 0.08);
-        --scrim: rgba(12, 19, 32, 0.45);
+        --surface-2: #f5f7fa;
+        --border: #ebeef2;
+        --border-strong: #dde3ea;
+        --text: #11161d;
+        --muted: #667085;
+        --faint: #9aa4b2;
+        --accent: #00c281;
+        --accent-strong: #008a5a;
+        --accent-weak: rgba(0, 194, 129, 0.12);
+        --best-bg: rgba(0, 194, 129, 0.12);
+        --best-ring: #00c281;
+        --best-text: #008a5a;
+        --pos: #00925f;
+        --neg: #e5484d;
+        --track: #eef1f5;
+        --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+        --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+        --scrim: rgba(12, 19, 32, 0.4);
       }
       .app[data-theme="dark"] {
         --bg: #070a10;
@@ -163,21 +164,22 @@ const arbCount = board.filter(e => e.isArb).length
         --text: #e9edf4;
         --muted: #97a2b4;
         --faint: #6b7585;
-        --accent: #1fd18a;
+        --accent: #21de93;
         --accent-strong: #5fefb6;
-        --accent-weak: rgba(31, 209, 138, 0.15);
-        --best-bg: rgba(31, 209, 138, 0.14);
-        --best-ring: #28d391;
+        --accent-weak: rgba(33, 222, 147, 0.15);
+        --best-bg: rgba(33, 222, 147, 0.14);
+        --best-ring: #21de93;
         --best-text: #6ef0bb;
         --pos: #34d399;
         --neg: #f87171;
+        --track: #1c2431;
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px rgba(0, 0, 0, 0.5);
         --scrim: rgba(2, 4, 8, 0.62);
       }
 
       body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
-      .app { min-height: 100vh; background: linear-gradient(180deg, var(--bg-2), var(--bg) 220px); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+      .app { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
       a { color: inherit; text-decoration: none; }
       .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
 
@@ -188,6 +190,10 @@ const arbCount = board.filter(e => e.isArb).length
       .faint { color: var(--faint); }
       .accent { color: var(--accent-strong); }
       .pos { color: var(--pos); }
+
+      /* Kalshi-style "chance" probability bar */
+      .prob { height: 5px; width: 100%; border-radius: 9999px; background: var(--track); overflow: hidden; }
+      .prob-fill { height: 100%; border-radius: 9999px; background: var(--accent); }
 
       /* Bookmaker logo tile + team badge */
       .logo { display: inline-grid; place-items: center; border-radius: 7px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; box-shadow: var(--shadow-sm); }
@@ -395,12 +401,16 @@ const arbCount = board.filter(e => e.isArb).length
                   <tbody>
                     @foreach (ev.selections as s)
                       <tr class="row-divide">
-                        <td class="px-4 py-3.5 sm:px-5 text-left">
+                        <td class="px-4 py-4 sm:px-5 text-left" style="min-width:220px">
                           <div class="flex gap-2.5 items-center">
                             <span class="badge" style="background:{{ s.team.bg }};color:{{ s.team.fg }}">{{ s.team.abbr }}</span>
-                            <div>
-                              <div class="font-bold">{{ s.label }}</div>
-                              <div class="text-xs muted">{{ s.impliedLabel }} implied · <span class="font-semibold pos">{{ s.edgeLabel }}</span> vs avg</div>
+                            <div class="flex-1 min-w-0">
+                              <div class="flex gap-3 items-baseline justify-between">
+                                <span class="font-bold">{{ s.label }}</span>
+                                <span class="font-bold text-xs muted num">{{ s.impliedLabel }} chance</span>
+                              </div>
+                              <div class="mt-1.5 prob"><div class="prob-fill" style="width:{{ s.bestImpliedPct.toFixed(0) }}%"></div></div>
+                              <div class="mt-1 text-[11px] muted"><span class="font-semibold pos">{{ s.edgeLabel }}</span> vs market avg</div>
                             </div>
                           </div>
                         </td>
