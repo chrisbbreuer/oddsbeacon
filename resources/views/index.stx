@@ -154,7 +154,10 @@ const board = events.map((ev) => {
 })
 
 const brandedBooks = bookmakers.map(b => ({ ...b, brand: brandFor(b.slug, b.short) }))
-const arbCount = board.filter(e => e.isArb).length
+const arbEvents = board
+  .filter(e => e.isArb)
+  .map(e => ({ ...e, impliedSum: e.hold ? e.hold.bestBookSum : 1 }))
+const arbCount = arbEvents.length
 
 // Initial price map ("selectionId:bookmakerId" -> decimal) the client
 // hydrates into reactive state; realtime `board:updated` messages patch it.
@@ -309,6 +312,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       liveUrl: '{{ liveUrl }}',
       cat: 'all',
       stake: 25,
+      arbStake: 100,
       sheetOpen: false,
       sheetName: '',
       sheet: JSON.parse(localStorage.getItem('ob-sheet') || '[]'),
@@ -361,6 +365,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         </a>
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="#board" class="hover:opacity-70">Games</a>
+          <a href="#arbitrage" class="hover:opacity-70">Arbitrage</a>
           <a href="#how" class="hover:opacity-70">How it works</a>
           <a href="/api/odds" data-no-router class="hover:opacity-70">API</a>
         </nav>
@@ -529,6 +534,59 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
             </section>
           @endforeach
         </div>
+      </section>
+
+      <!-- arbitrage radar + calculator -->
+      <section id="arbitrage" class="py-12 border-t scroll-mt-20 bd">
+        <div class="flex flex-wrap gap-3 items-end justify-between">
+          <div>
+            <h2 class="font-black text-2xl tracking-tight sm:text-3xl">Arbitrage radar</h2>
+            <p class="mt-1 max-w-2xl muted">When the best prices across books imply under 100% total, back every outcome at a different book and lock in profit. Set a total stake to see the split.</p>
+          </div>
+          <label class="flex gap-2 items-center font-semibold text-sm muted">Total stake $
+            <input type="number" min="1" class="px-2 py-1.5 w-24 font-bold text-right rounded-lg input num" x-model="arbStake">
+          </label>
+        </div>
+
+        @if (arbEvents.length === 0)
+          <p class="mt-6 px-5 py-10 text-center rounded-2xl card muted">No arbitrage on the board right now — the market is efficient. Check back as lines move.</p>
+        @else
+          <div class="grid gap-5 md:grid-cols-2 mt-6">
+            @foreach (arbEvents as ev)
+              <div class="p-5 rounded-2xl card" style="border-color:var(--accent)">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-xs tracking-wider uppercase faint">{{ ev.league }} · {{ ev.market }}</span>
+                  <span class="inline-flex items-center px-3 py-1 font-black text-sm rounded-full badge-arb">⚡ Guaranteed {{ ev.arbLabel }}</span>
+                </div>
+                <h3 class="mt-2 font-bold">{{ ev.title }}</h3>
+                <div class="mt-4 space-y-2">
+                  @foreach (ev.selections as s)
+                    <div class="flex gap-3 items-center justify-between px-3.5 py-2.5 rounded-xl soft">
+                      <div class="flex gap-2.5 items-center min-w-0">
+                        <span class="badge" style="{{ s.team.style }}">{{ s.team.text }}</span>
+                        <div class="min-w-0">
+                          <div class="font-bold">{{ s.label }}</div>
+                          <div class="flex gap-1 items-center text-xs muted">
+                            <span class="logo" style="background:{{ s.bestBrand.bg }};color:{{ s.bestBrand.fg }};height:14px;min-width:14px;padding:0 3px;font-size:8px;border-radius:4px">{{ s.bestBrand.mark }}</span>
+                            {{ s.bestBook.name }} · <span class="num">{{ s.bestDecimalLabel }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="font-bold text-[10px] tracking-wide uppercase faint">Stake</div>
+                        <div class="font-black accent num" x-text="'$' + (Number(arbStake) * (1 / {{ s.bestPrice }}) / {{ ev.impliedSum }}).toFixed(2)"></div>
+                      </div>
+                    </div>
+                  @endforeach
+                </div>
+                <div class="flex items-center justify-between mt-3 pt-3 border-t bd">
+                  <span class="font-semibold text-sm muted">Guaranteed profit</span>
+                  <span class="font-black text-lg num pos" x-text="'$' + (Number(arbStake) / {{ ev.impliedSum }} - Number(arbStake)).toFixed(2)"></span>
+                </div>
+              </div>
+            @endforeach
+          </div>
+        @endif
       </section>
 
       <!-- how it works -->
