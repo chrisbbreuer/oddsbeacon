@@ -33,28 +33,36 @@ function brandFor(slug, short) {
   return bookBrand[slug] || { bg: '#64748b', fg: '#ffffff', mark: short }
 }
 
-// Team badge styling (abbreviation + primary/secondary colors).
+// Team badge styling: abbreviation + colors for the fallback chip, plus a
+// real logo served from ESPN's public team-logo CDN (referenced by URL, not
+// reproduced). The colored chip shows through if a logo ever fails to load.
+const ESPN = 'https://a.espncdn.com/i/teamlogos'
 const teamBrand = {
-  Lakers: { abbr: 'LAL', bg: '#552583', fg: '#fdb927' },
-  Celtics: { abbr: 'BOS', bg: '#007a33', fg: '#ffffff' },
-  Warriors: { abbr: 'GSW', bg: '#1d428a', fg: '#ffc72c' },
-  Nuggets: { abbr: 'DEN', bg: '#0e2240', fg: '#fec524' },
-  Chiefs: { abbr: 'KC', bg: '#e31837', fg: '#ffb81c' },
-  Bills: { abbr: 'BUF', bg: '#00338d', fg: '#c60c30' },
-  '49ers': { abbr: 'SF', bg: '#aa0000', fg: '#b3995d' },
-  Eagles: { abbr: 'PHI', bg: '#004c54', fg: '#a5acaf' },
-  'Man City': { abbr: 'MCI', bg: '#6cabdd', fg: '#1c2c5b' },
-  Arsenal: { abbr: 'ARS', bg: '#ef0107', fg: '#ffffff' },
-  Liverpool: { abbr: 'LIV', bg: '#c8102e', fg: '#ffffff' },
-  Chelsea: { abbr: 'CHE', bg: '#034694', fg: '#ffffff' },
-  Rangers: { abbr: 'NYR', bg: '#0038a8', fg: '#ce1126' },
-  Bruins: { abbr: 'BOS', bg: '#111111', fg: '#ffb81c' },
-  Dodgers: { abbr: 'LAD', bg: '#005a9c', fg: '#ffffff' },
-  Yankees: { abbr: 'NYY', bg: '#0c2340', fg: '#ffffff' },
-  Draw: { abbr: 'X', bg: '#64748b', fg: '#ffffff' },
+  Lakers: { abbr: 'LAL', bg: '#552583', fg: '#fdb927', logo: `${ESPN}/nba/500/lal.png` },
+  Celtics: { abbr: 'BOS', bg: '#007a33', fg: '#ffffff', logo: `${ESPN}/nba/500/bos.png` },
+  Warriors: { abbr: 'GSW', bg: '#1d428a', fg: '#ffc72c', logo: `${ESPN}/nba/500/gs.png` },
+  Nuggets: { abbr: 'DEN', bg: '#0e2240', fg: '#fec524', logo: `${ESPN}/nba/500/den.png` },
+  Chiefs: { abbr: 'KC', bg: '#e31837', fg: '#ffb81c', logo: `${ESPN}/nfl/500/kc.png` },
+  Bills: { abbr: 'BUF', bg: '#00338d', fg: '#c60c30', logo: `${ESPN}/nfl/500/buf.png` },
+  '49ers': { abbr: 'SF', bg: '#aa0000', fg: '#b3995d', logo: `${ESPN}/nfl/500/sf.png` },
+  Eagles: { abbr: 'PHI', bg: '#004c54', fg: '#a5acaf', logo: `${ESPN}/nfl/500/phi.png` },
+  'Man City': { abbr: 'MCI', bg: '#6cabdd', fg: '#1c2c5b', logo: `${ESPN}/soccer/500/382.png` },
+  Arsenal: { abbr: 'ARS', bg: '#ef0107', fg: '#ffffff', logo: `${ESPN}/soccer/500/359.png` },
+  Liverpool: { abbr: 'LIV', bg: '#c8102e', fg: '#ffffff', logo: `${ESPN}/soccer/500/364.png` },
+  Chelsea: { abbr: 'CHE', bg: '#034694', fg: '#ffffff', logo: `${ESPN}/soccer/500/363.png` },
+  Rangers: { abbr: 'NYR', bg: '#0038a8', fg: '#ce1126', logo: `${ESPN}/nhl/500/nyr.png` },
+  Bruins: { abbr: 'BOS', bg: '#111111', fg: '#ffb81c', logo: `${ESPN}/nhl/500/bos.png` },
+  Dodgers: { abbr: 'LAD', bg: '#005a9c', fg: '#ffffff', logo: `${ESPN}/mlb/500/lad.png` },
+  Yankees: { abbr: 'NYY', bg: '#0c2340', fg: '#ffffff', logo: `${ESPN}/mlb/500/nyy.png` },
+  Draw: { abbr: 'X', bg: '#94a3b8', fg: '#ffffff', logo: '' },
 }
 function teamFor(label) {
-  return teamBrand[label] || { abbr: label.slice(0, 3).toUpperCase(), bg: '#64748b', fg: '#ffffff' }
+  const base = teamBrand[label] || { abbr: label.slice(0, 3).toUpperCase(), bg: '#64748b', fg: '#ffffff', logo: '' }
+  const logo = base.logo || ''
+  let style = `background-color:${base.bg};color:${base.fg}`
+  if (logo)
+    style += `;background-image:url('${logo}');background-size:76%;background-position:center;background-repeat:no-repeat`
+  return { ...base, logo, style, text: logo ? '' : base.abbr }
 }
 
 const sportIcon = {
@@ -368,9 +376,9 @@ const arbCount = board.filter(e => e.isArb).length
                       <span>{{ ev.league }}</span><span>·</span><span>{{ ev.market }}</span>
                     </div>
                     <div class="flex gap-2 items-center mt-1">
-                      <span class="badge" style="background:{{ ev.home.bg }};color:{{ ev.home.fg }}">{{ ev.home.abbr }}</span>
+                      <span class="badge" style="{{ ev.home.style }}">{{ ev.home.text }}</span>
                       <span class="font-bold">{{ ev.title }}</span>
-                      <span class="badge" style="background:{{ ev.away.bg }};color:{{ ev.away.fg }}">{{ ev.away.abbr }}</span>
+                      <span class="badge" style="{{ ev.away.style }}">{{ ev.away.text }}</span>
                     </div>
                     <p class="mt-0.5 text-xs faint">{{ ev.startsAt }} · updated {{ ev.updatedMinutesAgo }}m ago</p>
                   </div>
@@ -403,7 +411,7 @@ const arbCount = board.filter(e => e.isArb).length
                       <tr class="row-divide">
                         <td class="px-4 py-4 sm:px-5 text-left" style="min-width:220px">
                           <div class="flex gap-2.5 items-center">
-                            <span class="badge" style="background:{{ s.team.bg }};color:{{ s.team.fg }}">{{ s.team.abbr }}</span>
+                            <span class="badge" style="{{ s.team.style }}">{{ s.team.text }}</span>
                             <div class="flex-1 min-w-0">
                               <div class="flex gap-3 items-baseline justify-between">
                                 <span class="font-bold">{{ s.label }}</span>
@@ -418,7 +426,7 @@ const arbCount = board.filter(e => e.isArb).length
                           <button
                             class="inline-flex flex-col items-center px-3 py-1.5 min-w-[92px] font-black rounded-xl num pick"
                             :class="inSheet({{ s.id }}) ? 'pick-on' : ''"
-                            @click="toggleLeg({ id: {{ s.id }}, league: '{{ ev.league }}', game: '{{ ev.title }}', pick: '{{ s.label }}', price: {{ s.bestPrice }}, book: '{{ s.bestBook.short }}', ta: '{{ s.team.abbr }}', tb: '{{ s.team.bg }}', tf: '{{ s.team.fg }}', bb: '{{ s.bestBrand.bg }}', bf: '{{ s.bestBrand.fg }}', bm: '{{ s.bestBrand.mark }}' })"
+                            @click="toggleLeg({ id: {{ s.id }}, league: '{{ ev.league }}', game: '{{ ev.title }}', pick: '{{ s.label }}', price: {{ s.bestPrice }}, book: '{{ s.bestBook.short }}', ta: '{{ s.team.abbr }}', tb: '{{ s.team.bg }}', tf: '{{ s.team.fg }}', tl: '{{ s.team.logo }}', bb: '{{ s.bestBrand.bg }}', bf: '{{ s.bestBrand.fg }}', bm: '{{ s.bestBrand.mark }}' })"
                           >
                             <span class="leading-none text-base">
                               <span x-show="format === 'decimal'">{{ s.bestDecimalLabel }}</span>
@@ -522,7 +530,7 @@ const arbCount = board.filter(e => e.isArb).length
           <template x-for="leg in sheet" :key="leg.id">
             <div class="flex gap-3 items-center justify-between px-3 py-2.5 rounded-xl soft">
               <div class="flex gap-2.5 items-center min-w-0">
-                <span class="badge" :style="`background:${leg.tb};color:${leg.tf}`" x-text="leg.ta"></span>
+                <span class="badge" :style="`background-color:${leg.tb};color:${leg.tf}` + (leg.tl ? `;background-image:url('${leg.tl}');background-size:76%;background-position:center;background-repeat:no-repeat` : '')" x-text="leg.tl ? '' : leg.ta"></span>
                 <div class="min-w-0">
                   <div class="text-xs truncate muted" x-text="leg.league + ' · ' + leg.game"></div>
                   <div class="font-bold" x-text="leg.pick"></div>
