@@ -1,0 +1,264 @@
+<script server>
+/**
+ * OddsBeacon — Live action.
+ *
+ * Server-renders the most recent line moves + active arbs (reliable), then
+ * prepends realtime items as they arrive on the `odds` / `alerts` broadcast
+ * channels. The initial feed never depends on client hydration.
+ */
+import { brandFor, teamFor } from '../../app/Support/branding'
+import { loadBoard, loadRecentMoves } from '../../app/Support/odds'
+
+const appName = 'OddsBeacon'
+const { bookmakers, events, summary } = loadBoard()
+
+// Initial feed (recent line moves) — rendered server-side with @foreach.
+const feed = loadRecentMoves(40).map((m) => {
+  const team = teamFor(m.pick)
+  const brand = brandFor(m.bookSlug, m.book.slice(0, 3).toUpperCase())
+  return {
+    time: m.at.slice(11, 16),
+    pick: m.pick,
+    game: m.game,
+    league: m.league,
+    tstyle: team.style,
+    ttext: team.text,
+    mark: brand.mark,
+    bg: brand.bg,
+    fg: brand.fg,
+    fromLabel: m.from.toFixed(2),
+    toLabel: m.to.toFixed(2),
+    dir: m.dir,
+    arrow: m.dir === 'up' ? '▲' : '▼',
+  }
+})
+
+const arbs = events
+  .filter(e => e.hold?.isArbitrage)
+  .map(e => ({ title: e.title, league: e.league, profitLabel: `+${e.hold.arbitragePct.toFixed(2)}%` }))
+
+// Client lookup maps for prepending realtime items (no pre-built style
+// strings — single quotes inside an x-data attribute break parsing).
+const selMeta = {}
+for (const ev of events) {
+  for (const s of ev.selections) {
+    const t = teamFor(s.label)
+    selMeta[s.id] = { pick: s.label, game: ev.title, league: ev.league, tbg: t.bg, tfg: t.fg, tlogo: t.logo, tabbr: t.abbr }
+  }
+}
+const bookMeta = {}
+for (const b of bookmakers) {
+  const br = brandFor(b.slug, b.short)
+  bookMeta[b.id] = { name: b.name, mark: br.mark, bg: br.bg, fg: br.fg }
+}
+const liveMap = {}
+for (const ev of events) {
+  for (const s of ev.selections) {
+    for (const q of s.quotes) {
+      if (q.price != null)
+        liveMap[`${s.id}:${q.bookmakerId}`] = q.price
+    }
+  }
+}
+
+const selMetaJson = JSON.stringify(selMeta)
+const bookMetaJson = JSON.stringify(bookMeta)
+const liveJson = JSON.stringify(liveMap)
+const broadcastPort = process.env.BROADCAST_PORT || 6001
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="OddsBeacon live action — sports line moves and arbitrage streaming in real time.">
+    <title>OddsBeacon — Live action</title>
+    <style>
+      [x-cloak] { display: none !important; }
+      * { box-sizing: border-box; }
+      :root {
+        --bg: #fbfcfd; --bg-2: #f4f7f9; --surface: #ffffff; --surface-2: #f5f7fa;
+        --border: #ebeef2; --border-strong: #dde3ea; --text: #11161d; --muted: #667085; --faint: #9aa4b2;
+        --accent: #00c281; --accent-strong: #008a5a; --accent-weak: rgba(0, 194, 129, 0.12);
+        --pos: #00925f; --neg: #e5484d; --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+      }
+      .app[data-theme="dark"] {
+        --bg: #070a10; --bg-2: #0b0f17; --surface: #10151e; --surface-2: #161c27;
+        --border: #212936; --border-strong: #2c3543; --text: #e9edf4; --muted: #97a2b4; --faint: #6b7585;
+        --accent: #21de93; --accent-strong: #5fefb6; --accent-weak: rgba(33, 222, 147, 0.15);
+        --pos: #34d399; --neg: #f87171; --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      .app { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+      a { color: inherit; text-decoration: none; }
+      .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+      .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+      .soft { background: var(--surface-2); }
+      .bd { border-color: var(--border); }
+      .muted { color: var(--muted); }
+      .faint { color: var(--faint); }
+      .accent { color: var(--accent-strong); }
+      .pos { color: var(--pos); }
+      .neg { color: var(--neg); }
+      .logo { display: inline-grid; place-items: center; border-radius: 6px; font-weight: 900; font-size: 9px; height: 20px; min-width: 20px; padding: 0 5px; line-height: 1; }
+      .badge { display: inline-grid; place-items: center; height: 30px; width: 30px; border-radius: 9999px; font-size: 10px; font-weight: 900; box-shadow: var(--shadow-sm); flex: 0 0 auto; }
+      .btn { border: 1px solid var(--border-strong); color: var(--text); background: var(--surface); }
+      .btn-primary { background: var(--accent); border-color: var(--accent); color: #04130c; }
+      .icon-btn { border: 1px solid var(--border); color: var(--muted); background: var(--surface); }
+      .live-dot { width: 9px; height: 9px; border-radius: 9999px; background: var(--neg); animation: ping 1.6s ease-out infinite; }
+      .live-dot.on { background: var(--accent); }
+      @keyframes ping { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; } 70% { box-shadow: 0 0 0 7px transparent; opacity: 0.7; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 1; } }
+      .feed-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+      .feed-row.fresh { animation: rowIn 1.2s ease-out; }
+      @keyframes rowIn { 0% { background: var(--accent-weak); } 100% { background: transparent; } }
+    </style>
+  </head>
+
+  <body
+    x-data="{
+      theme: (localStorage.getItem('ob-theme') || 'light'),
+      connected: false,
+      moves: [],
+      live: {{ liveJson }},
+      selMeta: {{ selMetaJson }},
+      bookMeta: {{ bookMetaJson }},
+      toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('ob-theme', this.theme) },
+      clock() { const d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) },
+      connectLive() {
+        try {
+          const ws = new WebSocket('ws://' + location.hostname + ':{{ broadcastPort }}')
+          ws.onopen = () => { this.connected = true; ws.send(JSON.stringify({ type: 'subscribe', channel: 'odds' })); ws.send(JSON.stringify({ type: 'subscribe', channel: 'alerts' })) }
+          ws.onmessage = (e) => {
+            let msg; try { msg = JSON.parse(e.data) } catch { return }
+            if (msg.channel === 'odds' && msg.event === 'board:updated' && msg.data && msg.data.events) {
+              const next = { ...this.live }; const fresh = []
+              for (const ev of msg.data.events) for (const s of ev.selections) for (const q of s.quotes) {
+                if (q.price == null) continue
+                const key = s.id + ':' + q.bookmakerId; const old = this.live[key]; next[key] = q.price
+                if (old != null && q.price !== old) {
+                  const sm = this.selMeta[s.id] || {}; const bm = this.bookMeta[q.bookmakerId] || {}
+                  fresh.push({ kind: 'move', time: this.clock(), pick: sm.pick, game: sm.game, league: sm.league, tbg: sm.tbg, tfg: sm.tfg, tlogo: sm.tlogo, tabbr: sm.tabbr, mark: bm.mark, bg: bm.bg, fg: bm.fg, from: old.toFixed(2), to: q.price.toFixed(2), dir: q.price > old ? 'up' : 'down' })
+                }
+              }
+              this.live = next
+              if (fresh.length) this.moves = [...fresh, ...this.moves].slice(0, 60)
+            }
+            if (msg.channel === 'alerts' && msg.event === 'arbitrage' && msg.data) {
+              this.moves = [{ kind: 'arb', time: this.clock(), title: msg.data.title, league: msg.data.league, profit: (Number(msg.data.profitPct) || 0).toFixed(2) }, ...this.moves].slice(0, 60)
+            }
+          }
+          ws.onclose = () => { this.connected = false; setTimeout(() => this.connectLive(), 5000) }
+        }
+        catch (err) { /* no realtime server — the recent feed still renders */ }
+      }
+    }"
+    x-init="connectLive()"
+  >
+  <div class="app" :data-theme="theme">
+    <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
+      <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
+        <a href="/" class="flex gap-2.5 items-center">
+          <span class="grid place-items-center h-9 w-9 font-black rounded-xl" style="background:var(--accent);color:#04130c">◎</span>
+          <span class="font-extrabold text-lg tracking-tight">Odds<span class="accent">Beacon</span></span>
+        </a>
+        <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
+          <a href="/" class="hover:opacity-70">Board</a>
+          <a href="/#arbitrage" class="hover:opacity-70">Arbitrage</a>
+          <a href="/api/odds" data-no-router class="hover:opacity-70">API</a>
+        </nav>
+        <button class="grid place-items-center h-9 w-9 rounded-lg icon-btn" @click="toggleTheme()" aria-label="Toggle theme">
+          <span x-show="theme !== 'dark'">☾</span>
+          <span x-show="theme === 'dark'" style="display:none">☀</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="mx-auto px-4 py-8 sm:px-6 max-w-6xl">
+      <div class="flex flex-wrap gap-3 items-center justify-between">
+        <div>
+          <div class="flex gap-2 items-center">
+            <span class="live-dot" :class="connected ? 'on' : ''"></span>
+            <h1 class="font-black text-3xl tracking-tight sm:text-4xl">Live action</h1>
+          </div>
+          <p class="mt-1 muted">Line moves and arbitrage across {{ summary.bookmakerCount }} books, streaming in real time.</p>
+        </div>
+        <span class="px-3 py-1.5 font-bold text-xs tracking-wide uppercase rounded-full soft" :class="connected ? 'pos' : 'muted'" x-text="connected ? '● Live' : '○ Recent'"></span>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-[1.6fr_1fr] mt-6">
+        <!-- feed -->
+        <section class="overflow-hidden rounded-2xl card">
+          <div class="flex items-center justify-between px-4 py-3 border-b bd">
+            <span class="font-bold">Line movement</span>
+            <span class="text-xs faint">{{ feed.length }} recent · <span x-text="moves.length"></span> live</span>
+          </div>
+
+          <!-- realtime items (prepended) -->
+          <template x-for="(it, i) in moves" :key="'m' + i">
+            <div class="feed-row fresh">
+              <span class="text-xs faint num" style="width:38px" x-text="it.time"></span>
+              <span class="badge" x-show="it.kind === 'move'" :style="`background-color:${it.tbg};color:${it.tfg}` + (it.tlogo ? `;background-image:url(${it.tlogo});background-size:76%;background-position:center;background-repeat:no-repeat` : '')" x-text="it.tlogo ? '' : it.tabbr"></span>
+              <span x-show="it.kind === 'arb'" class="grid place-items-center text-base rounded-full soft" style="height:30px;width:30px;flex:0 0 auto">⚡</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate" x-text="it.kind === 'arb' ? ('Arbitrage — ' + it.title) : it.pick"></div>
+                <div class="text-xs truncate muted" x-text="it.kind === 'arb' ? (it.league + ' · guaranteed') : (it.league + ' · ' + it.game)"></div>
+              </div>
+              <span class="logo" x-show="it.kind === 'move'" :style="`background:${it.bg};color:${it.fg}`" x-text="it.mark"></span>
+              <span class="font-bold whitespace-nowrap num" x-show="it.kind === 'move'" :class="it.dir === 'up' ? 'pos' : 'neg'" x-text="(it.dir === 'up' ? '▲ ' : '▼ ') + it.from + '→' + it.to"></span>
+              <span class="font-bold whitespace-nowrap accent num" x-show="it.kind === 'arb'" x-text="'+' + it.profit + '%'"></span>
+            </div>
+          </template>
+
+          <!-- recent items (server-rendered) -->
+          @foreach (feed as it)
+            <div class="feed-row">
+              <span class="text-xs faint num" style="width:38px">{{ it.time }}</span>
+              <span class="badge" style="{{ it.tstyle }}">{{ it.ttext }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate">{{ it.pick }}</div>
+                <div class="text-xs truncate muted">{{ it.league }} · {{ it.game }}</div>
+              </div>
+              <span class="logo" style="background:{{ it.bg }};color:{{ it.fg }}">{{ it.mark }}</span>
+              <span class="num font-bold whitespace-nowrap {{ it.dir === 'up' ? 'pos' : 'neg' }}">{{ it.arrow }} {{ it.fromLabel }}→{{ it.toLabel }}</span>
+            </div>
+          @endforeach
+        </section>
+
+        <!-- arbs + stats -->
+        <aside class="space-y-5">
+          <section class="rounded-2xl card">
+            <div class="px-4 py-3 font-bold border-b bd">Live arbitrage</div>
+            @if (arbs.length === 0)
+              <div class="px-4 py-8 text-center text-sm muted">No arbitrage right now.</div>
+            @else
+              @foreach (arbs as a)
+                <a href="/#arbitrage" class="flex gap-3 items-center justify-between px-4 py-3 border-b hover:opacity-80 bd">
+                  <div class="min-w-0">
+                    <div class="font-bold truncate">{{ a.title }}</div>
+                    <div class="text-xs faint">{{ a.league }}</div>
+                  </div>
+                  <span class="font-black whitespace-nowrap accent num">{{ a.profitLabel }}</span>
+                </a>
+              @endforeach
+            @endif
+          </section>
+
+          <section class="grid gap-3 grid-cols-2">
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num">{{ summary.eventCount }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Live games</div>
+            </div>
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num">{{ summary.bookmakerCount }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Books</div>
+            </div>
+          </section>
+
+          <a href="/" class="flex items-center justify-center px-4 py-3 font-bold rounded-xl btn btn-primary">Open the full board →</a>
+        </aside>
+      </div>
+    </main>
+  </div>
+  </body>
+</html>

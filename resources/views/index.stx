@@ -8,6 +8,7 @@
  * template stays declarative. Theming + the betting sheet are client-side
  * (an x-data store on <body>, persisted to localStorage).
  */
+import { brandFor, sportIcon, teamFor } from '../../app/Support/branding'
 import { loadBoard } from '../../app/Support/odds'
 
 const { bookmakers, events, summary } = loadBoard()
@@ -17,74 +18,6 @@ const appName = 'OddsBeacon'
 const bookById = {}
 for (const b of bookmakers)
   bookById[b.id] = b
-
-// Brand styling for the bookmaker "logo" tiles (real brand colors + mark).
-const bookBrand = {
-  draftkings: { bg: '#53d337', fg: '#06230f', mark: 'DK', url: 'https://sportsbook.draftkings.com' },
-  fanduel: { bg: '#1493ff', fg: '#ffffff', mark: 'FD', url: 'https://sportsbook.fanduel.com' },
-  betmgm: { bg: '#caa64f', fg: '#11130f', mark: 'MGM', url: 'https://sports.betmgm.com' },
-  caesars: { bg: '#0d5c43', fg: '#e7c884', mark: 'CZR', url: 'https://www.caesars.com/sportsbook-and-casino' },
-  bet365: { bg: '#027b5b', fg: '#ffe400', mark: '365', url: 'https://www.bet365.com' },
-  pinnacle: { bg: '#e4022d', fg: '#ffffff', mark: 'PIN', url: 'https://www.pinnacle.com' },
-  polymarket: { bg: '#1652f0', fg: '#ffffff', mark: 'PM', url: 'https://polymarket.com' },
-  kalshi: { bg: '#00b894', fg: '#06231c', mark: 'KAL', url: 'https://kalshi.com' },
-}
-function brandFor(slug, short) {
-  return bookBrand[slug] || { bg: '#64748b', fg: '#ffffff', mark: short, url: '#' }
-}
-
-// Team badge styling: abbreviation + colors for the fallback chip, plus a
-// real logo served from ESPN's public team-logo CDN (referenced by URL, not
-// reproduced). The colored chip shows through if a logo ever fails to load.
-const ESPN = 'https://a.espncdn.com/i/teamlogos'
-const teamBrand = {
-  Lakers: { abbr: 'LAL', bg: '#552583', fg: '#fdb927', logo: `${ESPN}/nba/500/lal.png` },
-  Celtics: { abbr: 'BOS', bg: '#007a33', fg: '#ffffff', logo: `${ESPN}/nba/500/bos.png` },
-  Warriors: { abbr: 'GSW', bg: '#1d428a', fg: '#ffc72c', logo: `${ESPN}/nba/500/gs.png` },
-  Nuggets: { abbr: 'DEN', bg: '#0e2240', fg: '#fec524', logo: `${ESPN}/nba/500/den.png` },
-  Chiefs: { abbr: 'KC', bg: '#e31837', fg: '#ffb81c', logo: `${ESPN}/nfl/500/kc.png` },
-  Bills: { abbr: 'BUF', bg: '#00338d', fg: '#c60c30', logo: `${ESPN}/nfl/500/buf.png` },
-  '49ers': { abbr: 'SF', bg: '#aa0000', fg: '#b3995d', logo: `${ESPN}/nfl/500/sf.png` },
-  Eagles: { abbr: 'PHI', bg: '#004c54', fg: '#a5acaf', logo: `${ESPN}/nfl/500/phi.png` },
-  'Man City': { abbr: 'MCI', bg: '#6cabdd', fg: '#1c2c5b', logo: `${ESPN}/soccer/500/382.png` },
-  Arsenal: { abbr: 'ARS', bg: '#ef0107', fg: '#ffffff', logo: `${ESPN}/soccer/500/359.png` },
-  Liverpool: { abbr: 'LIV', bg: '#c8102e', fg: '#ffffff', logo: `${ESPN}/soccer/500/364.png` },
-  Chelsea: { abbr: 'CHE', bg: '#034694', fg: '#ffffff', logo: `${ESPN}/soccer/500/363.png` },
-  Rangers: { abbr: 'NYR', bg: '#0038a8', fg: '#ce1126', logo: `${ESPN}/nhl/500/nyr.png` },
-  Bruins: { abbr: 'BOS', bg: '#111111', fg: '#ffb81c', logo: `${ESPN}/nhl/500/bos.png` },
-  Dodgers: { abbr: 'LAD', bg: '#005a9c', fg: '#ffffff', logo: `${ESPN}/mlb/500/lad.png` },
-  Yankees: { abbr: 'NYY', bg: '#0c2340', fg: '#ffffff', logo: `${ESPN}/mlb/500/nyy.png` },
-  Draw: { abbr: 'X', bg: '#94a3b8', fg: '#ffffff', logo: '' },
-}
-function teamFor(label) {
-  let base = teamBrand[label]
-  // Over/Under totals → green/red chips (Kalshi-style), no team logo.
-  if (!base && /^(?:over|under)\b/i.test(label)) {
-    const over = /^over/i.test(label)
-    base = { abbr: over ? 'O' : 'U', bg: over ? '#0a934f' : '#d64550', fg: '#ffffff', logo: '' }
-  }
-  // Spread labels like "Lakers -4.5" reuse the base team's brand + logo.
-  if (!base) {
-    const stripped = label.replace(/\s+[+-]?\d+(?:\.\d+)?$/, '').trim()
-    if (teamBrand[stripped])
-      base = teamBrand[stripped]
-  }
-  if (!base)
-    base = { abbr: label.slice(0, 3).toUpperCase(), bg: '#64748b', fg: '#ffffff', logo: '' }
-  const logo = base.logo || ''
-  let style = `background-color:${base.bg};color:${base.fg}`
-  if (logo)
-    style += `;background-image:url('${logo}');background-size:76%;background-position:center;background-repeat:no-repeat`
-  return { ...base, logo, style, text: logo ? '' : base.abbr }
-}
-
-const sportIcon = {
-  Basketball: '🏀',
-  Football: '🏈',
-  Soccer: '⚽',
-  Hockey: '🏒',
-  Baseball: '⚾',
-}
 
 function signed(n) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`
@@ -279,6 +212,8 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       .cell { color: var(--muted); }
       .best-cell { background: var(--best-bg); color: var(--best-text); box-shadow: inset 0 0 0 1.5px var(--best-ring); }
       /* Realtime price-move flashes */
+      .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--neg); animation: ping 1.6s ease-out infinite; }
+      @keyframes ping { 0% { box-shadow: 0 0 0 0 var(--neg); opacity: 1; } 70% { box-shadow: 0 0 0 6px transparent; opacity: 0.7; } 100% { box-shadow: 0 0 0 0 transparent; opacity: 1; } }
       .flash-up { animation: flashUp 1.1s ease-out; }
       .flash-down { animation: flashDown 1.1s ease-out; }
       @keyframes flashUp { 0% { background: var(--pos); color: #fff; } 100% { background: transparent; } }
@@ -366,6 +301,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="#board" class="hover:opacity-70">Games</a>
           <a href="#arbitrage" class="hover:opacity-70">Arbitrage</a>
+          <a href="/live" data-no-router class="flex gap-1.5 items-center hover:opacity-70"><span class="live-dot"></span> Live</a>
           <a href="#how" class="hover:opacity-70">How it works</a>
           <a href="/api/odds" data-no-router class="hover:opacity-70">API</a>
         </nav>

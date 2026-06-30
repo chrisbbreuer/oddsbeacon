@@ -301,6 +301,80 @@ function resolveDbPath(): string {
   return `${process.cwd()}/${configured}`
 }
 
+export interface LineMove {
+  selectionId: number
+  bookmakerId: number
+  pick: string
+  game: string
+  league: string
+  category: string
+  book: string
+  bookSlug: string
+  from: number
+  to: number
+  dir: 'up' | 'down'
+  at: string
+}
+
+/**
+ * The most recent line moves across all books — the latest price for each
+ * (selection, bookmaker) versus the one before it, newest first. Powers
+ * the live-action feed; realtime `board:updated` messages extend it on the
+ * client.
+ */
+export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): LineMove[] {
+  const db = new Database(dbPath, { readonly: true })
+  try {
+    const rows = db.query(`
+      SELECT os.selection_id, os.bookmaker_id, os.price, os.captured_at,
+             s.label AS pick, e.title AS game, e.league AS league, e.category AS category,
+             b.name AS book, b.slug AS slug
+      FROM odds_snapshots os
+      JOIN selections s ON s.id = os.selection_id
+      JOIN market_events e ON e.id = s.market_event_id
+      JOIN bookmakers b ON b.id = os.bookmaker_id
+      ORDER BY os.captured_at DESC, os.id DESC
+      LIMIT 6000
+    `).all() as Array<Record<string, any>>
+
+    // rows are newest-first; keep the two newest prices per (sel, book).
+    const points = new Map<string, Array<{ price: number, at: string, row: Record<string, any> }>>()
+    for (const r of rows) {
+      const key = `${r.selection_id}:${r.bookmaker_id}`
+      const list = points.get(key) ?? []
+      if (list.length < 2)
+        list.push({ price: r.price, at: r.captured_at, row: r })
+      points.set(key, list)
+    }
+
+    const moves: LineMove[] = []
+    for (const pts of points.values()) {
+      if (pts.length < 2 || pts[0].price === pts[1].price)
+        continue
+      const r = pts[0].row
+      moves.push({
+        selectionId: r.selection_id,
+        bookmakerId: r.bookmaker_id,
+        pick: r.pick,
+        game: r.game,
+        league: r.league,
+        category: r.category,
+        book: r.book,
+        bookSlug: r.slug,
+        from: pts[1].price,
+        to: pts[0].price,
+        dir: pts[0].price > pts[1].price ? 'up' : 'down',
+        at: pts[0].at,
+      })
+    }
+    moves.sort((a, b) => (a.at < b.at ? 1 : -1))
+    return moves.slice(0, limit)
+  }
+  finally {
+    db.close()
+  }
+}
+
 /**
  * Load every event, selection, bookmaker, and odd from SQLite and
  * assemble the comparison board. Read-only — safe to call on every
