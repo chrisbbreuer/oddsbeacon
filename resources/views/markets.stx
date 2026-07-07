@@ -254,8 +254,10 @@ const stats = {
               @pointerleave="panning = false"
               @wheel.prevent="zoom($event.deltaY < 0 ? 1.15 : 0.87)"
             >
-              <!-- pan/zoom bind `transform` (lowercase-safe): stx lowercases
-                  bound attribute names, so :viewBox can never stick on SVG -->
+              <!-- pan/zoom via a `transform` binding on the inner group; a
+                  :viewBox binding also works on current stx (the runtime
+                  restores SVG attribute casing), but transform keeps the
+                  outer viewBox static for percent-based tooltip math -->
               <g :transform="xform()">
               <g stroke-opacity="0.55">
                 @foreach (glinks as l)
