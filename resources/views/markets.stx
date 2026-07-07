@@ -215,7 +215,7 @@ const stats = {
           <h1 class="font-black text-3xl tracking-tight sm:text-4xl">Smart money</h1>
           <p class="mt-1 muted">Public Kalshi + Polymarket tape — who keeps buying the winning side, and how big they bet.</p>
         </div>
-        <div class="flex gap-4 items-center text-xs font-semibold muted">
+        <div class="flex gap-4 items-center font-semibold text-xs muted">
           <span class="flex gap-1.5 items-center"><span class="dot" style="background:var(--g-smart)"></span> smart trader</span>
           <span class="flex gap-1.5 items-center"><span class="dot" style="background:var(--g-whale)"></span> whale</span>
           <span class="flex gap-1.5 items-center"><span class="dot" style="background:var(--g-kalshi)"></span> Kalshi market</span>
@@ -225,14 +225,14 @@ const stats = {
 
       <div class="grid gap-5 lg:grid-cols-[1.7fr_1fr] mt-6">
         <!-- money-flow network -->
-        <section class="overflow-hidden rounded-2xl card relative">
+        <section class="overflow-hidden relative rounded-2xl card">
           <div class="flex items-center justify-between px-4 py-3 border-b bd">
             <span class="font-bold">Money-flow network</span>
             <div class="flex gap-1.5 items-center">
-              <span class="text-xs faint mr-2">green edges = winning flow</span>
-              <button class="grid place-items-center h-7 w-7 rounded-md text-sm icon-btn" @click="zoom(1.25)" aria-label="Zoom in">+</button>
-              <button class="grid place-items-center h-7 w-7 rounded-md text-sm icon-btn" @click="zoom(0.8)" aria-label="Zoom out">−</button>
-              <button class="grid place-items-center h-7 px-2 rounded-md text-xs icon-btn" @click="reset()">reset</button>
+              <span class="mr-2 text-xs faint">green edges = winning flow</span>
+              <button class="grid place-items-center h-7 w-7 text-sm rounded-md icon-btn" @click="zoom(1.25)" aria-label="Zoom in">+</button>
+              <button class="grid place-items-center h-7 w-7 text-sm rounded-md icon-btn" @click="zoom(0.8)" aria-label="Zoom out">−</button>
+              <button class="grid place-items-center px-2 h-7 text-xs rounded-md icon-btn" @click="reset()">reset</button>
             </div>
           </div>
 
@@ -245,7 +245,7 @@ const stats = {
             </div>
           @else
             <svg
-              class="graph-svg w-full"
+              class="w-full graph-svg"
               viewBox="0 0 {{ W }} {{ H }}"
               preserveAspectRatio="xMidYMid meet"
               @pointerdown="startPan($event)"
@@ -255,7 +255,7 @@ const stats = {
               @wheel.prevent="zoom($event.deltaY < 0 ? 1.15 : 0.87)"
             >
               <!-- pan/zoom bind `transform` (lowercase-safe): stx lowercases
-                   bound attribute names, so :viewBox can never stick on SVG -->
+                  bound attribute names, so :viewBox can never stick on SVG -->
               <g :transform="xform()">
               <g stroke-opacity="0.55">
                 @foreach (glinks as l)
@@ -278,7 +278,7 @@ const stats = {
               </g>
             </svg>
 
-            <div class="tip px-3 py-2 rounded-xl text-xs card" x-cloak :style="tipStyle()">
+            <div class="px-3 py-2 text-xs rounded-xl card tip" x-cloak :style="tipStyle()">
               <div class="font-bold" x-text="tipLabel"></div>
               <div class="mt-0.5 faint" x-text="tipSub"></div>
             </div>
@@ -286,7 +286,7 @@ const stats = {
         </section>
 
         <!-- sidebar -->
-        <aside class="grid gap-5 content-start">
+        <aside class="grid content-start gap-5">
           <section class="grid gap-3 grid-cols-2">
             <div class="p-4 rounded-2xl card">
               <div class="font-black text-2xl num">{{ stats.smart }}</div>
@@ -306,12 +306,12 @@ const stats = {
             @foreach (leaders as t)
               <div class="lb-row">
                 <span class="dot" style="background:{{ t.whale ? 'var(--g-whale)' : 'var(--g-smart)' }}"></span>
-                <div class="min-w-0 flex-1">
+                <div class="flex-1 min-w-0">
                   <div class="font-bold text-sm truncate">{{ t.alias }}</div>
                   <div class="text-xs faint">{{ t.venue }} · max bet {{ t.maxBet }}</div>
                 </div>
                 <div class="text-right">
-                  <div class="font-black text-sm num accent">{{ t.score }}</div>
+                  <div class="font-black text-sm accent num">{{ t.score }}</div>
                   <div class="text-xs faint num">{{ t.record }} · {{ t.vol }}</div>
                 </div>
               </div>
@@ -325,8 +325,8 @@ const stats = {
             </div>
             @foreach (whales as w)
               <div class="lb-row">
-                <span class="grid place-items-center h-7 w-10 rounded-md font-black text-[9px] soft">{{ w.mark }}</span>
-                <div class="min-w-0 flex-1">
+                <span class="grid place-items-center h-7 w-10 font-black text-[9px] rounded-md soft">{{ w.mark }}</span>
+                <div class="flex-1 min-w-0">
                   <div class="font-semibold text-xs truncate">{{ w.question }}</div>
                   <div class="text-xs faint">{{ w.who }} · {{ w.side }} @ {{ w.price }}</div>
                 </div>
