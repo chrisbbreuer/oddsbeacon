@@ -73,7 +73,7 @@ export function runAnalytics(db: Database): AnalyticsSummary {
         SUM(CASE WHEN is_winner != -1 THEN 1 ELSE 0 END) AS resolved,
         SUM(CASE WHEN is_winner = 1 THEN 1 ELSE 0 END) AS wins
       FROM market_trades
-      WHERE market_trader_id != 0
+      WHERE market_trader_id IS NOT NULL
       GROUP BY market_trader_id
     ) AS s
     WHERE market_traders.id = s.tid

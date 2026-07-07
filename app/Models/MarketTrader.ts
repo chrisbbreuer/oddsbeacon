@@ -22,6 +22,11 @@ export default defineModel({
     useTimestamps: true,
   },
 
+  // Natural key — the ingest upserts rely on this for dedupe.
+  indexes: [
+    { name: 'venue_external_id', columns: ['venue', 'externalId'], unique: true },
+  ],
+
   attributes: {
     // 'polymarket' (Kalshi's public tape is anonymous)
     venue: {
@@ -54,19 +59,19 @@ export default defineModel({
     totalNotional: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
+      validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 0, max: 1_000_000 }),
     },
     avgTradeSize: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
+      validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 0, max: 10_000 }),
     },
     maxTradeSize: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
+      validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 0, max: 100_000 }),
     },
     // Trades on markets that have since settled.
@@ -87,14 +92,14 @@ export default defineModel({
     winRate: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0).max(1) },
+      validation: { rule: schema.float().min(0).max(1) },
       factory: faker => faker.number.float({ min: 0, max: 1, fractionDigits: 3 }),
     },
     // Composite smart-money score, 0..100 (see analytics.ts).
     smartScore: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0).max(100) },
+      validation: { rule: schema.float().min(0).max(100) },
       factory: faker => faker.number.int({ min: 0, max: 100 }),
     },
     // Large-notional participant flag.

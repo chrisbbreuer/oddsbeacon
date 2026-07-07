@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "market_trades_market_trades_market" ON "market_trades" ("prediction_market_id");

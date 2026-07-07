@@ -20,6 +20,11 @@ export default defineModel({
     useTimestamps: true,
   },
 
+  // Natural key — the ingest upserts rely on this for dedupe.
+  indexes: [
+    { name: 'venue_external_id', columns: ['venue', 'externalId'], unique: true },
+  ],
+
   attributes: {
     // 'kalshi' | 'polymarket'
     venue: {
@@ -65,20 +70,20 @@ export default defineModel({
     volume: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
+      validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 0, max: 5_000_000 }),
     },
     liquidity: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
+      validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 0, max: 500_000 }),
     },
     // Last traded probability for the yes side, 0..1.
     lastPrice: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0).max(1) },
+      validation: { rule: schema.float().min(0).max(1) },
       factory: faker => faker.number.float({ min: 0.01, max: 0.99, fractionDigits: 2 }),
     },
     // ISO timestamp the market closes/expires.

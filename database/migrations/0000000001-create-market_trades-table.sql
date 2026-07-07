@@ -13,6 +13,3 @@ CREATE TABLE IF NOT EXISTS "market_trades" (
   "created_at" TEXT not null default CURRENT_TIMESTAMP,
   "updated_at" TEXT
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "market_trades_venue_external_id" ON "market_trades" ("venue", "external_id");
-CREATE INDEX IF NOT EXISTS "market_trades_market" ON "market_trades" ("prediction_market_id");
-CREATE INDEX IF NOT EXISTS "market_trades_trader" ON "market_trades" ("market_trader_id");

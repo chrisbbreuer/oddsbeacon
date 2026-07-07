@@ -98,7 +98,7 @@ export default {
           if (!market)
             continue // metadata fetch missed it; the fill lands on a later run
 
-          let tid = 0
+          let tid: number | null = null
           if (t.trader) {
             const res = upsertTrader.run(t.venue, t.trader.externalId, t.trader.alias, now, now)
             if (Number(res.changes) > 0)
