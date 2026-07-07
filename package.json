@@ -71,7 +71,8 @@
     "@stacksjs/ts-cloud": "^0.5.26",
     "@ts-cloud/aws-types": "^0.5.26",
     "@ts-cloud/core": "^0.5.26",
-    "stacks": "workspace:*"
+    "stacks": "workspace:*",
+    "ts-charts": "github:stacksjs/ts-charts"
   },
   "devDependencies": {
     "better-dx": "^0.2.15"
@@ -91,5 +92,8 @@
       }
     },
     "commit-msg": "bun x gitlint --edit .git/COMMIT_EDITMSG"
-  }
+  },
+  "trustedDependencies": [
+    "ts-charts"
+  ]
 }

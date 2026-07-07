@@ -9,6 +9,7 @@
         "@ts-cloud/aws-types": "^0.5.26",
         "@ts-cloud/core": "^0.5.26",
         "stacks": "workspace:*",
+        "ts-charts": "github:stacksjs/ts-charts",
       },
       "devDependencies": {
         "better-dx": "^0.2.15",
@@ -997,6 +998,9 @@
       },
     },
   },
+  "trustedDependencies": [
+    "ts-charts",
+  ],
   "packages": {
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],
 
@@ -1499,6 +1503,8 @@
     "text-decoder": ["text-decoder@1.2.7", "", { "dependencies": { "b4a": "^1.6.4" } }, "sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ=="],
 
     "ts-broadcasting": ["ts-broadcasting@0.0.5", "", { "bin": { "broadcast": "./dist/bin/cli.js" } }, "sha512-TTvLeBkgIOMi3fTsGHGkRKBTumx2Bts8ZDxNQ5tdKXj2qOg0J9SU8xrpaJCu/51qS1k0tTxYiR+YouLvwDy1yw=="],
+
+    "ts-charts": ["ts-charts@github:stacksjs/ts-charts#6aca006", {}, "stacksjs-ts-charts-6aca006", "sha512-XUubkLh1roFUsyR/1k99f8z8HISrVaEmvonZBe5M7j9T2MJZf5CQXRf+qTJx8al6uBc6p6zZ0XPRc1/da+/Rgg=="],
 
     "ts-cloud-aws-types": ["ts-cloud-aws-types@0.1.14", "", {}, "sha512-dnT0LYyrzS0qlcDLaq4L2NRRx1oisY0btrPtWIldRgvZQFKYwA3S3TTJ0496TJckNzHPen+6VXNcdp5RZulJ4Q=="],
 
