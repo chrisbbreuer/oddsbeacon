@@ -165,6 +165,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="/" class="hover:opacity-70">Board</a>
           <a href="/#arbitrage" class="hover:opacity-70">Arbitrage</a>
+          <a href="/markets" data-no-router class="hover:opacity-70">Smart money</a>
           <a href="/api/odds" data-no-router class="hover:opacity-70">API</a>
         </nav>
         <button class="grid place-items-center h-9 w-9 rounded-lg icon-btn" @click="toggleTheme()" aria-label="Toggle theme">

@@ -302,6 +302,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
           <a href="#board" class="hover:opacity-70">Games</a>
           <a href="#arbitrage" class="hover:opacity-70">Arbitrage</a>
           <a href="/live" data-no-router class="flex gap-1.5 items-center hover:opacity-70"><span class="live-dot"></span> Live</a>
+          <a href="/markets" data-no-router class="hover:opacity-70">Smart money</a>
           <a href="#how" class="hover:opacity-70">How it works</a>
           <a href="/api/odds" data-no-router class="hover:opacity-70">API</a>
         </nav>
