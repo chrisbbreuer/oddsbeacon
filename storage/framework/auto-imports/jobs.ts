@@ -2,4 +2,5 @@
 export { default as IngestOdds } from '../../../app/Jobs/IngestOdds'
 export { default as BroadcastOdds } from '../../../app/Jobs/BroadcastOdds'
 export { default as SendWelcomeEmail } from '../../../app/Jobs/SendWelcomeEmail'
+export { default as IngestPredictionMarkets } from '../../../app/Jobs/IngestPredictionMarkets'
 export { default as Inspire } from '../../../app/Jobs/Inspire'
