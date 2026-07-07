@@ -27,6 +27,11 @@ route.get('/odds/market/{id}', 'Actions/Odds/GetMarket')
 // Every price a single bookmaker offers, by slug.
 route.get('/odds/book/{slug}', 'Actions/Odds/GetBookmaker')
 
+// Prediction-market smart money (public Kalshi + Polymarket tape).
+route.get('/markets/smart-money', 'Actions/PredictionMarkets/GetSmartMoney')
+route.get('/markets/whales', 'Actions/PredictionMarkets/GetWhaleTrades')
+route.get('/markets/graph', 'Actions/PredictionMarkets/GetSignalGraph')
+
 // Server-side bet sheets (scoped to a signed-in user or an anon token).
 route.get('/sheets', 'Actions/Sheets/ListSheets')
 route.post('/sheets', 'Actions/Sheets/SaveSheet')
