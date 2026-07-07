@@ -24,6 +24,12 @@ export default function () {
     .job('IngestOdds')
     .everyMinute()
 
+  // Prediction-market loop: ingest the public Kalshi + Polymarket trade
+  // tapes and refresh smart-money analytics (win rates, whale flags).
+  schedule
+    .job('IngestPredictionMarkets')
+    .everyFiveMinutes()
+
   // Run a custom action every five minutes
   // schedule.action('CleanupTempFiles').everyFiveMinutes()
 
