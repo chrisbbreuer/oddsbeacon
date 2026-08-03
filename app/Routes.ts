@@ -20,5 +20,8 @@ export default {
   // Strategies, venue accounts, decisions. See routes/trading.ts.
   'trading': { path: 'trading', prefix: '/api' },
 
+  // Subscription checkout and the Stripe webhook. See routes/billing.ts.
+  'billing': { path: 'billing', prefix: '/api' },
+
   'v1': { path: 'v1', prefix: 'v1' },
 } satisfies RouteRegistry
