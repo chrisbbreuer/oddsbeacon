@@ -685,17 +685,20 @@ export const tsCloud: TsCloudConfig = {
       root: '.',
       path: '/',
       domain: 'predict.stacksjs.com',
-      // The framework is an npm dependency now, so there is no
-      // `storage/framework/core/buddy` to run. `buddy serve` resolves through
-      // the installed package via the ./buddy shim.
-      start: './buddy serve',
+      // Point at the installed CLI's built entry, NOT the `./buddy` shim.
+      // ts-cloud runs `start` under bun, so `./buddy serve` becomes
+      // `bun ./buddy serve` — and `buddy` is a shell script, which bun tries
+      // to BUNDLE. It fails with "3 errors building .../buddy" and the
+      // service restart-loops. The shim is for humans at a terminal; a
+      // systemd unit wants the entry the shim would have resolved to.
+      start: 'bun node_modules/@stacksjs/buddy/dist/cli.js serve',
       port: 3070,
       preStart: [
         'bun install',
         // Migrate here and only here. `api` shares this box and the same
         // SQLite file, so migrating from both would put two writers on one
         // file and one of them would lose.
-        './buddy migrate',
+        'bun node_modules/@stacksjs/buddy/dist/cli.js migrate',
       ],
       env: { APP_ENV: 'production', NODE_ENV: 'production' },
     },
@@ -705,7 +708,7 @@ export const tsCloud: TsCloudConfig = {
     // firewall — the HOST bind below is then a second lock, not the only one.
     api: {
       root: '.',
-      start: './buddy serve:api',
+      start: 'bun node_modules/@stacksjs/actions/dist/serve/api.js',
       port: 3071,
       preStart: ['bun install'],
       env: { HOST: '127.0.0.1', APP_ENV: 'production', NODE_ENV: 'production' },
