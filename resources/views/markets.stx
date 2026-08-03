@@ -194,7 +194,7 @@ const stats = {
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
         <a href="/" class="flex gap-2.5 items-center">
           <span class="grid place-items-center h-9 w-9 font-black rounded-xl" style="background:var(--accent);color:#04130c">◎</span>
-          <span class="font-extrabold text-lg tracking-tight">Odds<span class="accent">Beacon</span></span>
+          <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
         </a>
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="/" class="hover:opacity-70">Board</a>

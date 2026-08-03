@@ -23,7 +23,7 @@ export default {
   plans: [
     {
       productName: 'Prin.tel Signal',
-      description: 'Every market, the full trade tape, and the decisions the engine would make — with the evidence behind each one.',
+      description: 'Every market, the full trade tape, and the decisions the engine would make, with the evidence behind each one.',
       pricing: [
         {
           key: 'printel_signal_monthly',

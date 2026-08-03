@@ -1,0 +1,126 @@
+import { Database } from 'bun:sqlite'
+import process from 'node:process'
+import { buildCandidates } from '../Services/trading/evidence'
+
+/**
+ * Landing-page reads for the intel surface.
+ *
+ * Pure query helpers in the shape the STX server scope wants (no ORM in
+ * scope there), matching `app/Support/odds.ts`. The landing renders a
+ * real candidate with its real evidence rather than a mocked-up one:
+ * the whole claim of the product is that decisions are traceable to
+ * data, and a fabricated example on the page that makes that claim is
+ * the one thing that would undermine it.
+ */
+
+export interface IntelSummary {
+  marketCount: number
+  tradeCount: number
+  traderCount: number
+  whaleCount: number
+  venueCount: number
+  /** Fills ingested in the last 24 hours. */
+  recentFills: number
+}
+
+export interface EvidenceLine {
+  kind: string
+  label: string
+  summary: string
+  /** Contribution in probability points, pre-formatted with its sign. */
+  points: string
+  sampleSize: number
+  positive: boolean
+}
+
+export interface IntelCandidate {
+  venue: string
+  question: string
+  side: string
+  marketPricePct: string
+  fairValuePct: string
+  edgePts: string
+  confidencePct: string
+  evidence: EvidenceLine[]
+}
+
+/** Human labels for the evidence kinds the engine emits. */
+const EVIDENCE_LABELS: Record<string, string> = {
+  smart_money: 'Smart money',
+  trader_accuracy: 'Trader accuracy',
+  flow_imbalance: 'Flow imbalance',
+  price_trend: 'Price trend',
+  liquidity: 'Liquidity',
+  cross_venue: 'Cross venue',
+}
+
+function open(): Database {
+  return new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite', { readonly: true })
+}
+
+export function loadIntelSummary(): IntelSummary {
+  const db = open()
+
+  try {
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString()
+
+    const markets = db.query('SELECT COUNT(*) AS c FROM prediction_markets').get() as { c: number }
+    const trades = db.query('SELECT COUNT(*) AS c FROM market_trades').get() as { c: number }
+    const traders = db.query('SELECT COUNT(*) AS c FROM market_traders').get() as { c: number }
+    const whales = db.query('SELECT COUNT(*) AS c FROM market_traders WHERE is_whale = 1').get() as { c: number }
+    const venues = db.query('SELECT COUNT(DISTINCT venue) AS c FROM prediction_markets').get() as { c: number }
+    const recent = db.query('SELECT COUNT(*) AS c FROM market_trades WHERE traded_at >= ?').get(since) as { c: number }
+
+    return {
+      marketCount: markets.c,
+      tradeCount: trades.c,
+      traderCount: traders.c,
+      whaleCount: whales.c,
+      venueCount: venues.c,
+      recentFills: recent.c,
+    }
+  }
+  finally {
+    db.close()
+  }
+}
+
+/**
+ * The strongest current candidate, formatted for display.
+ *
+ * Returns null when the tape is too stale to produce one — which the
+ * page renders as an honest empty state rather than falling back to an
+ * invented example.
+ */
+export function loadTopCandidate(): IntelCandidate | null {
+  const db = open()
+
+  try {
+    const [candidate] = buildCandidates(db, { minEdge: 0.02, limit: 1 })
+    if (!candidate)
+      return null
+
+    return {
+      venue: candidate.venue,
+      question: candidate.question,
+      side: candidate.side,
+      marketPricePct: `${(candidate.marketPrice * 100).toFixed(1)}%`,
+      fairValuePct: `${(candidate.fairValue * 100).toFixed(1)}%`,
+      edgePts: `${candidate.edge > 0 ? '+' : ''}${(candidate.edge * 100).toFixed(1)}`,
+      confidencePct: `${Math.round(candidate.confidence * 100)}%`,
+      evidence: candidate.evidence.map(item => ({
+        kind: item.kind,
+        label: EVIDENCE_LABELS[item.kind] ?? item.kind,
+        summary: item.summary,
+        points: item.contribution === 0
+          ? 'context'
+          : `${item.contribution > 0 ? '+' : ''}${(item.contribution * 100).toFixed(2)} pts`,
+        sampleSize: item.sampleSize,
+        positive: item.contribution > 0,
+      })),
+    }
+  }
+  finally {
+    db.close()
+  }
+}
