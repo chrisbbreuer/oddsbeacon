@@ -1,33 +1,29 @@
 import type { DnsConfig } from '@stacksjs/types'
-import { env } from '@stacksjs/env'
 
 /**
  * **DNS Options**
  *
- * This configuration defines all of your DNS options. Because Stacks is fully-typed, you
- * may hover any of the options below and the definitions will be provided. In case you
- * have any questions, feel free to reach out via Discord or GitHub Discussions.
+ * Deliberately empty.
+ *
+ * `buddy deploy` reconciles DNS twice: once from this file, and once from the
+ * domains the sites in `config/cloud.ts` declare. The second pass is the one
+ * that matters here — it points `predict.stacksjs.com` at whatever address the
+ * box actually has, which is the only value that can be right.
+ *
+ * The scaffolded version of this file declared `A @ → 10.0.0.1` plus a `www`
+ * alias. Records here are not scoped to our subdomain, so left in place those
+ * get written to the live `stacksjs.com` zone — an apex A record aimed at
+ * RFC1918 space, on a domain this project is a tenant of and does not own.
+ *
+ * Add records here only for names this project genuinely owns.
  */
 export default {
-  a: [
-    {
-      name: env.APP_URL || '', // Hostname (root domain)
-      address: '10.0.0.1', // IPv4 address
-      ttl: 300, // Time-to-live in seconds
-    },
-
-    {
-      name: 'www',
-      address: '@',
-      ttl: 300,
-    },
-  ],
+  a: [],
   aaaa: [],
   cname: [],
   mx: [],
   txt: [],
 
-  nameservers: ['ns-1731.awsdns-24.co.uk', 'ns-355.awsdns-44.com', 'ns-536.awsdns-03.net', 'ns-1395.awsdns-46.org'],
-
-  // redirects: ['stacksjs.com', 'buddy.sh'],
+  // Owned by the `stacks` project; stacksjs.com is served by Route53.
+  nameservers: [],
 } satisfies DnsConfig

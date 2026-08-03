@@ -22,14 +22,25 @@ export const tsCloud: TsCloudConfig = {
    * Project configuration
    */
   project: {
-    name: 'stacks',
-    slug: 'stacks',
+    name: 'printel',
+    slug: 'printel',
     region: 'us-east-1', // Default AWS region
   },
 
   // Deploy compute to Hetzner Cloud (apiToken falls back to HCLOUD_TOKEN env).
   cloud: {
     provider: 'hetzner',
+
+    // Run as a tenant on the box the `stacks` project owns
+    // (`stacks-production-app`) instead of provisioning our own. Attaching
+    // skips provisioning entirely, which is the point: the owner holds :80
+    // and :443 and its rpx gateway routes every domain on the box. A tenant
+    // that provisioned would rewrite that gateway with only its own sites
+    // and take stacksjs.com down with it.
+    //
+    // Our routes land in `/etc/rpx/sites.d/printel.json`, a drop-in the
+    // owner merges. Eleven other projects share the box the same way.
+    attachTo: 'stacks',
   },
 
   /**
@@ -658,95 +669,46 @@ export const tsCloud: TsCloudConfig = {
    *   - `blog`   → /var/www/blog   → served at /blog   on stacksjs.com
    *   - `public` → /var/www/public → served at /        on stacksjs.com
    */
+  /**
+   * Sites
+   *
+   * Two services, both systemd units on the shared box. Ports matter here in
+   * a way they do not on a dedicated server: eleven projects share this
+   * machine, and 3000/3001/3010/3011/3024/3032/3040/3049/3060/3100 are
+   * already claimed by other tenants (plus each one's `+1`/`+8` sidecar).
+   * 3070/3071 sit clear of all of them. Picking an occupied port does not
+   * fail loudly — the second service simply cannot bind, and the tenant that
+   * was already there keeps serving.
+   */
   sites: {
     main: {
-      // Ship the repo (source only; node_modules/.git excluded by the packager)
-      // and install on the server via preStart, matching the Forge-style deploy.
-      // server-app: has `start` + `port` (systemd service on :3000).
       root: '.',
       path: '/',
-      domain: env.APP_DOMAIN || 'stacksjs.com',
-      start: 'bun storage/framework/core/buddy/src/cli.ts serve',
-      port: 3000,
-      preStart: ['bun install'],
+      domain: 'predict.stacksjs.com',
+      // The framework is an npm dependency now, so there is no
+      // `storage/framework/core/buddy` to run. `buddy serve` resolves through
+      // the installed package via the ./buddy shim.
+      start: './buddy serve',
+      port: 3070,
+      preStart: [
+        'bun install',
+        // Migrate here and only here. `api` shares this box and the same
+        // SQLite file, so migrating from both would put two writers on one
+        // file and one of them would lose.
+        './buddy migrate',
+      ],
+      env: { APP_ENV: 'production', NODE_ENV: 'production' },
     },
 
-    // API (bun-router) behind `buddy serve`'s same-origin /api proxy.
-    // server-app: has `start` + `port` → systemd service on :3008.
-    // Intentionally NO `domain`/`path`: ts-cloud's rpx gateway skips
-    // domain-less sites, so the service stays loopback-only and is
-    // reached exclusively via the :3000 proxy (stacksjs/stacks#1950).
-    // Loopback isolation is enforced at the firewall too: the Hetzner
-    // deploy strips this port from the provision config
-    // (scrubLoopbackSitePortsForFirewall in buddy's deploy command), so
-    // ts-cloud never opens :3008 to 0.0.0.0/0 — without that, the
-    // HOST=127.0.0.1 bind below would be the only thing keeping the full
-    // API off the public internet.
+    // Reached only through main's same-origin /api proxy. No `domain`, so
+    // the rpx gateway skips it and the deploy strips its port from the
+    // firewall — the HOST bind below is then a second lock, not the only one.
     api: {
       root: '.',
-      start: 'bun storage/framework/core/actions/src/serve/api.ts',
-      port: 3008,
+      start: './buddy serve:api',
+      port: 3071,
       preStart: ['bun install'],
-      env: { HOST: '127.0.0.1', APP_ENV: 'production' },
-    },
-
-    // ---- server-static sites (migrated off AWS S3 + CloudFront) ----
-    // NO `start`/`port` ⇒ resolveSiteKind() === 'server-static'. The built
-    // `root` dir is shipped to /var/www/<key> and served by the reverse proxy's
-    // `file_server`. `build` runs locally before packaging to produce `root`.
-
-    // Documentation (BunPress). ~82 MB.
-    // BunPress writes the rendered site into the `.bunpress` subdir of --outdir,
-    // so the SERVED root is `dist/docs/.bunpress`.
-    docs: {
-      deploy: 'server',
-      root: 'dist/docs/.bunpress',
-      path: '/docs',
-      domain: env.APP_DOMAIN || 'stacksjs.com',
-      build: 'bunx @stacksjs/bunpress build --dir ./docs --outdir ./dist/docs',
-      // Extensionless docs URLs resolve to <path>/index.html (BunPress default).
-      pathRewriteStyle: 'directory',
-    },
-
-    // Blog (BunPress static build of content/blog/, same engine as /docs).
-    // `buildBlog` renders the markdown posts with the custom Stacks theme into
-    // clean-URL pages (`<slug>/index.html`) plus the listing, feed.xml, and
-    // sitemap.xml — the static twin of the dev-server's onRequest renderer.
-    blog: {
-      deploy: 'server',
-      root: 'dist/blog',
-      path: '/blog',
-      domain: env.APP_DOMAIN || 'stacksjs.com',
-      build: 'bun -e "const {buildBlog}=await import(\'./storage/framework/core/actions/src/blog\'); await buildBlog({outDir:\'./dist/blog\', baseUrl: (process.env.APP_URL?(/^https?:/.test(process.env.APP_URL)?process.env.APP_URL:\'https://\'+process.env.APP_URL):\'https://stacksjs.com\')})"',
-      // Extensionless blog URLs resolve to <path>/index.html.
-      pathRewriteStyle: 'directory',
-    },
-
-    // Marketing / public site (prerendered resources/views/index.stx + public/
-    // assets). ~6.6 MB. The built static dir is storage/framework/frontend-dist.
-    // WARNING: there is currently NO standalone build command that emits this
-    // directory — the prerender + asset-copy logic lives INLINE in the AWS
-    // deploy action (storage/framework/core/actions/src/deploy/index.ts, the
-    // "Deploy frontend to S3" block). That logic must be extracted into a real
-    // command (e.g. `buddy build:frontend-static`) before this site can deploy
-    // to Hetzner. Until then, pre-build storage/framework/frontend-dist by hand
-    // or this site's `build` is a no-op placeholder. See the report.
-    public: {
-      deploy: 'server',
-      root: 'storage/framework/frontend-dist',
-      path: '/',
-      domain: env.APP_DOMAIN || 'stacksjs.com',
-      // TODO(operator): replace with the extracted static-frontend build command.
-      build: 'bun storage/framework/core/buddy/src/cli.ts build:frontend-static',
-    },
-
-    verygoodadblock: {
-      deploy: 'server',
-      root: '../adblock/dist/site',
-      path: '/',
-      domain: 'verygoodadblock.org',
-      build: 'cd ../adblock && bun run site:build',
-      pathRewriteStyle: 'directory',
+      env: { HOST: '127.0.0.1', APP_ENV: 'production', NODE_ENV: 'production' },
     },
   },
 }
