@@ -70,7 +70,8 @@
   },
   "dependencies": {
     "stacks": "^0.70.249",
-    "ts-charts": "github:stacksjs/ts-charts"
+    "ts-charts": "github:stacksjs/ts-charts",
+    "viem": "^2.55.10"
   },
   "devDependencies": {
     "better-dx": "^0.2.15"
