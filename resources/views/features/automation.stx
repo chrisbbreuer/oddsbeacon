@@ -50,7 +50,7 @@ const venues = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 
@@ -80,7 +80,7 @@ const venues = [
         <section class="mt-20">
           <h2 class="font-black text-2xl tracking-tight sm:text-3xl">Two venues, one order model</h2>
           <p class="mt-3 max-w-2xl leading-relaxed muted">
-            Kalshi and Polymarket disagree about almost everything at the wire. Prin.tel speaks each one natively and hands you a single shape: a side, a limit price as a probability, and a size.
+            Kalshi and Polymarket disagree about almost everything at the wire. PredictHQ speaks each one natively and hands you a single shape: a side, a limit price as a probability, and a size.
           </p>
           <div class="grid gap-5 md:grid-cols-2 mt-8">
             @foreach (venues as venue)

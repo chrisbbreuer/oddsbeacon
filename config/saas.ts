@@ -22,17 +22,17 @@ import type { SaasConfig } from '@stacksjs/types'
 export default {
   plans: [
     {
-      productName: 'Prin.tel Signal',
+      productName: 'PredictHQ Signal',
       description: 'Every market, the full trade tape, and the decisions the engine would make, with the evidence behind each one.',
       pricing: [
         {
-          key: 'printel_signal_monthly',
+          key: 'predicthq_signal_monthly',
           price: 2900,
           interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'printel_signal_yearly',
+          key: 'predicthq_signal_yearly',
           price: 29000,
           interval: 'year',
           currency: 'usd',
@@ -46,17 +46,17 @@ export default {
       },
     },
     {
-      productName: 'Prin.tel Auto',
+      productName: 'PredictHQ Auto',
       description: 'Places the trades. Connect Kalshi and Polymarket, set the limits, and the engine executes inside them.',
       pricing: [
         {
-          key: 'printel_auto_monthly',
+          key: 'predicthq_auto_monthly',
           price: 9900,
           interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'printel_auto_yearly',
+          key: 'predicthq_auto_yearly',
           price: 99000,
           interval: 'year',
           currency: 'usd',
@@ -70,17 +70,17 @@ export default {
       },
     },
     {
-      productName: 'Prin.tel Desk',
+      productName: 'PredictHQ Desk',
       description: 'Unlimited strategies, deeper model research on every candidate, and priority ingestion.',
       pricing: [
         {
-          key: 'printel_desk_monthly',
+          key: 'predicthq_desk_monthly',
           price: 29900,
           interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'printel_desk_yearly',
+          key: 'predicthq_desk_yearly',
           price: 299000,
           interval: 'year',
           currency: 'usd',
@@ -105,17 +105,17 @@ export default {
 
   products: [
     {
-      name: 'Prin.tel Signal',
+      name: 'PredictHQ Signal',
       description: 'Prediction-market intelligence: markets, tape, smart money, and decision previews.',
       images: [],
     },
     {
-      name: 'Prin.tel Auto',
+      name: 'PredictHQ Auto',
       description: 'Automated execution on Kalshi and Polymarket, inside limits you set.',
       images: [],
     },
     {
-      name: 'Prin.tel Desk',
+      name: 'PredictHQ Desk',
       description: 'Unlimited strategies and deep research on every candidate.',
       images: [],
     },

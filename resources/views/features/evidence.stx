@@ -9,7 +9,7 @@
 import { loadTopCandidate } from '../../../app/Support/intel'
 
 const navActive = 'features'
-const pageTitle = 'Evidence engine: how Prin.tel prices a market'
+const pageTitle = 'Evidence engine: how PredictHQ prices a market'
 const pageDescription = 'Six measured signals move fair value off the venue quote. Each is clamped, each records its sample size, and together they reconstruct any decision without re-running anything.'
 
 const candidate = loadTopCandidate()
@@ -60,7 +60,7 @@ const signals = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 

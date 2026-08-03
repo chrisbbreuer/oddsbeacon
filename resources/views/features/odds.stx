@@ -37,7 +37,7 @@ const arbView = arb
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 
@@ -45,7 +45,7 @@ const arbView = arb
         <a href="/features" data-no-router class="text-sm font-semibold muted hover:opacity-70">Features</a>
         <h1 class="mt-3 max-w-3xl font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">The same outcome, priced by everyone, on one row.</h1>
         <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
-          Sportsbooks quote in American odds, prediction markets quote in probability. Prin.tel normalizes both to decimal, lines them up per outcome, and rings whoever is paying the most.
+          Sportsbooks quote in American odds, prediction markets quote in probability. PredictHQ normalizes both to decimal, lines them up per outcome, and rings whoever is paying the most.
         </p>
 
         <div class="grid gap-px mt-12 grid-cols-2 sm:grid-cols-4 rounded-2xl overflow-hidden" style="background:var(--border)">

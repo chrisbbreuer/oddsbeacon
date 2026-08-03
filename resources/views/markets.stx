@@ -1,6 +1,6 @@
 <script server>
 /**
- * Prin.tel — Smart money.
+ * PredictHQ — Smart money.
  *
  * Who keeps buying the winning side on Kalshi + Polymarket, and how big
  * they bet. The money-flow network is laid out server-side with
@@ -11,7 +11,7 @@
 import { graphLayout } from 'ts-charts/graph'
 import { loadBigTrades, loadGraph, loadSmartMoney } from '../../app/Support/prediction-markets'
 
-const appName = 'Prin.tel'
+const appName = 'PredictHQ'
 const W = 920
 const H = 640
 
@@ -103,8 +103,8 @@ const stats = {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
-    <meta name="description" content="Prin.tel smart money — who keeps buying the winning side on Kalshi and Polymarket, and how big they bet.">
-    <title>Prin.tel — Smart money</title>
+    <meta name="description" content="PredictHQ smart money — who keeps buying the winning side on Kalshi and Polymarket, and how big they bet.">
+    <title>PredictHQ — Smart money</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -120,7 +120,7 @@ const stats = {
 
   <body
     x-data="{
-      theme: printelTheme.current(),
+      theme: predicthqTheme.current(),
       hover: -1,
       tipLabel: '',
       tipSub: '',
@@ -132,7 +132,7 @@ const stats = {
       panning: false,
       px: 0,
       py: 0,
-      toggleTheme() { this.theme = printelTheme.toggle() },
+      toggleTheme() { this.theme = predicthqTheme.toggle() },
       xform() { return 'translate(' + this.tx + ' ' + this.ty + ') scale(' + this.scale + ')' },
       zoom(f) {
         const next = Math.min(4, Math.max(0.5, this.scale * f))
@@ -167,8 +167,8 @@ const stats = {
     <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
         <a href="/" class="flex gap-2.5 items-center">
-          <span class="grid place-items-center h-9 w-9 font-black rounded-xl brandmark">◎</span>
-          <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
+          <span class="grid place-items-center h-9 w-9 p-2 rounded-xl brandmark">@include('logo')</span>
+          <span class="font-extrabold text-lg tracking-tight">Predict<span class="accent">HQ</span></span>
         </a>
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="/" class="hover:opacity-70">Board</a>

@@ -5,7 +5,7 @@ import { schema } from '@stacksjs/validation'
  * Selection — one possible outcome of a {@link MarketEvent}.
  *
  * "Lakers", "Draw", "Yes", "Chiefs". Each selection collects one
- * {@link Odd} per bookmaker; the best of those is what Prin.tel
+ * {@link Odd} per bookmaker; the best of those is what PredictHQ
  * highlights.
  */
 export default defineModel({

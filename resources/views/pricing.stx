@@ -1,6 +1,6 @@
 <script server>
 /**
- * Prin.tel — Pricing.
+ * PredictHQ — Pricing.
  *
  * The plans come straight from `config/saas.ts`, so the page and the
  * entitlement check can never disagree about what a tier includes. A
@@ -17,7 +17,7 @@
  */
 import { config } from '@stacksjs/config'
 
-const appName = 'Prin.tel'
+const appName = 'PredictHQ'
 
 /** What each tier actually unlocks, keyed by the metadata tier name. */
 const tierFeatures = {
@@ -84,8 +84,8 @@ function featureList(items) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
-    <meta name="description" content="Prin.tel pricing. Read the markets and every decision on Signal, or let the engine place the trades on Auto and Desk.">
-    <title>Prin.tel: pricing</title>
+    <meta name="description" content="PredictHQ pricing. Read the markets and every decision on Signal, or let the engine place the trades on Auto and Desk.">
+    <title>PredictHQ: pricing</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -103,11 +103,11 @@ function featureList(items) {
 
   <body
     x-data="{
-      theme: printelTheme.current(),
+      theme: predicthqTheme.current(),
       cycle: 'yearly',
       busy: '',
       error: '',
-      toggleTheme() { this.theme = printelTheme.toggle() },
+      toggleTheme() { this.theme = predicthqTheme.toggle() },
       async subscribe(planKey) {
         if (!planKey || this.busy) return
         this.busy = planKey
@@ -137,8 +137,8 @@ function featureList(items) {
       <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
         <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
           <a href="/" class="flex gap-2.5 items-center">
-            <span class="grid place-items-center h-9 w-9 font-black rounded-xl brandmark">◎</span>
-            <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
+            <span class="grid place-items-center h-9 w-9 p-2 rounded-xl brandmark">@include('logo')</span>
+            <span class="font-extrabold text-lg tracking-tight">Predict<span class="accent">HQ</span></span>
           </a>
           <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
             <a href="/#evidence" class="hover:opacity-70">Evidence</a>
@@ -157,7 +157,7 @@ function featureList(items) {
         <div class="max-w-2xl">
           <h1 class="font-black leading-[1.08] text-3xl tracking-tight sm:text-5xl">Read the market, or let it trade.</h1>
           <p class="mt-4 leading-relaxed text-lg muted">
-            Every plan sees the same analysis and the same evidence. What changes is whether Prin.tel places the order for you.
+            Every plan sees the same analysis and the same evidence. What changes is whether PredictHQ places the order for you.
           </p>
         </div>
 
@@ -240,7 +240,7 @@ function featureList(items) {
             </div>
             <div>
               <h3 class="font-bold">This is not advice</h3>
-              <p class="mt-1.5 leading-relaxed text-sm muted">Prin.tel measures flow and prices it. It does not know your circumstances, and a modelled edge is an estimate that can be wrong. You can lose money on every plan.</p>
+              <p class="mt-1.5 leading-relaxed text-sm muted">PredictHQ measures flow and prices it. It does not know your circumstances, and a modelled edge is an estimate that can be wrong. You can lose money on every plan.</p>
             </div>
           </div>
         </section>

@@ -1,6 +1,6 @@
 <script server>
 /**
- * Prin.tel — feature index.
+ * PredictHQ — feature index.
  *
  * The map of everything the product does, split by whether it reads a
  * market or acts on one. That split is the same one the pricing page
@@ -14,8 +14,8 @@ import { loadIntelSummary } from '../../app/Support/intel'
 import { loadBoard } from '../../app/Support/odds'
 
 const navActive = 'features'
-const pageTitle = 'Prin.tel features: read the market, then act on it'
-const pageDescription = 'Everything Prin.tel does, from the evidence engine and smart-money scoring through to automated execution on Kalshi and Polymarket.'
+const pageTitle = 'PredictHQ features: read the market, then act on it'
+const pageDescription = 'Everything PredictHQ does, from the evidence engine and smart-money scoring through to automated execution on Kalshi and Polymarket.'
 
 const intel = loadIntelSummary()
 const { summary } = loadBoard()
@@ -81,7 +81,7 @@ const execution = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 
@@ -89,7 +89,7 @@ const execution = [
         <div class="max-w-3xl">
           <h1 class="font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Read the market. Then act on it.</h1>
           <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
-            Everything below runs on the same ingested tape. The analysis half is what Prin.tel knows; the execution half is what it does about it, and the difference between them is the only thing a plan changes.
+            Everything below runs on the same ingested tape. The analysis half is what PredictHQ knows; the execution half is what it does about it, and the difference between them is the only thing a plan changes.
           </p>
         </div>
 

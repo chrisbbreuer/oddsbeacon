@@ -95,7 +95,7 @@ export function entitlementsFor(db: Database, userId: number): Entitlements {
 /**
  * Map a price key onto a tier.
  *
- * The keys in config/saas.ts are `printel_<tier>_<cadence>`, so the tier
+ * The keys in config/saas.ts are `predicthq_<tier>_<cadence>`, so the tier
  * is the middle segment. Matching on substrings instead of an exact list
  * means adding a cadence does not require touching this file.
  */

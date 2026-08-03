@@ -3,7 +3,7 @@ import { response } from '@stacksjs/router'
 import { tierFrom } from '../../Services/billing/entitlements'
 
 /**
- * POST /api/billing/checkout — start a Prin.tel subscription.
+ * POST /api/billing/checkout — start a PredictHQ subscription.
  *
  * The caller names a plan key from config/saas.ts, never a Stripe price
  * id. That indirection is the point: a request that could name its own
@@ -18,7 +18,7 @@ import { tierFrom } from '../../Services/billing/entitlements'
  */
 export default {
   name: 'CreateSubscriptionCheckout',
-  description: 'Create a Stripe Checkout session for a Prin.tel plan.',
+  description: 'Create a Stripe Checkout session for a PredictHQ plan.',
 
   async handle(request?: {
     get?: (key: string) => string | undefined
@@ -39,7 +39,7 @@ export default {
     // entitlement layer cannot read — a paying customer with nothing
     // unlocked. Fail here instead.
     if (tierFrom(planKey) === 'none')
-      return response.error(`Plan ${planKey} does not map to a Prin.tel tier.`, 422)
+      return response.error(`Plan ${planKey} does not map to a PredictHQ tier.`, 422)
 
     const priceId = await resolvePriceId(planKey)
     if (!priceId) {

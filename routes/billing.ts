@@ -10,7 +10,7 @@ import { route } from '@stacksjs/router'
  *
  * The framework already serves the rest of the Stripe surface — payment
  * methods, invoices, cancellation — under `/payments/*` with auth. These
- * two are the Prin.tel-specific halves: starting a subscription on one
+ * two are the PredictHQ-specific halves: starting a subscription on one
  * of our plans, and keeping the subscriptions table honest so
  * `entitlements.ts` can read it instead of calling Stripe on every
  * trading pass.

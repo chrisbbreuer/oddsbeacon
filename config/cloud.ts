@@ -22,8 +22,8 @@ export const tsCloud: TsCloudConfig = {
    * Project configuration
    */
   project: {
-    name: 'printel',
-    slug: 'printel',
+    name: 'predicthq',
+    slug: 'predicthq',
     region: 'us-east-1', // Default AWS region
   },
 
@@ -38,7 +38,7 @@ export const tsCloud: TsCloudConfig = {
     // that provisioned would rewrite that gateway with only its own sites
     // and take stacksjs.com down with it.
     //
-    // Our routes land in `/etc/rpx/sites.d/printel.json`, a drop-in the
+    // Our routes land in `/etc/rpx/sites.d/predicthq.json`, a drop-in the
     // owner merges. Eleven other projects share the box the same way.
     attachTo: 'stacks',
   },
@@ -684,7 +684,7 @@ export const tsCloud: TsCloudConfig = {
     main: {
       root: '.',
       path: '/',
-      domain: 'predict.stacksjs.com',
+      domain: 'predicthq.org',
       // Point at the installed CLI's built entry, NOT the `./buddy` shim.
       // ts-cloud runs `start` under bun, so `./buddy serve` becomes
       // `bun ./buddy serve` — and `buddy` is a shell script, which bun tries

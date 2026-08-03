@@ -1,6 +1,6 @@
 <script server>
 /**
- * Prin.tel — the landing page.
+ * PredictHQ — the landing page.
  *
  * Three surfaces in one scroll: the positioning, one real trade
  * candidate with the evidence behind it, and the live odds board that
@@ -22,7 +22,7 @@ const { bookmakers, events, summary } = loadBoard()
 const intel = loadIntelSummary()
 const candidate = loadTopCandidate()
 
-const appName = 'Prin.tel'
+const appName = 'PredictHQ'
 
 const bookById = {}
 for (const b of bookmakers)
@@ -122,8 +122,8 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
-    <meta name="description" content="Prin.tel reads the public tape on Kalshi and Polymarket, prices what the flow is worth, and places positions inside limits you set. Every decision shows the data behind it.">
-    <title>Prin.tel: evidence-backed positions on Kalshi and Polymarket</title>
+    <meta name="description" content="PredictHQ reads the public tape on Kalshi and Polymarket, prices what the flow is worth, and places positions inside limits you set. Every decision shows the data behind it.">
+    <title>PredictHQ: evidence-backed positions on Kalshi and Polymarket</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -187,7 +187,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 
   <body
     x-data="{
-      theme: printelTheme.current(),
+      theme: predicthqTheme.current(),
       format: (localStorage.getItem('ob-format') || 'american'),
       live: {{ liveJson }},
       flash: {},
@@ -242,8 +242,8 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
     <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-7xl">
         <a href="/" class="flex gap-2.5 items-center">
-          <span class="beacon logo logo-md" style="background:var(--accent);color:#ffffff;border-radius:10px;height:34px;width:34px;font-size:15px">◎</span>
-          <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
+          <span class="grid place-items-center" style="background:var(--accent);color:#ffffff;border-radius:10px;height:34px;width:34px;padding:7px">@include('logo')</span>
+          <span class="font-extrabold text-lg tracking-tight">Predict<span class="accent">HQ</span></span>
         </a>
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="#evidence" class="hover:opacity-70">Evidence</a>
@@ -275,7 +275,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
             Every trade it makes,<br><span class="accent">it can show its work.</span>
           </h1>
           <p class="mt-5 max-w-xl leading-relaxed text-lg muted">
-            Prin.tel reads the public tape on Kalshi and Polymarket, prices what the flow is really worth, and places the position inside limits you set.
+            PredictHQ reads the public tape on Kalshi and Polymarket, prices what the flow is really worth, and places the position inside limits you set.
           </p>
 
           <div class="flex flex-wrap gap-3 items-center mt-7">

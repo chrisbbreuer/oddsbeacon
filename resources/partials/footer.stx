@@ -2,8 +2,8 @@
   <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 mx-auto px-4 py-12 sm:px-6 max-w-6xl">
     <div class="lg:col-span-1">
       <a href="/" class="flex gap-2.5 items-center">
-        <span class="grid place-items-center h-8 w-8 text-sm font-black rounded-lg brandmark">◎</span>
-        <span class="font-extrabold tracking-tight">Prin<span class="accent">.tel</span></span>
+        <span class="grid place-items-center h-8 w-8 p-1.5 rounded-lg brandmark">@include('logo')</span>
+        <span class="font-extrabold tracking-tight">Predict<span class="accent">HQ</span></span>
       </a>
       <p class="mt-3 max-w-xs text-sm leading-relaxed muted">Prediction Intel. Signals and automated positions across Kalshi and Polymarket.</p>
     </div>
@@ -46,7 +46,7 @@
   --}}
   <div class="border-t bd" style="background:var(--surface-2)">
     <div class="flex flex-col gap-2 items-center justify-between sm:flex-row mx-auto px-4 py-5 sm:px-6 max-w-6xl text-xs muted">
-      <span>© 2026 Prin.tel. Analysis tooling, not financial advice. You can lose money.</span>
+      <span>© 2026 PredictHQ. Analysis tooling, not financial advice. You can lose money.</span>
       <span>Prediction markets carry risk. Trade only what you can afford to lose.</span>
     </div>
   </div>

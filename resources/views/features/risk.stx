@@ -7,7 +7,7 @@
  * before anything touches a venue.
  */
 const navActive = 'features'
-const pageTitle = 'Risk limits: what Prin.tel refuses to do'
+const pageTitle = 'Risk limits: what PredictHQ refuses to do'
 const pageDescription = 'Bankroll, per-trade cap, open positions, and a daily loss limit are re-checked before every order. Every refusal is stored with its reason.'
 
 const checks = [
@@ -55,7 +55,7 @@ const checks = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 
@@ -99,9 +99,9 @@ const checks = [
         </section>
 
         <section class="p-8 mt-16 rounded-2xl card sm:p-10">
-          <h2 class="font-black text-2xl tracking-tight">What Prin.tel does not claim</h2>
+          <h2 class="font-black text-2xl tracking-tight">What PredictHQ does not claim</h2>
           <p class="mt-3 max-w-3xl leading-relaxed muted">
-            A modelled edge is an estimate from a trade tape, and it can be wrong. These limits bound how much any single mistake costs; they do not make the mistakes less likely, and they cannot make a losing strategy profitable. Prin.tel does not know your circumstances and nothing it produces is financial advice.
+            A modelled edge is an estimate from a trade tape, and it can be wrong. These limits bound how much any single mistake costs; they do not make the mistakes less likely, and they cannot make a losing strategy profitable. PredictHQ does not know your circumstances and nothing it produces is financial advice.
           </p>
         </section>
       </main>

@@ -1,5 +1,5 @@
 /**
- * Shared display branding for Prin.tel — bookmaker "logo" tiles and team
+ * Shared display branding for PredictHQ — bookmaker "logo" tiles and team
  * badges — used by both the board (`index.stx`) and the live feed
  * (`live.stx`). Team logos are referenced from ESPN's public CDN by URL
  * (not reproduced); the colored chip shows through if one fails to load.

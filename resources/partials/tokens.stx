@@ -18,7 +18,7 @@
     their first visit.
   */
   (function () {
-    var KEY = 'printel-theme'
+    var KEY = 'predicthq-theme'
     var LEGACY_KEY = 'ob-theme'
     var root = document.documentElement
     var query = window.matchMedia('(prefers-color-scheme: dark)')
@@ -50,7 +50,7 @@
 
     // Pages drive the toggle through this so the storage key and the
     // attribute are written in exactly one place.
-    window.printelTheme = {
+    window.predicthqTheme = {
       current: function () {
         return root.getAttribute('data-theme') || 'light'
       },
@@ -69,7 +69,7 @@
 
 <style>
   /*
-    Prin.tel design tokens.
+    PredictHQ design tokens.
 
     Included from every page's <head>, since it emits the font links as
     well as the variables. Before this existed each view carried its own

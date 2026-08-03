@@ -9,11 +9,11 @@ import { env } from '@stacksjs/env'
  * you have any questions, feel free to reach out via Discord or GitHub Discussions.
  */
 export default {
-  name: env.APP_NAME ?? 'Prin.tel',
-  description: 'Prin.tel — Prediction Intel. Data-driven signals and automated positions across Kalshi and Polymarket.',
+  name: env.APP_NAME ?? 'PredictHQ',
+  description: 'PredictHQ — Prediction Intel. Data-driven signals and automated positions across Kalshi and Polymarket.',
   env: env.APP_ENV ?? 'local',
-  url: env.APP_URL ?? 'printel.localhost',
-  redirectUrls: ['prin.tel'],
+  url: env.APP_URL ?? 'predicthq.localhost',
+  redirectUrls: ['predicthq.org'],
   debug: env.DEBUG ?? false,
   key: env.APP_KEY,
 

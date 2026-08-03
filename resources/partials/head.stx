@@ -3,7 +3,7 @@
 <meta name="description" content="{{ pageDescription }}">
 <meta property="og:title" content="{{ pageTitle }}">
 <meta property="og:description" content="{{ pageDescription }}">
-<meta property="og:site_name" content="Prin.tel">
+<meta property="og:site_name" content="PredictHQ">
 <meta name="twitter:card" content="summary_large_image">
 <title>{{ pageTitle }}</title>
 @include('tokens')

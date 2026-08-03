@@ -64,7 +64,7 @@ function insertFills(
 }
 
 beforeAll(() => {
-  dir = mkdtempSync(join(tmpdir(), 'printel-trading-'))
+  dir = mkdtempSync(join(tmpdir(), 'predicthq-trading-'))
   db = schemaFor(join(dir, 'test.sqlite'), TABLES)
 
   const now = new Date().toISOString()
@@ -251,9 +251,9 @@ describe('entitlements', () => {
   }
 
   it('maps price keys onto tiers', () => {
-    expect(tierFrom('printel_signal_monthly')).toBe('signal')
-    expect(tierFrom('printel_auto_yearly')).toBe('auto')
-    expect(tierFrom('printel_desk_monthly')).toBe('desk')
+    expect(tierFrom('predicthq_signal_monthly')).toBe('signal')
+    expect(tierFrom('predicthq_auto_yearly')).toBe('auto')
+    expect(tierFrom('predicthq_desk_monthly')).toBe('desk')
     expect(tierFrom('something_else')).toBe('none')
   })
 
@@ -264,7 +264,7 @@ describe('entitlements', () => {
   })
 
   it('lets Signal read but not trade', () => {
-    subscribe(10, 'printel_signal_monthly', 'active', null)
+    subscribe(10, 'predicthq_signal_monthly', 'active', null)
     const entitlements = entitlementsFor(db, 10)
 
     expect(entitlements.tier).toBe('signal')
@@ -273,36 +273,36 @@ describe('entitlements', () => {
   })
 
   it('lets Auto trade', () => {
-    subscribe(11, 'printel_auto_monthly', 'active', null)
+    subscribe(11, 'predicthq_auto_monthly', 'active', null)
     expect(entitlementsFor(db, 11).canAutoExecute).toBe(true)
   })
 
   it('gives Desk unlimited strategies', () => {
-    subscribe(12, 'printel_desk_yearly', 'active', null)
+    subscribe(12, 'predicthq_desk_yearly', 'active', null)
     expect(entitlementsFor(db, 12).maxStrategies).toBeNull()
   })
 
   it('stops entitling once a failed payment goes past due', () => {
-    subscribe(13, 'printel_auto_monthly', 'past_due', null)
+    subscribe(13, 'predicthq_auto_monthly', 'past_due', null)
     expect(entitlementsFor(db, 13).canAutoExecute).toBe(false)
   })
 
   it('keeps a cancelled subscription until its period ends', () => {
-    subscribe(14, 'printel_auto_monthly', 'active', future)
+    subscribe(14, 'predicthq_auto_monthly', 'active', future)
     expect(entitlementsFor(db, 14).canAutoExecute).toBe(true)
 
-    subscribe(15, 'printel_auto_monthly', 'active', past)
+    subscribe(15, 'predicthq_auto_monthly', 'active', past)
     expect(entitlementsFor(db, 15).tier).toBe('none')
   })
 
   it('takes the better of two live subscriptions', () => {
-    subscribe(16, 'printel_signal_monthly', 'active', null)
-    subscribe(16, 'printel_desk_monthly', 'active', null)
+    subscribe(16, 'predicthq_signal_monthly', 'active', null)
+    subscribe(16, 'predicthq_desk_monthly', 'active', null)
     expect(entitlementsFor(db, 16).tier).toBe('desk')
   })
 
   it('counts a trial as live', () => {
-    subscribe(17, 'printel_auto_monthly', 'trialing', null)
+    subscribe(17, 'predicthq_auto_monthly', 'trialing', null)
     expect(entitlementsFor(db, 17).canAutoExecute).toBe(true)
   })
 })

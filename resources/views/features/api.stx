@@ -7,7 +7,7 @@
  * nothing they could not get from a 404.
  */
 const navActive = 'features'
-const pageTitle = 'Prin.tel JSON API'
+const pageTitle = 'PredictHQ JSON API'
 const pageDescription = 'Every number on every page is a documented endpoint, including the candidate feed with its full evidence. Reads need no key.'
 
 const readEndpoints = [
@@ -62,7 +62,7 @@ const sample = `{
     @include('head')
   </head>
 
-  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
     <div class="app">
       @include('nav')
 

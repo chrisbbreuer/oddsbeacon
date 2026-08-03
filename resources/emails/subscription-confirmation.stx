@@ -1,7 +1,7 @@
 <script server>
 const email = props.email || ''
 const unsubscribeUrl = props.unsubscribeUrl || '#'
-const appName = props.appName || 'Prin.tel'
+const appName = props.appName || 'PredictHQ'
 const appUrl = props.appUrl || 'https://stacksjs.com'
 const primaryColor = props.primaryColor || '#3451b2'
 const year = props.year || new Date().getFullYear()

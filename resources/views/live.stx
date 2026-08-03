@@ -1,6 +1,6 @@
 <script server>
 /**
- * Prin.tel — Live action.
+ * PredictHQ — Live action.
  *
  * Server-renders the most recent line moves + active arbs (reliable), then
  * prepends realtime items as they arrive on the `odds` / `alerts` broadcast
@@ -9,7 +9,7 @@
 import { brandFor, teamFor } from '../../app/Support/branding'
 import { loadBoard, loadRecentMoves } from '../../app/Support/odds'
 
-const appName = 'Prin.tel'
+const appName = 'PredictHQ'
 const { bookmakers, events, summary } = loadBoard()
 
 // Initial feed (recent line moves) — rendered server-side with @foreach.
@@ -73,8 +73,8 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
-    <meta name="description" content="Prin.tel live action — sports line moves and arbitrage streaming in real time.">
-    <title>Prin.tel — Live action</title>
+    <meta name="description" content="PredictHQ live action — sports line moves and arbitrage streaming in real time.">
+    <title>PredictHQ — Live action</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -92,13 +92,13 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
 
   <body
     x-data="{
-      theme: printelTheme.current(),
+      theme: predicthqTheme.current(),
       connected: false,
       moves: [],
       live: {{ liveJson }},
       selMeta: {{ selMetaJson }},
       bookMeta: {{ bookMetaJson }},
-      toggleTheme() { this.theme = printelTheme.toggle() },
+      toggleTheme() { this.theme = predicthqTheme.toggle() },
       clock() { const d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) },
       connectLive() {
         try {
@@ -134,8 +134,8 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
     <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
         <a href="/" class="flex gap-2.5 items-center">
-          <span class="grid place-items-center h-9 w-9 font-black rounded-xl brandmark">◎</span>
-          <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
+          <span class="grid place-items-center h-9 w-9 p-2 rounded-xl brandmark">@include('logo')</span>
+          <span class="font-extrabold text-lg tracking-tight">Predict<span class="accent">HQ</span></span>
         </a>
         <nav class="hidden md:flex gap-7 items-center font-semibold text-sm muted">
           <a href="/" class="hover:opacity-70">Board</a>
