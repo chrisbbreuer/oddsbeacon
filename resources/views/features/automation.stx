@@ -50,8 +50,8 @@ const venues = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: (localStorage.getItem('ob-theme') || 'light'), toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('ob-theme', this.theme) } }">
-    <div class="app" :data-theme="theme">
+  <body x-data="{ theme: printelTheme.current(), toggleTheme() { this.theme = printelTheme.toggle() } }">
+    <div class="app">
       @include('nav')
 
       <main class="mx-auto px-4 pt-14 sm:px-6 max-w-6xl sm:pt-20">

@@ -187,7 +187,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 
   <body
     x-data="{
-      theme: (localStorage.getItem('ob-theme') || 'light'),
+      theme: printelTheme.current(),
       format: (localStorage.getItem('ob-format') || 'american'),
       live: {{ liveJson }},
       flash: {},
@@ -231,13 +231,13 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         }
         catch (err) { /* no realtime server — board stays on its server-rendered values */ }
       },
-      persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-theme', this.theme); localStorage.setItem('ob-format', this.format); localStorage.setItem('ob-token', this.token) },
+      persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-format', this.format); localStorage.setItem('ob-token', this.token) },
       saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); const legs = this.sheet; this.saved = [...this.saved, { name, legs, parlay: this.parlay() }]; this.sheetName = ''; try { fetch('/api/sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: this.token, name, legs }) }).catch(() => {}) } catch (e) { /* offline — kept in localStorage */ } },
       loadSheet(i) { this.sheet = [...this.saved[i].legs]; this.sheetOpen = true },
       deleteSaved(i) { this.saved = this.saved.filter((_, j) => j !== i) }
     }"
   >
-  <div class="app" :data-theme="theme" x-effect="persist()" x-init="connectLive()">
+  <div class="app" x-effect="persist()" x-init="connectLive()">
     <!-- nav -->
     <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
       <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-7xl">

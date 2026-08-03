@@ -103,11 +103,11 @@ function featureList(items) {
 
   <body
     x-data="{
-      theme: (localStorage.getItem('ob-theme') || 'light'),
+      theme: printelTheme.current(),
       cycle: 'yearly',
       busy: '',
       error: '',
-      toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('ob-theme', this.theme) },
+      toggleTheme() { this.theme = printelTheme.toggle() },
       async subscribe(planKey) {
         if (!planKey || this.busy) return
         this.busy = planKey
@@ -133,7 +133,7 @@ function featureList(items) {
     }"
     :class="theme === 'dark' ? 'app' : 'app'"
   >
-    <div class="app" :data-theme="theme">
+    <div class="app">
       <header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
         <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
           <a href="/" class="flex gap-2.5 items-center">

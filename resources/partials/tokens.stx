@@ -2,6 +2,71 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..900&family=Geist+Mono:wght@400..600&display=swap">
 
+<script>
+  /*
+    Resolve the theme before the first paint.
+
+    Doing this from Alpine's x-data runs after the first frame, which is a
+    visible flash of the wrong theme on every single load. The flash is
+    worst going into dark mode, which is exactly when it is least welcome.
+    A blocking inline script in the head is the one reliable fix, and it is
+    small enough to be worth the block.
+
+    An explicit choice always wins. With none stored we follow the system
+    AND keep following it, so a machine that flips at sunset flips the page
+    with it rather than pinning the user to whatever it happened to be on
+    their first visit.
+  */
+  (function () {
+    var KEY = 'printel-theme'
+    var LEGACY_KEY = 'ob-theme'
+    var root = document.documentElement
+    var query = window.matchMedia('(prefers-color-scheme: dark)')
+
+    function stored() {
+      try {
+        // The legacy key predates the rename. Read it once so an existing
+        // visitor keeps the theme they chose instead of being silently
+        // reset to their system preference.
+        return localStorage.getItem(KEY) || localStorage.getItem(LEGACY_KEY)
+      }
+      catch (e) {
+        // Storage can throw outright in private mode. A theme is not worth
+        // taking the page down for.
+        return null
+      }
+    }
+
+    function apply(theme) {
+      root.setAttribute('data-theme', theme)
+    }
+
+    apply(stored() || (query.matches ? 'dark' : 'light'))
+
+    query.addEventListener('change', function (event) {
+      if (!stored())
+        apply(event.matches ? 'dark' : 'light')
+    })
+
+    // Pages drive the toggle through this so the storage key and the
+    // attribute are written in exactly one place.
+    window.printelTheme = {
+      current: function () {
+        return root.getAttribute('data-theme') || 'light'
+      },
+      toggle: function () {
+        var next = this.current() === 'dark' ? 'light' : 'dark'
+        try {
+          localStorage.setItem(KEY, next)
+        }
+        catch (e) {}
+        apply(next)
+        return next
+      },
+    }
+  })()
+</script>
+
 <style>
   /*
     Prin.tel design tokens.
@@ -59,7 +124,12 @@
     --scrim: rgba(10, 13, 20, 0.45);
   }
 
-  .app[data-theme="dark"] {
+  /*
+    Keyed off the root rather than the .app wrapper, because the pre-paint
+    script above can only reach <html> -- the wrapper does not exist yet
+    when the head runs, which is the whole point of resolving it there.
+  */
+  :root[data-theme="dark"] {
     --bg: #0a0d14;
     --bg-2: #0e131c;
     --surface: #121826;
