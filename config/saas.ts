@@ -1,144 +1,123 @@
 import type { SaasConfig } from '@stacksjs/types'
 
 /**
- * **Payment Configuration**
+ * **Subscription Configuration**
  *
- * This configuration defines all of your Payment options. Because Stacks is fully-typed,
- * you may hover any of the options below and the definitions will be provided. In case
- * you have any questions, feel free to reach out via Discord or GitHub Discussions.
+ * Three tiers, separated by what the automation is allowed to do rather
+ * than by how much of it you get:
+ *
+ *   Signal   — read everything. The board, the tape, the smart-money
+ *              leaderboard, and every decision the engine would make,
+ *              with its evidence. No orders.
+ *   Auto     — the same, plus automated execution on connected venue
+ *              accounts, within the limits a strategy declares.
+ *   Desk     — Auto without the strategy cap, plus the research runs
+ *              that cost real model tokens.
+ *
+ * The price keys are what Stripe knows and what `entitlements.ts`
+ * matches on, so they are stable identifiers, not display names — the
+ * plan tier is the first segment and everything after it is billing
+ * cadence.
  */
 export default {
   plans: [
     {
-      productName: 'Stacks Hobby',
-      description: 'All the Stacks features.',
+      productName: 'Prin.tel Signal',
+      description: 'Every market, the full trade tape, and the decisions the engine would make — with the evidence behind each one.',
       pricing: [
         {
-          key: 'stacks_hobby_early_monthly',
-          price: 1900,
-          interval: 'month',
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_hobby_launch_monthly',
+          key: 'printel_signal_monthly',
           price: 2900,
           interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'stacks_hobby_monthly',
-          price: 3900,
-          interval: 'month',
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_hobby_yearly',
-          price: 37900,
+          key: 'printel_signal_yearly',
+          price: 29000,
           interval: 'year',
           currency: 'usd',
         },
       ],
       metadata: {
-        createdBy: 'admin',
+        tier: 'signal',
+        autoExecute: 'false',
+        maxStrategies: '1',
         version: '1.0.0',
       },
     },
     {
-      productName: 'Stacks Pro',
-      description: 'All the Stacks features, including being able to invite team members.',
+      productName: 'Prin.tel Auto',
+      description: 'Places the trades. Connect Kalshi and Polymarket, set the limits, and the engine executes inside them.',
       pricing: [
         {
-          key: 'stacks_pro_early_monthly',
-          price: 3900,
+          key: 'printel_auto_monthly',
+          price: 9900,
           interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'stacks_pro_monthly',
-          price: 5900,
-          interval: 'month',
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_pro_yearly',
-          price: 57900,
-          interval: 'year',
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_pro_early_yearly',
-          price: 39000, // Early bird pricing for yearly
+          key: 'printel_auto_yearly',
+          price: 99000,
           interval: 'year',
           currency: 'usd',
         },
       ],
       metadata: {
-        createdBy: 'admin',
+        tier: 'auto',
+        autoExecute: 'true',
+        maxStrategies: '5',
         version: '1.0.0',
       },
     },
     {
-      productName: 'Stacks Lifetime',
-      description: 'One-time lifetime access to all Stacks features.',
+      productName: 'Prin.tel Desk',
+      description: 'Unlimited strategies, deeper model research on every candidate, and priority ingestion.',
       pricing: [
         {
-          key: 'stacks_hobby_early_lifetime',
-          price: 17900,
+          key: 'printel_desk_monthly',
+          price: 29900,
+          interval: 'month',
           currency: 'usd',
         },
         {
-          key: 'stacks_hobby_launch_lifetime',
-          price: 27900,
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_hobby_lifetime',
-          price: 47900,
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_pro_early_lifetime',
-          price: 27900,
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_pro_launch_lifetime',
-          price: 37900,
-          currency: 'usd',
-        },
-        {
-          key: 'stacks_pro_lifetime',
-          price: 74900,
+          key: 'printel_desk_yearly',
+          price: 299000,
+          interval: 'year',
           currency: 'usd',
         },
       ],
       metadata: {
-        createdBy: 'admin',
+        tier: 'desk',
+        autoExecute: 'true',
+        maxStrategies: 'unlimited',
         version: '1.0.0',
       },
     },
   ],
+
   webhook: {
-    endpoint: 'your-webhook-endpoint',
-    secret: 'your-webhook-secret',
+    endpoint: '/api/billing/webhook',
+    secret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
   },
+
   currencies: ['usd'],
   coupons: [],
+
   products: [
     {
-      name: 'Stacks Hobby',
-      description: 'All the Stacks features.',
-      images: ['image-url'],
+      name: 'Prin.tel Signal',
+      description: 'Prediction-market intelligence: markets, tape, smart money, and decision previews.',
+      images: [],
     },
     {
-      name: 'Stacks Pro',
-      description: 'All the Stacks features, including team invites.',
-      images: ['image-url'],
+      name: 'Prin.tel Auto',
+      description: 'Automated execution on Kalshi and Polymarket, inside limits you set.',
+      images: [],
     },
     {
-      name: 'Stacks Lifetime',
-      description: 'Lifetime access to Stacks features.',
-      images: ['image-url'],
+      name: 'Prin.tel Desk',
+      description: 'Unlimited strategies and deep research on every candidate.',
+      images: [],
     },
   ],
 } satisfies SaasConfig
