@@ -61,6 +61,7 @@ declare global {
   const TradingStrategy: typeof import('../../../app/Models/TradingStrategy')['default']
   const Odd: typeof import('../../../app/Models/Odd')['default']
   const ExchangeAccount: typeof import('../../../app/Models/ExchangeAccount')['default']
+  const MarketNote: typeof import('../../../app/Models/MarketNote')['default']
   const Selection: typeof import('../../../app/Models/Selection')['default']
   const MarketEvent: typeof import('../../../app/Models/MarketEvent')['default']
   const MarketTrade: typeof import('../../../app/Models/MarketTrade')['default']

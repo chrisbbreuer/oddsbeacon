@@ -276,7 +276,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
             Every account, every call,<br><span class="accent">one place.</span>
           </h1>
           <p class="mt-5 max-w-xl leading-relaxed text-lg muted">
-            Connect your venues, think the calls through with people trading them too, and let your AI automate the rest.
+            Connect your venues, compare notes with people trading the same markets, and let your AI automate the rest.
           </p>
 
           <div class="flex flex-wrap gap-3 items-center mt-7">

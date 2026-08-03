@@ -21,6 +21,7 @@ declare module "stx/routes" {
     '/': {  }
     '/cart': {  }
     '/coming-soon': {  }
+    '/community': {  }
     '/dashboard': {  }
     '/features': {  }
     '/live': {  }

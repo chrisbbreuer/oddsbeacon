@@ -10473,10 +10473,115 @@
             "type": "unique"
           }
         ]
+      },
+      {
+        "table": "market_notes",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "prediction_market_id",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "prediction_markets",
+              "column": "id"
+            }
+          },
+          {
+            "name": "user_id",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "users",
+              "column": "id"
+            }
+          },
+          {
+            "name": "author_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 60
+          },
+          {
+            "name": "stance",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 10
+          },
+          {
+            "name": "body",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "hidden",
+            "type": "boolean",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "market_created",
+            "columns": [
+              "prediction_market_id",
+              "created_at"
+            ],
+            "type": "index"
+          },
+          {
+            "name": "author",
+            "columns": [
+              "user_id"
+            ],
+            "type": "index"
+          }
+        ]
       }
     ]
   },
-  "hash": "902ccd3587ad7b2e997fb9a2d223930c8082f5d33e4a8e351024fddbca5ce0d5",
+  "hash": "4c0d5c4bff6a385bfbb1351b72f737fe528c470376d6b8adb1ef1d00ea02c686",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-03T03:14:33.597Z"
+  "updatedAt": "2026-08-03T22:54:14.204Z"
 }

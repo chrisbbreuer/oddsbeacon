@@ -47,3 +47,6 @@ route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
 // Launch the site with `./buddy launch`. Maintenance mode (503 page,
 // distinct cookie + state file) is the separate `./buddy down` /
 // `./buddy up` pair.
+
+// Community: per-market discussion threads.
+route.post('/community/notes', 'Actions/Community/PostNote')

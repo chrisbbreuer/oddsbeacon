@@ -18,6 +18,7 @@ export const routes = [
   { pattern: '/', filePath: 'resources/views/index.stx', isDynamic: false, params: [] },
   { pattern: '/cart', filePath: 'storage/framework/defaults/resources/views/cart.stx', isDynamic: false, params: [] },
   { pattern: '/coming-soon', filePath: 'storage/framework/defaults/resources/views/coming-soon.stx', isDynamic: false, params: [] },
+  { pattern: '/community', filePath: 'resources/views/community.stx', isDynamic: false, params: [] },
   { pattern: '/dashboard', filePath: 'storage/framework/defaults/resources/views/dashboard/index.stx', isDynamic: false, params: [] },
   { pattern: '/features', filePath: 'resources/views/features.stx', isDynamic: false, params: [] },
   { pattern: '/live', filePath: 'resources/views/live.stx', isDynamic: false, params: [] },
