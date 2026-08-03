@@ -1,6 +1,6 @@
 <script server>
 /**
- * PredictHQ — feature index.
+ * PredictHQ: feature index.
  *
  * The map of everything the product does, split by whether it reads a
  * market or acts on one. That split is the same one the pricing page
@@ -81,13 +81,14 @@ const execution = [
     @include('head')
   </head>
 
-  <body x-data="{ theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() } }">
+  <body x-data="{ menu: false,
+      theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu } }">
     <div class="app">
       @include('nav')
 
       <main class="mx-auto px-4 pt-14 sm:px-6 max-w-6xl sm:pt-20">
         <div class="max-w-3xl">
-          <h1 class="font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Read the market. Then act on it.</h1>
+          <h1 class="display font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Read the market. Then act on it.</h1>
           <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
             Everything below runs on the same ingested tape. The analysis half is what PredictHQ knows; the execution half is what it does about it, and the difference between them is the only thing a plan changes.
           </p>
@@ -95,7 +96,7 @@ const execution = [
 
         <section class="mt-16">
           <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
-            <h2 class="font-black text-2xl tracking-tight">Analysis</h2>
+            <h2 class="display font-black text-2xl tracking-tight">Analysis</h2>
             <p class="text-sm muted">Available on every plan, including the read-only one.</p>
           </div>
 
@@ -112,7 +113,7 @@ const execution = [
 
         <section class="mt-16">
           <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
-            <h2 class="font-black text-2xl tracking-tight">Execution</h2>
+            <h2 class="display font-black text-2xl tracking-tight">Execution</h2>
             <p class="text-sm muted">Placing orders needs a plan that includes it.</p>
           </div>
 
@@ -129,7 +130,7 @@ const execution = [
 
         <section class="flex flex-col gap-5 items-start justify-between lg:flex-row lg:items-center p-8 mt-16 rounded-2xl card sm:p-10">
           <div>
-            <h2 class="font-black text-2xl tracking-tight">See it price a real market</h2>
+            <h2 class="display font-black text-2xl tracking-tight">See it price a real market</h2>
             <p class="mt-2 max-w-xl leading-relaxed muted">The candidate feed is open and needs no account. It is the same call the trading loop makes every fifteen minutes.</p>
           </div>
           <div class="flex flex-wrap gap-3 shrink-0">

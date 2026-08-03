@@ -1,6 +1,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..900&family=Geist+Mono:wght@400..600&display=swap">
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700&display=swap">
 
 <script>
   /*
@@ -105,14 +107,14 @@
     --muted: #5b6780;
     --faint: #8e9ab1;
 
-    --accent: #2c5cff;
-    --accent-strong: #1d43cc; /* passes AA as text on --surface */
-    --accent-weak: rgba(44, 92, 255, 0.10);
+    --accent: #3e64e0;
+    --accent-strong: #2742b0; /* passes AA as text on --surface */
+    --accent-weak: rgba(62, 100, 224, 0.10);
 
     /* A best-price highlight is a brand act, so it uses the brand hue. */
-    --best-bg: rgba(44, 92, 255, 0.10);
-    --best-ring: #2c5cff;
-    --best-text: #1d43cc;
+    --best-bg: rgba(62, 100, 224, 0.10);
+    --best-ring: #3e64e0;
+    --best-text: #2742b0;
 
     /* Semantic only. Never used for emphasis. */
     --pos: #0d9d63;
@@ -140,13 +142,13 @@
     --muted: #94a1ba;
     --faint: #6b7891;
 
-    --accent: #6f92ff;
-    --accent-strong: #9db4ff;
-    --accent-weak: rgba(111, 146, 255, 0.16);
+    --accent: #7d9ae8;
+    --accent-strong: #aabfee;
+    --accent-weak: rgba(125, 154, 232, 0.16);
 
-    --best-bg: rgba(111, 146, 255, 0.16);
-    --best-ring: #6f92ff;
-    --best-text: #9db4ff;
+    --best-bg: rgba(125, 154, 232, 0.16);
+    --best-ring: #7d9ae8;
+    --best-text: #aabfee;
 
     --pos: #34d399;
     --neg: #f87171;
@@ -166,6 +168,22 @@
   }
   .app { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
   a { color: inherit; text-decoration: none; }
+
+  /*
+    Display face. Geist carries the UI and Cabinet Grotesk carries the
+    headlines: Geist is a good interface sans and a slightly anonymous
+    display one, and headlines are the only place a product this text-heavy
+    gets to have a voice. Confined to headlines on purpose, where a swapped
+    metric costs a line-break and not a reflowed table.
+
+    Falls back to Geist, so a blocked Fontshare request costs character and
+    not layout.
+  */
+  .display {
+    font-family: 'Cabinet Grotesk', 'Geist', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.022em;
+  }
 
   /* Tabular mono so a ticking number never reflows its column. */
   .num {

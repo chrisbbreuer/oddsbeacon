@@ -1,6 +1,6 @@
 <script server>
 /**
- * PredictHQ — Live action.
+ * PredictHQ: Live action.
  *
  * Server-renders the most recent line moves + active arbs (reliable), then
  * prepends realtime items as they arrive on the `odds` / `alerts` broadcast
@@ -12,7 +12,7 @@ import { loadBoard, loadRecentMoves } from '../../app/Support/odds'
 const appName = 'PredictHQ'
 const { bookmakers, events, summary } = loadBoard()
 
-// Initial feed (recent line moves) — rendered server-side with @foreach.
+// Initial feed (recent line moves): rendered server-side with @foreach.
 const feed = loadRecentMoves(40).map((m) => {
   const team = teamFor(m.pick)
   const brand = brandFor(m.bookSlug, m.book.slice(0, 3).toUpperCase())
@@ -38,7 +38,7 @@ const arbs = events
   .map(e => ({ title: e.title, league: e.league, profitLabel: `+${e.hold.arbitragePct.toFixed(2)}%` }))
 
 // Client lookup maps for prepending realtime items (no pre-built style
-// strings — single quotes inside an x-data attribute break parsing).
+// strings: single quotes inside an x-data attribute break parsing).
 const selMeta = {}
 for (const ev of events) {
   for (const s of ev.selections) {
@@ -73,8 +73,8 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
-    <meta name="description" content="PredictHQ live action — sports line moves and arbitrage streaming in real time.">
-    <title>PredictHQ — Live action</title>
+    <meta name="description" content="PredictHQ live action: sports line moves and arbitrage streaming in real time.">
+    <title>PredictHQ: live action</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -92,13 +92,14 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
 
   <body
     x-data="{
+      menu: false,
       theme: predicthqTheme.current(),
       connected: false,
       moves: [],
       live: {{ liveJson }},
       selMeta: {{ selMetaJson }},
       bookMeta: {{ bookMetaJson }},
-      toggleTheme() { this.theme = predicthqTheme.toggle() },
+      toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu },
       clock() { const d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) },
       connectLive() {
         try {
@@ -125,7 +126,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
           }
           ws.onclose = () => { this.connected = false; setTimeout(() => this.connectLive(), 5000) }
         }
-        catch (err) { /* no realtime server — the recent feed still renders */ }
+        catch (err) { /* no realtime server, the recent feed still renders */ }
       }
     }"
     x-init="connectLive()"
@@ -155,7 +156,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
         <div>
           <div class="flex gap-2 items-center">
             <span class="live-dot" :class="connected ? 'on' : ''"></span>
-            <h1 class="font-black text-3xl tracking-tight sm:text-4xl">Live action</h1>
+            <h1 class="display font-black text-3xl tracking-tight sm:text-4xl">Live action</h1>
           </div>
           <p class="mt-1 muted">Line moves and arbitrage across {{ summary.bookmakerCount }} books, streaming in real time.</p>
         </div>
@@ -164,7 +165,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
 
       <div class="grid gap-5 lg:grid-cols-[1.6fr_1fr] mt-6">
         <!-- feed -->
-        <section class="overflow-hidden rounded-2xl card">
+        <section class="overflow-hidden min-w-0 rounded-2xl card">
           <div class="flex items-center justify-between px-4 py-3 border-b bd">
             <span class="font-bold">Line movement</span>
             <span class="text-xs faint">{{ feed.length }} recent · <span x-text="moves.length"></span> live</span>
@@ -177,7 +178,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
               <span class="badge" x-show="it.kind === 'move'" :style="`background-color:${it.tbg};color:${it.tfg}` + (it.tlogo ? `;background-image:url(${it.tlogo});background-size:76%;background-position:center;background-repeat:no-repeat` : '')" x-text="it.tlogo ? '' : it.tabbr"></span>
               <span x-show="it.kind === 'arb'" class="grid place-items-center text-base rounded-full soft" style="height:30px;width:30px;flex:0 0 auto">⚡</span>
               <div class="flex-1 min-w-0">
-                <div class="font-bold truncate" x-text="it.kind === 'arb' ? ('Arbitrage — ' + it.title) : it.pick"></div>
+                <div class="font-bold truncate" x-text="it.kind === 'arb' ? ('Arbitrage: ' + it.title) : it.pick"></div>
                 <div class="text-xs truncate muted" x-text="it.kind === 'arb' ? (it.league + ' · guaranteed') : (it.league + ' · ' + it.game)"></div>
               </div>
               <span class="logo" x-show="it.kind === 'move'" :style="`background:${it.bg};color:${it.fg}`" x-text="it.mark"></span>
@@ -202,7 +203,7 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
         </section>
 
         <!-- arbs + stats -->
-        <aside class="space-y-5">
+        <aside class="min-w-0 space-y-5">
           <section class="rounded-2xl card">
             <div class="px-4 py-3 font-bold border-b bd">Live arbitrage</div>
             @if (arbs.length === 0)

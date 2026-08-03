@@ -1,6 +1,6 @@
 <script server>
 /**
- * PredictHQ — the landing page.
+ * PredictHQ: the landing page.
  *
  * Three surfaces in one scroll: the positioning, one real trade
  * candidate with the evidence behind it, and the live odds board that
@@ -17,7 +17,7 @@ const { bookmakers, events, summary } = loadBoard()
 
 // The evidence section renders a real candidate off the ingested tape.
 // Both can be empty on a cold database, and the template handles that
-// rather than substituting an invented example — a fabricated demo on a
+// rather than substituting an invented example: a fabricated demo on a
 // page whose whole claim is traceability would undercut the claim.
 const intel = loadIntelSummary()
 const candidate = loadTopCandidate()
@@ -61,11 +61,11 @@ const board = events.map((ev) => {
       team: teamFor(s.label),
       bestBook: best,
       bestBrand: best ? brandFor(best.slug, best.short) : null,
-      bestDecimalLabel: s.bestPrice != null ? s.bestPrice.toFixed(2) : '—',
+      bestDecimalLabel: s.bestPrice != null ? s.bestPrice.toFixed(2) : '-',
       impliedLabel: `${s.bestImpliedPct.toFixed(1)}%`,
       edgeLabel: signed(s.edgeVsAvgPct),
       spark: sparkPoints(s.bestHistory, 60, 16),
-      openLabel: s.bestHistory.length ? s.bestHistory[0].toFixed(2) : '—',
+      openLabel: s.bestHistory.length ? s.bestHistory[0].toFixed(2) : '-',
       sparkColor: (s.bestHistory.length >= 2 && s.bestHistory[s.bestHistory.length - 1] < s.bestHistory[0]) ? 'var(--neg)' : 'var(--pos)',
       trendArrow: (s.bestHistory.length >= 2 && s.bestHistory[s.bestHistory.length - 1] < s.bestHistory[0]) ? '▼' : '▲',
       cells: s.quotes.map((q) => {
@@ -73,8 +73,8 @@ const board = events.map((ev) => {
         return {
           ...q,
           book,
-          decimalLabel: q.price != null ? q.price.toFixed(2) : '—',
-          impliedLabel: q.price != null ? `${(100 / q.price).toFixed(1)}%` : '—',
+          decimalLabel: q.price != null ? q.price.toFixed(2) : '-',
+          impliedLabel: q.price != null ? `${(100 / q.price).toFixed(1)}%` : '-',
         }
       }),
     }
@@ -187,6 +187,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 
   <body
     x-data="{
+      menu: false,
       theme: predicthqTheme.current(),
       format: (localStorage.getItem('ob-format') || 'american'),
       live: {{ liveJson }},
@@ -208,7 +209,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       parlay() { return this.sheet.reduce((a, l) => a * l.price, 1) },
       american(d) { return d >= 2 ? '+' + Math.round((d - 1) * 100) : '' + Math.round(-100 / (d - 1)) },
       fmt(d) { return this.format === 'percent' ? (100 / d).toFixed(1) + '%' : this.format === 'price' ? Math.round(100 / d) + '¢' : this.american(d) },
-      px(sel, book, fallback) { const v = this.live[sel + ':' + book]; const d = (v == null ? fallback : v); return d == null ? '—' : this.fmt(d) },
+      px(sel, book, fallback) { const v = this.live[sel + ':' + book]; const d = (v == null ? fallback : v); return d == null ? '-' : this.fmt(d) },
       flashClass(sel, book) { return this.flash[sel + ':' + book] || '' },
       connectLive() {
         try {
@@ -229,10 +230,10 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
           }
           ws.onclose = () => setTimeout(() => this.connectLive(), 5000)
         }
-        catch (err) { /* no realtime server — board stays on its server-rendered values */ }
+        catch (err) { /* no realtime server, board stays on its server-rendered values */ }
       },
       persist() { localStorage.setItem('ob-sheet', JSON.stringify(this.sheet)); localStorage.setItem('ob-saved', JSON.stringify(this.saved)); localStorage.setItem('ob-format', this.format); localStorage.setItem('ob-token', this.token) },
-      saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); const legs = this.sheet; this.saved = [...this.saved, { name, legs, parlay: this.parlay() }]; this.sheetName = ''; try { fetch('/api/sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: this.token, name, legs }) }).catch(() => {}) } catch (e) { /* offline — kept in localStorage */ } },
+      saveSheet() { if (!this.sheet.length) return; const name = (this.sheetName || '').trim() || ('Sheet ' + (this.saved.length + 1)); const legs = this.sheet; this.saved = [...this.saved, { name, legs, parlay: this.parlay() }]; this.sheetName = ''; try { fetch('/api/sheets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: this.token, name, legs }) }).catch(() => {}) } catch (e) { /* offline, kept in localStorage */ } },
       loadSheet(i) { this.sheet = [...this.saved[i].legs]; this.sheetOpen = true },
       deleteSaved(i) { this.saved = this.saved.filter((_, j) => j !== i) }
     }"
@@ -271,7 +272,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       <!-- hero -->
       <section class="grid gap-10 items-center lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 py-10 lg:py-14">
         <div>
-          <h1 class="max-w-2xl font-black leading-[1.05] text-4xl tracking-tight sm:text-5xl">
+          <h1 class="display max-w-2xl font-black leading-[1.05] text-4xl tracking-tight sm:text-5xl">
             Every trade it makes,<br><span class="accent">it can show its work.</span>
           </h1>
           <p class="mt-5 max-w-xl leading-relaxed text-lg muted">
@@ -318,7 +319,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 
       <!-- evidence: one real candidate, with the numbers behind it -->
       <section id="evidence" class="py-14 border-t scroll-mt-20 bd">
-        <h2 class="max-w-2xl font-black text-2xl tracking-tight sm:text-3xl">The reasoning is a row in the database, not a paragraph</h2>
+        <h2 class="display max-w-2xl font-black text-2xl tracking-tight sm:text-3xl">The reasoning is a row in the database, not a paragraph</h2>
         <p class="mt-3 max-w-2xl leading-relaxed muted">
           Fair value starts at the venue's own price. Each signal below moved it by a measured amount, and every one records the sample it stood on. The model reviewing this can decline it or lower its confidence. It cannot raise it.
         </p>
@@ -510,7 +511,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       <section id="arbitrage" class="py-12 border-t scroll-mt-20 bd">
         <div class="flex flex-wrap gap-3 items-end justify-between">
           <div>
-            <h2 class="font-black text-2xl tracking-tight sm:text-3xl">Arbitrage radar</h2>
+            <h2 class="display font-black text-2xl tracking-tight sm:text-3xl">Arbitrage radar</h2>
             <p class="mt-1 max-w-2xl muted">When the best prices across books imply under 100% total, back every outcome at a different book and lock in profit. Set a total stake to see the split.</p>
           </div>
           <label class="flex gap-2 items-center font-semibold text-sm muted">Total stake $
@@ -519,7 +520,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
         </div>
 
         @if (arbEvents.length === 0)
-          <p class="mt-6 px-5 py-10 text-center rounded-2xl card muted">No arbitrage on the board right now — the market is efficient. Check back as lines move.</p>
+          <p class="mt-6 px-5 py-10 text-center rounded-2xl card muted">No arbitrage on the board right now. The market is efficient, Check back as lines move.</p>
         @else
           <div class="grid gap-5 md:grid-cols-2 mt-6">
             @foreach (arbEvents as ev)
@@ -563,7 +564,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       <!-- how it works: staged rows, so each step gets room for the
            thing that makes it different rather than an equal third -->
       <section id="how" class="py-14 border-t scroll-mt-20 bd">
-        <h2 class="max-w-2xl font-black text-2xl tracking-tight sm:text-3xl">Four stages, and the last one is the only one that spends money</h2>
+        <h2 class="display max-w-2xl font-black text-2xl tracking-tight sm:text-3xl">Four stages, and the last one is the only one that spends money</h2>
 
         <div class="mt-8 divide-y bd">
           <div class="grid gap-2 md:grid-cols-[14rem_1fr] md:gap-10 py-6">
@@ -636,7 +637,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
     >
       <div class="flex items-center justify-between px-5 py-4 border-b bd">
         <div>
-          <h2 class="font-black text-lg">Betting sheet</h2>
+          <h2 class="display font-black text-lg">Betting sheet</h2>
           <p class="text-xs muted"><span x-text="sheet.length"></span> pick(s) · parlay builder</p>
         </div>
         <button class="grid place-items-center h-9 w-9 rounded-lg icon-btn" @click="sheetOpen = false" aria-label="Close">✕</button>
