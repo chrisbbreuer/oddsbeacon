@@ -30,6 +30,14 @@ export default function () {
     .job('IngestPredictionMarkets')
     .everyFiveMinutes()
 
+  // Trading loop: score markets from that tape, judge the candidates,
+  // and place what the active strategies approve. Slower than ingestion
+  // on purpose — the evidence window is 24h, so a faster pass mostly
+  // re-derives the same numbers. See app/Jobs/AutoTrade.ts.
+  schedule
+    .job('AutoTrade')
+    .everyFifteenMinutes()
+
   // Run a custom action every five minutes
   // schedule.action('CleanupTempFiles').everyFiveMinutes()
 

@@ -1,0 +1,105 @@
+import type { VenueCredentials } from '../../Services/trading/credentials'
+import { Database } from 'bun:sqlite'
+import { response } from '@stacksjs/router'
+import { assertUsable, CredentialError, maskIdentifier, sealCredentials } from '../../Services/trading/credentials'
+import { clientFor } from '../../Services/trading/execute'
+import { databasePath } from '../../Services/trading/run'
+
+/**
+ * POST /api/trading/accounts — connect a venue account.
+ *
+ * The credentials are proved before they are trusted: we seal them, read
+ * a balance with them, and only then mark the account active. A key that
+ * was pasted wrong should fail here, in a form, rather than at 4am
+ * inside a trading pass where it looks like the strategy found nothing.
+ *
+ * Nothing in the response echoes a credential back, including on the
+ * error path — a validation message that quotes the value it rejected
+ * puts a private key in a browser history.
+ */
+export default {
+  name: 'ConnectExchangeAccount',
+  description: 'Store venue API credentials and verify them against the venue.',
+
+  async handle(request?: { get?: (key: string) => string | undefined, user?: { id?: number } }) {
+    const userId = request?.user?.id
+    if (!userId)
+      return response.error('Sign in to connect a trading account.', 401)
+
+    const venue = (request?.get?.('venue') ?? '').toLowerCase()
+    if (venue !== 'kalshi' && venue !== 'polymarket')
+      return response.error(`Unknown venue: ${venue || '(missing)'}. Expected kalshi or polymarket.`, 422)
+
+    const credentials: VenueCredentials = venue === 'kalshi'
+      ? {
+          venue: 'kalshi',
+          apiKeyId: request?.get?.('apiKeyId') ?? '',
+          privateKeyPem: request?.get?.('privateKeyPem') ?? '',
+        }
+      : {
+          venue: 'polymarket',
+          apiKey: request?.get?.('apiKey') ?? '',
+          apiSecret: request?.get?.('apiSecret') ?? '',
+          apiPassphrase: request?.get?.('apiPassphrase') ?? '',
+          privateKey: request?.get?.('privateKey') ?? '',
+          funderAddress: request?.get?.('funderAddress') ?? '',
+        }
+
+    try {
+      assertUsable(credentials)
+    }
+    catch (error) {
+      return response.error(error instanceof CredentialError ? error.message : 'Invalid credentials.', 422)
+    }
+
+    const sealed = await sealCredentials(credentials)
+    const label = (request?.get?.('label') ?? 'Primary').slice(0, 60)
+    const masked = maskIdentifier(credentials)
+    const now = new Date().toISOString()
+
+    // Verify before storing anything as usable: an account row that says
+    // 'active' without a successful read is a promise we have not kept.
+    let balance = 0
+    try {
+      const client = await clientFor(sealed)
+      balance = (await client.fetchBalance()).available
+    }
+    catch (error) {
+      return response.error(
+        `${venue} rejected these credentials: ${error instanceof Error ? error.message : String(error)}`,
+        422,
+      )
+    }
+
+    const db = new Database(databasePath())
+
+    try {
+      db.prepare(`
+        INSERT INTO exchange_accounts (
+          user_id, venue, label, credentials, masked_identifier, status,
+          balance, last_error, last_synced_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'active', ?, '', ?, ?, ?)
+        ON CONFLICT (user_id, venue) DO UPDATE SET
+          label = excluded.label,
+          credentials = excluded.credentials,
+          masked_identifier = excluded.masked_identifier,
+          status = 'active',
+          balance = excluded.balance,
+          last_error = '',
+          last_synced_at = excluded.last_synced_at,
+          updated_at = excluded.updated_at
+      `).run(userId, venue, label, sealed, masked, balance, now, now, now)
+
+      return {
+        venue,
+        label,
+        maskedIdentifier: masked,
+        status: 'active',
+        balance,
+      }
+    }
+    finally {
+      db.close()
+    }
+  },
+}
