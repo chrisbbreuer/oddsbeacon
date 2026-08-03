@@ -38,12 +38,12 @@
     </div>
   </div>
 
-  <!--
+  {{--
     The disclaimer sits in the footer of every page rather than only on
     the pages that mention trading. Someone who lands on a feature page
     from search has seen exactly one page, and it should be the one that
     tells them what this is.
-  -->
+  --}}
   <div class="border-t bd" style="background:var(--surface-2)">
     <div class="flex flex-col gap-2 items-center justify-between sm:flex-row mx-auto px-4 py-5 sm:px-6 max-w-6xl text-xs muted">
       <span>© 2026 Prin.tel. Analysis tooling, not financial advice. You can lose money.</span>

@@ -69,6 +69,8 @@
     "sqlite": "^3.47.2"
   },
   "dependencies": {
+    "@stacksjs/stx": "^0.2.152",
+    "bun-plugin-stx": "^0.2.152",
     "stacks": "^0.70.249",
     "ts-charts": "github:stacksjs/ts-charts",
     "viem": "^2.55.10"

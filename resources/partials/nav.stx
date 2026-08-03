@@ -5,12 +5,12 @@
       <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
     </a>
 
-    <!--
+    {{--
       Kept to five items so it never wraps to a second line at lg, which
       is where a nav stops being navigation and starts being a layout bug.
       The per-page `navActive` const is read straight out of the including
       page's scope.
-    -->
+    --}}
     <nav class="hidden gap-7 items-center font-semibold text-sm lg:flex muted">
       <a href="/features" data-no-router class="hover:opacity-70 {{ navActive === 'features' ? 'accent' : '' }}">Features</a>
       <a href="/markets" data-no-router class="hover:opacity-70 {{ navActive === 'markets' ? 'accent' : '' }}">Smart money</a>
