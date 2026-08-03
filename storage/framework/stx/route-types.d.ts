@@ -7,6 +7,14 @@ declare module "stx/routes" {
     '/components/FeatureCard': {  }
     '/emails/welcome': {  }
     '/errors/tester': {  }
+    '/features/api': {  }
+    '/features/automation': {  }
+    '/features/evidence': {  }
+    '/features/live': {  }
+    '/features/odds': {  }
+    '/features/risk': {  }
+    '/features/sheets': {  }
+    '/features/smart-money': {  }
     '/layouts/default': {  }
     '/layouts/marketing': {  }
     '/partials/theme': {  }
@@ -14,6 +22,7 @@ declare module "stx/routes" {
     '/cart': {  }
     '/coming-soon': {  }
     '/dashboard': {  }
+    '/features': {  }
     '/live': {  }
     '/markets': {  }
     '/pricing': {  }
