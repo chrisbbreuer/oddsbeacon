@@ -349,9 +349,10 @@ export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): L
 
     const moves: LineMove[] = []
     for (const pts of points.values()) {
-      if (pts.length < 2 || pts[0].price === pts[1].price)
+      const [latest, previous] = pts
+      if (!latest || !previous || latest.price === previous.price)
         continue
-      const r = pts[0].row
+      const r = latest.row
       moves.push({
         selectionId: r.selection_id,
         bookmakerId: r.bookmaker_id,
@@ -361,10 +362,10 @@ export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): L
         category: r.category,
         book: r.book,
         bookSlug: r.slug,
-        from: pts[1].price,
-        to: pts[0].price,
-        dir: pts[0].price > pts[1].price ? 'up' : 'down',
-        at: pts[0].at,
+        from: previous.price,
+        to: latest.price,
+        dir: latest.price > previous.price ? 'up' : 'down',
+        at: latest.at,
       })
     }
     moves.sort((a, b) => (a.at < b.at ? 1 : -1))
