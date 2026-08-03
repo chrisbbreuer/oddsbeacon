@@ -16,6 +16,7 @@ declare module "stx/routes" {
     '/dashboard': {  }
     '/live': {  }
     '/markets': {  }
+    '/pricing': {  }
     '/orders/:id': { id: string }
   }
 }

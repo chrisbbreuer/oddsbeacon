@@ -87,3 +87,9 @@ storage/framework/cache/
 /storage/framework/frontend-dist
 /.stacks
 /.ts-cloud
+
+# Crosswind's compiled stylesheets and the model-source manifest are
+# regenerated on every dev boot, so a commit of them is noise that
+# conflicts on every branch.
+storage/framework/stx/cache/
+storage/framework/runtime/model-sources/
