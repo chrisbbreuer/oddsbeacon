@@ -273,15 +273,15 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
       <section class="grid gap-10 items-center lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 py-10 lg:py-14">
         <div>
           <h1 class="display max-w-2xl font-black leading-[1.05] text-4xl tracking-tight sm:text-5xl">
-            Every trade it makes,<br><span class="accent">it can show its work.</span>
+            Every account, every call,<br><span class="accent">one place.</span>
           </h1>
           <p class="mt-5 max-w-xl leading-relaxed text-lg muted">
-            PredictHQ reads the public tape on Kalshi and Polymarket, prices what the flow is really worth, and places the position inside limits you set.
+            Connect your venues, think the calls through with people trading them too, and let your AI automate the rest.
           </p>
 
           <div class="flex flex-wrap gap-3 items-center mt-7">
-            <a href="/pricing" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn btn-primary">Start a strategy</a>
-            <a href="#evidence" class="px-5 py-3 font-bold text-sm rounded-lg btn">See a live decision</a>
+            <a href="/pricing" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn btn-primary">Get started</a>
+            <a href="#evidence" class="px-5 py-3 font-bold text-sm rounded-lg btn">See how it decides</a>
           </div>
         </div>
 

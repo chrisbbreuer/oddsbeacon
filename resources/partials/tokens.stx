@@ -123,6 +123,7 @@
     --track: #e9eef6;
     --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
     --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.07);
+    --on-accent: #ffffff;
     --scrim: rgba(10, 13, 20, 0.45);
   }
 
@@ -132,23 +133,25 @@
     when the head runs, which is the whole point of resolving it there.
   */
   :root[data-theme="dark"] {
-    --bg: #0a0d14;
-    --bg-2: #0e131c;
-    --surface: #121826;
-    --surface-2: #182131;
-    --border: #232d40;
-    --border-strong: #303d54;
-    --text: #e8ecf4;
-    --muted: #94a1ba;
-    --faint: #6b7891;
+    --bg: #08090b;
+    --bg-2: #0e1013;
+    --surface: #16181c;
+    --surface-2: #1e2126;
+    /* Barely there. Elevation does the separating; the line is a backstop
+       for the few places two surfaces sit at the same height. */
+    --border: #26292f;
+    --border-strong: #34383f;
+    --text: #f2f3f5;
+    --muted: #9698a0;
+    --faint: #6c6e77;
 
-    --accent: #7d9ae8;
-    --accent-strong: #aabfee;
-    --accent-weak: rgba(125, 154, 232, 0.16);
+    --accent: #5b83f5;
+    --accent-strong: #93aef9;
+    --accent-weak: rgba(91, 131, 245, 0.15);
 
-    --best-bg: rgba(125, 154, 232, 0.16);
-    --best-ring: #7d9ae8;
-    --best-text: #aabfee;
+    --best-bg: rgba(91, 131, 245, 0.15);
+    --best-ring: #5b83f5;
+    --best-text: #93aef9;
 
     --pos: #34d399;
     --neg: #f87171;
@@ -156,6 +159,7 @@
     --track: #1b2333;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 16px 36px rgba(0, 0, 0, 0.5);
+    --on-accent: #08090b;
     --scrim: rgba(2, 4, 8, 0.66);
   }
 
@@ -192,7 +196,17 @@
     font-feature-settings: "tnum";
   }
 
-  .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  /* On dark the hairline all but disappears and the raise carries the edge. */
+  :root[data-theme="dark"] .card {
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 28px rgba(0, 0, 0, 0.5);
+  }
   .soft { background: var(--surface-2); }
   .bd { border-color: var(--border); }
   .muted { color: var(--muted); }
@@ -204,12 +218,18 @@
   .btn { border: 1px solid var(--border-strong); color: var(--text); background: var(--surface); transition: transform 0.12s ease, border-color 0.12s ease; }
   .btn:hover { border-color: var(--accent); }
   .btn:active { transform: translateY(1px); }
-  /* White on cobalt rather than dark on cobalt: 4.6:1 at this shade. */
-  .btn-primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  /*
+    The label colour flips with the theme because the fill does.
+    Light: white on #3e64e0 is 5.1:1.
+    Dark: the fill has to stay bright or the button sinks into a near-black
+    page (a darker blue reads 3.5:1 against the background and stops looking
+    raised), so the label goes near-black instead, at 5.7:1.
+  */
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
   .btn-primary:hover { border-color: var(--accent-strong); }
   .icon-btn { border: 1px solid var(--border); color: var(--muted); background: var(--surface); }
 
-  .brandmark { background: var(--accent); color: #ffffff; }
+  .brandmark { background: var(--accent); color: var(--on-accent); }
 
   /* Keyboard focus stays visible on both themes. */
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

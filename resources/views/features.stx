@@ -14,8 +14,8 @@ import { loadIntelSummary } from '../../app/Support/intel'
 import { loadBoard } from '../../app/Support/odds'
 
 const navActive = 'features'
-const pageTitle = 'PredictHQ features: read the market, then act on it'
-const pageDescription = 'Everything PredictHQ does, from the evidence engine and smart-money scoring through to automated execution on Kalshi and Polymarket.'
+const pageTitle = 'PredictHQ features: your accounts, your people, your AI'
+const pageDescription = 'One place for every venue you trade, the people trading them with you, and an AI that shows its work before it acts.'
 
 const intel = loadIntelSummary()
 const { summary } = loadBoard()
@@ -88,16 +88,16 @@ const execution = [
 
       <main class="mx-auto px-4 pt-14 sm:px-6 max-w-6xl sm:pt-20">
         <div class="max-w-3xl">
-          <h1 class="display font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Read the market. Then act on it.</h1>
+          <h1 class="display font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Your accounts, your people, your AI.</h1>
           <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
-            Everything below runs on the same ingested tape. The analysis half is what PredictHQ knows; the execution half is what it does about it, and the difference between them is the only thing a plan changes.
+            Everything below runs on one ingested tape. What changes with a plan is not what PredictHQ knows, but how much of it acts for you.
           </p>
         </div>
 
         <section class="mt-16">
           <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
-            <h2 class="display font-black text-2xl tracking-tight">Analysis</h2>
-            <p class="text-sm muted">Available on every plan, including the read-only one.</p>
+            <h2 class="display font-black text-2xl tracking-tight">Know</h2>
+            <p class="text-sm muted">On every plan, including the free one.</p>
           </div>
 
           <div class="grid gap-px mt-px sm:grid-cols-2" style="background:var(--border)">
@@ -113,7 +113,7 @@ const execution = [
 
         <section class="mt-16">
           <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
-            <h2 class="display font-black text-2xl tracking-tight">Execution</h2>
+            <h2 class="display font-black text-2xl tracking-tight">Act</h2>
             <p class="text-sm muted">Placing orders needs a plan that includes it.</p>
           </div>
 
