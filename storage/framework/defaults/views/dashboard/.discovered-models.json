@@ -1,11 +1,41 @@
 {
   "models": [
     {
+      "id": "analytics-event",
+      "name": "AnalyticsEvent",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
       "id": "author",
       "name": "Author",
       "icon": "person.text.rectangle.fill",
       "hasDedicatedPage": true,
-      "category": "content"
+      "category": "content",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "board",
+      "name": "Board",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "board-column",
+      "name": "BoardColumn",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
     },
     {
       "id": "campaign",
@@ -22,25 +52,54 @@
       "category": "data"
     },
     {
+      "id": "card",
+      "name": "Card",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "card-comment",
+      "name": "CardComment",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
+    },
+    {
       "id": "cart",
       "name": "Cart",
       "icon": "cart.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "cart-item",
       "name": "CartItem",
       "icon": "cart.badge.plus",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "category",
       "name": "Category",
       "icon": "tag.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "comment",
@@ -54,42 +113,60 @@
       "name": "Coupon",
       "icon": "ticket.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "customer",
       "name": "Customer",
       "icon": "person.crop.circle.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "delivery-route",
       "name": "DeliveryRoute",
       "icon": "map.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "deployment",
       "name": "Deployment",
       "icon": "tablecells.fill",
       "hasDedicatedPage": false,
-      "category": "system"
+      "category": "system",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "digital-delivery",
       "name": "DigitalDelivery",
       "icon": "arrow.down.doc.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "driver",
       "name": "Driver",
       "icon": "car.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "email-list",
@@ -110,7 +187,10 @@
       "name": "GiftCard",
       "icon": "giftcard.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "job",
@@ -120,11 +200,24 @@
       "category": "system"
     },
     {
+      "id": "label",
+      "name": "Label",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
+    },
+    {
       "id": "license-key",
       "name": "LicenseKey",
       "icon": "key.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "log",
@@ -138,21 +231,37 @@
       "name": "LoyaltyPoint",
       "icon": "star.circle.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "loyalty-reward",
       "name": "LoyaltyReward",
       "icon": "gift.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "mail-preference",
+      "name": "MailPreference",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "manufacturer",
       "name": "Manufacturer",
       "icon": "building.2.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "notification",
@@ -162,11 +271,31 @@
       "category": "system"
     },
     {
+      "id": "notification-delivery",
+      "name": "NotificationDelivery",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
+    },
+    {
       "id": "order",
       "name": "Order",
       "icon": "list.clipboard.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "order-idempotency",
+      "name": "OrderIdempotency",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "commerce",
+      "dashboard": {
+        "enabled": false
+      }
     },
     {
       "id": "order-item",
@@ -187,7 +316,10 @@
       "name": "Payment",
       "icon": "creditcard.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "payment-method",
@@ -222,70 +354,107 @@
       "name": "PrintDevice",
       "icon": "printer.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "product",
       "name": "Product",
       "icon": "cube.box.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "product-unit",
       "name": "ProductUnit",
       "icon": "scalemass.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "product-variant",
       "name": "ProductVariant",
       "icon": "cube.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "query-log",
+      "name": "QueryLog",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data"
     },
     {
       "id": "receipt",
       "name": "Receipt",
       "icon": "doc.text.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "release",
       "name": "Release",
       "icon": "tablecells.fill",
       "hasDedicatedPage": false,
-      "category": "system"
+      "category": "system",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "review",
       "name": "Review",
       "icon": "star.fill",
       "hasDedicatedPage": true,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "shipping-method",
       "name": "ShippingMethod",
       "icon": "shippingbox.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "shipping-rate",
       "name": "ShippingRate",
       "icon": "dollarsign.circle.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "shipping-zone",
       "name": "ShippingZone",
       "icon": "map.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "social-post",
@@ -327,42 +496,80 @@
       "name": "TaxRate",
       "icon": "percent",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "team",
       "name": "Team",
       "icon": "person.2.fill",
       "hasDedicatedPage": true,
-      "category": "data"
+      "category": "data",
+      "dashboard": {
+        "highlight": true
+      }
+    },
+    {
+      "id": "team-invitation",
+      "name": "TeamInvitation",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "team-member",
+      "name": "TeamMember",
+      "icon": "tablecells.fill",
+      "hasDedicatedPage": false,
+      "category": "data",
+      "dashboard": {
+        "enabled": false
+      }
     },
     {
       "id": "transaction",
       "name": "Transaction",
       "icon": "arrow.left.arrow.right.circle.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "user",
       "name": "User",
       "icon": "person.fill",
       "hasDedicatedPage": true,
-      "category": "data"
+      "category": "data",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "waitlist-product",
       "name": "WaitlistProduct",
       "icon": "clock.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "waitlist-restaurant",
       "name": "WaitlistRestaurant",
       "icon": "clock.badge.checkmark.fill",
       "hasDedicatedPage": false,
-      "category": "commerce"
+      "category": "commerce",
+      "dashboard": {
+        "highlight": true
+      }
     },
     {
       "id": "websocket",
@@ -380,6 +587,7 @@
     "analytics": true,
     "management": true,
     "utilities": true,
+    "ci": false,
     "data": {
       "dashboard": true,
       "activity": true,

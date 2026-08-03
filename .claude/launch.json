@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "oddsbeacon",
+      "name": "printel",
       "runtimeExecutable": "./buddy",
       "runtimeArgs": ["dev"],
       "port": 3000
