@@ -1,0 +1,30 @@
+<header class="sticky top-0 z-30 border-b bd" style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)">
+  <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
+    <a href="/" class="flex gap-2.5 items-center shrink-0">
+      <span class="grid place-items-center h-9 w-9 font-black rounded-xl brandmark">◎</span>
+      <span class="font-extrabold text-lg tracking-tight">Prin<span class="accent">.tel</span></span>
+    </a>
+
+    <!--
+      Kept to five items so it never wraps to a second line at lg, which
+      is where a nav stops being navigation and starts being a layout bug.
+      The per-page `navActive` const is read straight out of the including
+      page's scope.
+    -->
+    <nav class="hidden gap-7 items-center font-semibold text-sm lg:flex muted">
+      <a href="/features" data-no-router class="hover:opacity-70 {{ navActive === 'features' ? 'accent' : '' }}">Features</a>
+      <a href="/markets" data-no-router class="hover:opacity-70 {{ navActive === 'markets' ? 'accent' : '' }}">Smart money</a>
+      <a href="/live" data-no-router class="hover:opacity-70 {{ navActive === 'live' ? 'accent' : '' }}">Live</a>
+      <a href="/" class="hover:opacity-70 {{ navActive === 'board' ? 'accent' : '' }}">Odds</a>
+      <a href="/pricing" data-no-router class="hover:opacity-70 {{ navActive === 'pricing' ? 'accent' : '' }}">Pricing</a>
+    </nav>
+
+    <div class="flex gap-2 items-center shrink-0">
+      <button class="grid place-items-center h-9 w-9 text-base rounded-lg icon-btn" @click="toggleTheme()" aria-label="Toggle theme">
+        <span x-show="theme !== 'dark'">☾</span>
+        <span x-show="theme === 'dark'" style="display:none">☀</span>
+      </button>
+      <a href="/pricing" data-no-router class="hidden px-4 py-2 font-bold text-sm rounded-lg sm:inline-block btn btn-primary">Start</a>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,134 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..900&family=Geist+Mono:wght@400..600&display=swap">
+
+<style>
+  /*
+    Prin.tel design tokens.
+
+    Included from every page's <head>, since it emits the font links as
+    well as the variables. Before this existed each view carried its own
+    copy of the palette, so a brand change meant a find-and-replace across
+    four files and any page that got missed just looked slightly wrong
+    forever.
+
+    Two decisions worth knowing:
+
+    Cobalt is the brand; green and red are semantic. The old palette used
+    one green for "this is highlighted" and for "this number is up", so on
+    the odds board a best price and a rising price were the same color and
+    neither read as either. The brand now sits in a hue nothing else uses.
+
+    Numbers are Geist Mono everywhere. A probability that shifts its column
+    width as it ticks is unreadable, and this product is mostly numbers
+    that tick.
+  */
+
+  [x-cloak] { display: none !important; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  :root {
+    /* Cool off-white, not paper. This is an instrument. */
+    --bg: #f7f9fc;
+    --bg-2: #eef2f8;
+    --surface: #ffffff;
+    --surface-2: #f4f7fb;
+    --border: #e3e9f2;
+    --border-strong: #d2dbe8;
+    --text: #0f141c;
+    --muted: #5b6780;
+    --faint: #8e9ab1;
+
+    --accent: #2c5cff;
+    --accent-strong: #1d43cc; /* passes AA as text on --surface */
+    --accent-weak: rgba(44, 92, 255, 0.10);
+
+    /* A best-price highlight is a brand act, so it uses the brand hue. */
+    --best-bg: rgba(44, 92, 255, 0.10);
+    --best-ring: #2c5cff;
+    --best-text: #1d43cc;
+
+    /* Semantic only. Never used for emphasis. */
+    --pos: #0d9d63;
+    --neg: #d92d20;
+
+    --track: #e9eef6;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.07);
+    --scrim: rgba(10, 13, 20, 0.45);
+  }
+
+  .app[data-theme="dark"] {
+    --bg: #0a0d14;
+    --bg-2: #0e131c;
+    --surface: #121826;
+    --surface-2: #182131;
+    --border: #232d40;
+    --border-strong: #303d54;
+    --text: #e8ecf4;
+    --muted: #94a1ba;
+    --faint: #6b7891;
+
+    --accent: #6f92ff;
+    --accent-strong: #9db4ff;
+    --accent-weak: rgba(111, 146, 255, 0.16);
+
+    --best-bg: rgba(111, 146, 255, 0.16);
+    --best-ring: #6f92ff;
+    --best-text: #9db4ff;
+
+    --pos: #34d399;
+    --neg: #f87171;
+
+    --track: #1b2333;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 16px 36px rgba(0, 0, 0, 0.5);
+    --scrim: rgba(2, 4, 8, 0.66);
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s ease, color 0.2s ease; }
+  a { color: inherit; text-decoration: none; }
+
+  /* Tabular mono so a ticking number never reflows its column. */
+  .num {
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+  .soft { background: var(--surface-2); }
+  .bd { border-color: var(--border); }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); }
+  .accent { color: var(--accent-strong); }
+  .pos { color: var(--pos); }
+  .neg { color: var(--neg); }
+
+  .btn { border: 1px solid var(--border-strong); color: var(--text); background: var(--surface); transition: transform 0.12s ease, border-color 0.12s ease; }
+  .btn:hover { border-color: var(--accent); }
+  .btn:active { transform: translateY(1px); }
+  /* White on cobalt rather than dark on cobalt: 4.6:1 at this shade. */
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+  .btn-primary:hover { border-color: var(--accent-strong); }
+  .icon-btn { border: 1px solid var(--border); color: var(--muted); background: var(--surface); }
+
+  .brandmark { background: var(--accent); color: #ffffff; }
+
+  /* Keyboard focus stays visible on both themes. */
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .btn { transition: none; }
+    .btn:active { transform: none; }
+  }
+</style>
