@@ -1,0 +1,145 @@
+<script server>
+/**
+ * Prin.tel — feature index.
+ *
+ * The map of everything the product does, split by whether it reads a
+ * market or acts on one. That split is the same one the pricing page
+ * charges on, so the two pages tell the same story about what changes
+ * when you upgrade.
+ *
+ * Counts come from the live database, so the page cannot claim coverage
+ * the ingestion has not actually achieved.
+ */
+import { loadIntelSummary } from '../../app/Support/intel'
+import { loadBoard } from '../../app/Support/odds'
+
+const navActive = 'features'
+const pageTitle = 'Prin.tel features: read the market, then act on it'
+const pageDescription = 'Everything Prin.tel does, from the evidence engine and smart-money scoring through to automated execution on Kalshi and Polymarket.'
+
+const intel = loadIntelSummary()
+const { summary } = loadBoard()
+
+const analysis = [
+  {
+    href: '/features/evidence',
+    name: 'Evidence engine',
+    blurb: 'Six measured signals move fair value off the venue quote, each one clamped and each recording the sample it stood on.',
+    stat: `${intel.recentFills.toLocaleString()} fills priced in the last 24h`,
+  },
+  {
+    href: '/features/smart-money',
+    name: 'Smart money',
+    blurb: 'Per-account win rates on settled markets, shrunk toward a coin flip so a 2-for-2 record never outranks a 40-for-50 one.',
+    stat: `${intel.traderCount.toLocaleString()} accounts scored, ${intel.whaleCount} flagged for size`,
+  },
+  {
+    href: '/features/odds',
+    name: 'Odds comparison',
+    blurb: 'Sportsbook prices and prediction-market probabilities on one row, with the best available price on each outcome ringed.',
+    stat: `${summary.bookmakerCount} books across ${summary.eventCount} games`,
+  },
+  {
+    href: '/features/live',
+    name: 'Live moves',
+    blurb: 'Every price change streamed as it lands, so a line that moves against you is visible before the next page load.',
+    stat: 'Broadcast over WebSocket, one-minute ingest',
+  },
+]
+
+const execution = [
+  {
+    href: '/features/automation',
+    name: 'Automated trading',
+    blurb: 'Strategies place orders on Kalshi and Polymarket inside limits you set, sized by quarter-Kelly on your own bankroll.',
+    stat: 'Two venues, one order model',
+  },
+  {
+    href: '/features/risk',
+    name: 'Risk limits',
+    blurb: 'Bankroll, per-trade cap, open positions, and a daily loss limit re-checked before every order leaves the process.',
+    stat: 'Every refusal recorded with its reason',
+  },
+  {
+    href: '/features/sheets',
+    name: 'Bet sheets',
+    blurb: 'Stack picks across games into a parlay and watch the combined price and payout update against live odds.',
+    stat: 'Saved server-side, shareable',
+  },
+  {
+    href: '/features/api',
+    name: 'JSON API',
+    blurb: 'Everything the pages read is a documented endpoint, including the candidate feed with its full evidence.',
+    stat: 'No key required for reads',
+  },
+]
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body x-data="{ theme: (localStorage.getItem('ob-theme') || 'light'), toggleTheme() { this.theme = this.theme === 'dark' ? 'light' : 'dark'; localStorage.setItem('ob-theme', this.theme) } }">
+    <div class="app" :data-theme="theme">
+      @include('nav')
+
+      <main class="mx-auto px-4 pt-14 sm:px-6 max-w-6xl sm:pt-20">
+        <div class="max-w-3xl">
+          <h1 class="font-black leading-[1.06] text-4xl tracking-tight sm:text-5xl">Read the market. Then act on it.</h1>
+          <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
+            Everything below runs on the same ingested tape. The analysis half is what Prin.tel knows; the execution half is what it does about it, and the difference between them is the only thing a plan changes.
+          </p>
+        </div>
+
+        <section class="mt-16">
+          <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
+            <h2 class="font-black text-2xl tracking-tight">Analysis</h2>
+            <p class="text-sm muted">Available on every plan, including the read-only one.</p>
+          </div>
+
+          <div class="grid gap-px mt-px sm:grid-cols-2" style="background:var(--border)">
+            @foreach (analysis as item)
+              <a href="{{ item.href }}" data-no-router class="flex flex-col p-6 group sm:p-7" style="background:var(--surface)">
+                <h3 class="font-bold text-lg tracking-tight group-hover:opacity-70">{{ item.name }}</h3>
+                <p class="mt-2 leading-relaxed text-sm muted">{{ item.blurb }}</p>
+                <span class="mt-4 font-semibold text-xs num faint">{{ item.stat }}</span>
+              </a>
+            @endforeach
+          </div>
+        </section>
+
+        <section class="mt-16">
+          <div class="flex flex-wrap gap-3 items-baseline justify-between pb-4 border-b bd">
+            <h2 class="font-black text-2xl tracking-tight">Execution</h2>
+            <p class="text-sm muted">Placing orders needs a plan that includes it.</p>
+          </div>
+
+          <div class="grid gap-px mt-px sm:grid-cols-2" style="background:var(--border)">
+            @foreach (execution as item)
+              <a href="{{ item.href }}" data-no-router class="flex flex-col p-6 group sm:p-7" style="background:var(--surface)">
+                <h3 class="font-bold text-lg tracking-tight group-hover:opacity-70">{{ item.name }}</h3>
+                <p class="mt-2 leading-relaxed text-sm muted">{{ item.blurb }}</p>
+                <span class="mt-4 font-semibold text-xs num faint">{{ item.stat }}</span>
+              </a>
+            @endforeach
+          </div>
+        </section>
+
+        <section class="flex flex-col gap-5 items-start justify-between lg:flex-row lg:items-center p-8 mt-16 rounded-2xl card sm:p-10">
+          <div>
+            <h2 class="font-black text-2xl tracking-tight">See it price a real market</h2>
+            <p class="mt-2 max-w-xl leading-relaxed muted">The candidate feed is open and needs no account. It is the same call the trading loop makes every fifteen minutes.</p>
+          </div>
+          <div class="flex flex-wrap gap-3 shrink-0">
+            <a href="/features/evidence" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn btn-primary">How pricing works</a>
+            <a href="/api/trading/candidates" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn">Open the feed</a>
+          </div>
+        </section>
+      </main>
+
+      @include('footer')
+    </div>
+  </body>
+</html>
