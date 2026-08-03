@@ -7,19 +7,16 @@
  * against the exact schema the app ships.
  */
 
-import { Database } from 'bun:sqlite'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import type { Database } from 'bun:sqlite'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { runAnalytics } from '../../app/Services/prediction-markets/analytics'
+import { schemaFor } from '../support/schema'
 
-const MIGRATIONS = [
-  'database/migrations/0000000207-create-prediction_markets-table.sql',
-  'database/migrations/0000000208-create-market_traders-table.sql',
-  'database/migrations/0000000209-create-market_trades-table.sql',
-]
+const TABLES = ['prediction_markets', 'market_traders', 'market_trades']
 
 let dir: string
 let dbPath: string
@@ -66,9 +63,7 @@ function seed(database: Database): void {
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'ob-pm-test-'))
   dbPath = join(dir, 'test.sqlite')
-  db = new Database(dbPath)
-  for (const file of MIGRATIONS)
-    db.run(readFileSync(file, 'utf8'))
+  db = schemaFor(dbPath, TABLES)
   seed(db)
   previousDbPath = process.env.DB_DATABASE_PATH
   process.env.DB_DATABASE_PATH = dbPath
