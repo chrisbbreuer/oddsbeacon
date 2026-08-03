@@ -1,5 +1,5 @@
 /**
- * OddsBeacon — odds math + comparison-board assembly.
+ * Prin.tel — odds math + comparison-board assembly.
  *
  * Pure domain logic that turns the rows stored by the Bookmaker /
  * MarketEvent / Selection / Odd models into the view-model the page and

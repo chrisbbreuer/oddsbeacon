@@ -1,6 +1,6 @@
-# Deploying OddsBeacon
+# Deploying Prin.tel
 
-OddsBeacon is a standard Stacks app plus a realtime broadcast server and a
+Prin.tel is a standard Stacks app plus a realtime broadcast server and a
 scheduled ingestion loop. Build and ship it with Buddy.
 
 ## Environment

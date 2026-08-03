@@ -1,6 +1,6 @@
 <script server>
 /**
- * OddsBeacon — sports odds comparison + betting-sheet builder.
+ * Prin.tel — sports odds comparison + betting-sheet builder.
  *
  * Reads the seeded games from SQLite via the pure `app/Support/odds`
  * helpers (no ORM in the stx server scope), then enriches each row with
@@ -13,7 +13,7 @@ import { loadBoard } from '../../app/Support/odds'
 
 const { bookmakers, events, summary } = loadBoard()
 
-const appName = 'OddsBeacon'
+const appName = 'Prin.tel'
 
 const bookById = {}
 for (const b of bookmakers)
@@ -112,8 +112,8 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="OddsBeacon compares sports odds across every sportsbook and prediction market, highlights the best line on each game, and lets you build betting sheets for parlays.">
-    <title>OddsBeacon — Compare sports odds & build betting sheets</title>
+    <meta name="description" content="Prin.tel compares sports odds across every sportsbook and prediction market, highlights the best line on each game, and lets you build betting sheets for parlays.">
+    <title>Prin.tel — Compare sports odds & build betting sheets</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }
@@ -331,7 +331,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
           Best line on every game.<br><span class="accent">Build it into a sheet.</span>
         </h1>
         <p class="mt-4 max-w-2xl leading-relaxed text-lg muted">
-          OddsBeacon compares {{ summary.bookmakerCount }} sportsbooks and prediction markets on every game, rings who's paying the most, and lets you stack picks into a betting sheet to track your parlay's live odds.
+          Prin.tel compares {{ summary.bookmakerCount }} sportsbooks and prediction markets on every game, rings who's paying the most, and lets you stack picks into a betting sheet to track your parlay's live odds.
         </p>
 
         <!-- tracked books logo strip -->
@@ -528,7 +528,7 @@ const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
 
       <!-- how it works -->
       <section id="how" class="py-14 border-t scroll-mt-20 bd">
-        <h2 class="font-black text-2xl tracking-tight sm:text-3xl">How OddsBeacon works</h2>
+        <h2 class="font-black text-2xl tracking-tight sm:text-3xl">How Prin.tel works</h2>
         <div class="grid gap-5 md:grid-cols-3 mt-6">
           <div class="p-5 rounded-2xl card">
             <div class="grid place-items-center h-10 w-10 font-black text-lg rounded-lg" style="background:var(--accent-weak);color:var(--accent-strong)">1</div>

@@ -1,6 +1,6 @@
 <script server>
 /**
- * OddsBeacon — Live action.
+ * Prin.tel — Live action.
  *
  * Server-renders the most recent line moves + active arbs (reliable), then
  * prepends realtime items as they arrive on the `odds` / `alerts` broadcast
@@ -9,7 +9,7 @@
 import { brandFor, teamFor } from '../../app/Support/branding'
 import { loadBoard, loadRecentMoves } from '../../app/Support/odds'
 
-const appName = 'OddsBeacon'
+const appName = 'Prin.tel'
 const { bookmakers, events, summary } = loadBoard()
 
 // Initial feed (recent line moves) — rendered server-side with @foreach.
@@ -72,8 +72,8 @@ const broadcastPort = process.env.BROADCAST_PORT || 6001
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="OddsBeacon live action — sports line moves and arbitrage streaming in real time.">
-    <title>OddsBeacon — Live action</title>
+    <meta name="description" content="Prin.tel live action — sports line moves and arbitrage streaming in real time.">
+    <title>Prin.tel — Live action</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }

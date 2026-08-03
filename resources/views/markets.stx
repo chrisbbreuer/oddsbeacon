@@ -1,6 +1,6 @@
 <script server>
 /**
- * OddsBeacon — Smart money.
+ * Prin.tel — Smart money.
  *
  * Who keeps buying the winning side on Kalshi + Polymarket, and how big
  * they bet. The money-flow network is laid out server-side with
@@ -11,7 +11,7 @@
 import { graphLayout } from 'ts-charts/graph'
 import { loadBigTrades, loadGraph, loadSmartMoney } from '../../app/Support/prediction-markets'
 
-const appName = 'OddsBeacon'
+const appName = 'Prin.tel'
 const W = 920
 const H = 640
 
@@ -102,8 +102,8 @@ const stats = {
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="OddsBeacon smart money — who keeps buying the winning side on Kalshi and Polymarket, and how big they bet.">
-    <title>OddsBeacon — Smart money</title>
+    <meta name="description" content="Prin.tel smart money — who keeps buying the winning side on Kalshi and Polymarket, and how big they bet.">
+    <title>Prin.tel — Smart money</title>
     <style>
       [x-cloak] { display: none !important; }
       * { box-sizing: border-box; }

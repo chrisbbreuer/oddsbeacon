@@ -1,22 +1,22 @@
 {
-  "name": "stacks",
+  "name": "printel",
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "Your project description",
-  "author": "your-name <your-email>",
+  "description": "Prin.tel — Prediction Intel. Signals and automated positions across Kalshi and Polymarket.",
+  "author": "Chris Breuer <chris@stacksjs.org>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
   ],
   "license": "MIT",
   "funding": "https://github.com/sponsors/chrisbbreuer",
-  "homepage": "https://github.com/stacksjs/stacks#readme",
+  "homepage": "https://github.com/chrisbbreuer/oddsbeacon#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/stacksjs/stacks.git"
+    "url": "git+https://github.com/chrisbbreuer/oddsbeacon.git"
   },
   "bugs": {
-    "url": "https://github.com/stacksjs/stacks/issues"
+    "url": "https://github.com/chrisbbreuer/oddsbeacon/issues"
   },
   "scripts": {
     "build:reset": "rm -rf node_modules pantry.lock && bun install && ./buddy generate:types && ./buddy lint:fix",

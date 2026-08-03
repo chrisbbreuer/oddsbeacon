@@ -3,7 +3,7 @@ import process from 'node:process'
 import { Seeder } from '@stacksjs/database'
 
 /**
- * Seeds OddsBeacon's sports board: sportsbooks + prediction markets and a
+ * Seeds Prin.tel's sports board: sportsbooks + prediction markets and a
  * spread of games across the NBA, NFL, Premier League, NHL, and MLB, with
  * every book's price on each outcome. One game (NYR/BOS) carries a
  * deliberate cross-book arbitrage. Run with

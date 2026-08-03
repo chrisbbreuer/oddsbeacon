@@ -15,7 +15,7 @@ export interface SubscriptionConfirmationOptions {
 export async function sendSubscriptionConfirmation(options: SubscriptionConfirmationOptions): Promise<void> {
   const { to, subscriberUuid } = options
 
-  const appName = config.app.name || 'Stacks'
+  const appName = config.app.name || 'Prin.tel'
   const unsubscribeUrl = url('email.unsubscribe', { token: subscriberUuid })
 
   const { html, text } = await template('subscription-confirmation', {
