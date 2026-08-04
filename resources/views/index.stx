@@ -256,33 +256,57 @@ const navActive = 'board'
           </p>
 
           <div class="flex flex-wrap gap-3 items-center mt-7">
-            <a href="/pricing" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn btn-primary">Get started</a>
+            <a href="/signup" data-no-router class="px-5 py-3 font-bold text-sm rounded-lg btn btn-primary">Sign up</a>
             <a href="#evidence" class="px-5 py-3 font-bold text-sm rounded-lg btn">See how it decides</a>
           </div>
         </div>
 
-        <!-- Live counters. Real rows in our own database, which is the
-             only honest way to open a page that sells traceability. -->
-        <div class="p-6 rounded-2xl card sm:p-7">
-          <div class="grid gap-y-6 grid-cols-2 gap-x-8">
-            <div>
-              <div class="font-black text-3xl num">{{ intel.marketCount.toLocaleString() }}</div>
-              <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Markets tracked</div>
+        {{--
+          The panel used to count the intel tape (markets, fills, traders,
+          whales). Those tables are empty until prediction-market ingestion
+          has run, so the first thing a visitor met on a page selling
+          traceable data was four zeros, which reads as a broken product
+          rather than a cold database.
+
+          These four come off the odds board instead. That feed is the
+          always-on one, so the panel is real on a fresh install, and it is
+          proof of the same claim: this is what we are reading right now.
+        --}}
+        @if (summary.eventCount)
+          <div class="p-6 rounded-2xl card sm:p-7">
+            <div class="flex gap-2 items-center pb-5 border-b bd">
+              <span class="h-2 w-2 rounded-full" style="background:var(--pos)" aria-hidden="true"></span>
+              <span class="font-bold text-xs tracking-wide uppercase muted">Reading right now</span>
             </div>
-            <div>
-              <div class="font-black text-3xl num">{{ intel.recentFills.toLocaleString() }}</div>
-              <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Fills read today</div>
-            </div>
-            <div>
-              <div class="font-black text-3xl num">{{ intel.traderCount.toLocaleString() }}</div>
-              <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Accounts scored</div>
-            </div>
-            <div>
-              <div class="font-black text-3xl accent num">{{ intel.whaleCount.toLocaleString() }}</div>
-              <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Size traders flagged</div>
+            <div class="grid gap-y-6 grid-cols-2 gap-x-8 pt-5">
+              <div>
+                <div class="font-black text-3xl num">{{ summary.eventCount.toLocaleString() }}</div>
+                <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Games priced</div>
+              </div>
+              <div>
+                <div class="font-black text-3xl num">{{ summary.bookmakerCount.toLocaleString() }}</div>
+                <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Books compared</div>
+              </div>
+              <div>
+                <div class="font-black text-3xl num pos">{{ summary.avgEdgePct.toFixed(1) }}%</div>
+                <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Avg best edge</div>
+              </div>
+              <div>
+                <div class="font-black text-3xl accent num">{{ arbCount.toLocaleString() }}</div>
+                <div class="mt-1 font-semibold text-xs tracking-wide uppercase muted">Arbs on the board</div>
+              </div>
             </div>
           </div>
-        </div>
+        @else
+          {{-- Nothing ingested at all. Say that, rather than print zeros. --}}
+          <div class="p-7 rounded-2xl card">
+            <h2 class="font-bold text-lg">The board is warming up</h2>
+            <p class="mt-2 leading-relaxed muted">
+              No odds have been ingested yet, so there is nothing to compare. Prices appear here as soon as the first pull lands.
+            </p>
+            <a href="/features/odds" data-no-router class="inline-flex items-center px-4 mt-5 h-10 font-bold text-sm rounded-lg btn">How the board works</a>
+          </div>
+        @endif
       </section>
 
       <!-- venues + books, under the hero rather than inside it -->
@@ -299,6 +323,32 @@ const navActive = 'board'
         <p class="mt-3 max-w-2xl leading-relaxed muted">
           Fair value starts at the venue's own price. Each signal below moved it by a measured amount, and every one records the sample it stood on. The model reviewing this can decline it or lower its confidence. It cannot raise it.
         </p>
+
+        {{--
+          The size of the tape those signals are drawn from. Gated on the
+          tape existing: on a cold database this whole row is zeros, which
+          says nothing, so it is absent instead.
+        --}}
+        @if (intel.marketCount)
+          <div class="flex flex-wrap gap-x-10 gap-y-4 mt-7">
+            <div>
+              <div class="font-black text-xl num">{{ intel.marketCount.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Markets tracked</div>
+            </div>
+            <div>
+              <div class="font-black text-xl num">{{ intel.recentFills.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Fills read today</div>
+            </div>
+            <div>
+              <div class="font-black text-xl num">{{ intel.traderCount.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Accounts scored</div>
+            </div>
+            <div>
+              <div class="font-black text-xl accent num">{{ intel.whaleCount.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Size traders flagged</div>
+            </div>
+          </div>
+        @endif
 
         @if (candidate)
           <div class="overflow-hidden mt-7 rounded-2xl card">
@@ -351,27 +401,6 @@ const navActive = 'board'
         @endif
       </section>
 
-      <!-- the board, kept as live proof rather than a screenshot -->
-      <section class="py-9">
-        <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <div class="p-4 rounded-2xl card">
-            <div class="font-black text-2xl num">{{ summary.eventCount }}</div>
-            <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Games</div>
-          </div>
-          <div class="p-4 rounded-2xl card">
-            <div class="font-black text-2xl num">{{ summary.bookmakerCount }}</div>
-            <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Books compared</div>
-          </div>
-          <div class="p-4 rounded-2xl card">
-            <div class="font-black text-2xl num pos">{{ summary.avgEdgePct.toFixed(1) }}%</div>
-            <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Avg best edge</div>
-          </div>
-          <div class="p-4 rounded-2xl card">
-            <div class="font-black text-2xl accent num">{{ arbCount }}</div>
-            <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Arb opportunities</div>
-          </div>
-        </div>
-      </section>
 
       <!-- controls -->
       <section id="board" class="scroll-mt-20">

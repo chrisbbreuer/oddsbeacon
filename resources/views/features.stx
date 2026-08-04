@@ -20,24 +20,40 @@ const pageDescription = 'One place for every venue you trade, the people trading
 const intel = loadIntelSummary()
 const { summary } = loadBoard()
 
+/**
+ * A count is only worth printing once there is something to count.
+ *
+ * These lines read off tables that are empty until ingestion has run, so
+ * on a fresh install every card here said "0 fills priced", "0 accounts
+ * scored". A zero next to a feature name claims the feature does nothing,
+ * which is a different statement from "the tape has not been pulled yet".
+ * The fallbacks are the same shape as the static lines the non-numeric
+ * cards already carry, so the row stays even.
+ */
+function counted(value, phrase, fallback) {
+  return value ? `${value.toLocaleString()} ${phrase}` : fallback
+}
+
 const analysis = [
   {
     href: '/features/evidence',
     name: 'Evidence engine',
     blurb: 'Six measured signals move fair value off the venue quote, each one clamped and each recording the sample it stood on.',
-    stat: `${intel.recentFills.toLocaleString()} fills priced in the last 24h`,
+    stat: counted(intel.recentFills, 'fills priced in the last 24h', 'Prices every fill the tape carries'),
   },
   {
     href: '/features/smart-money',
     name: 'Smart money',
     blurb: 'Per-account win rates on settled markets, shrunk toward a coin flip so a 2-for-2 record never outranks a 40-for-50 one.',
-    stat: `${intel.traderCount.toLocaleString()} accounts scored, ${intel.whaleCount} flagged for size`,
+    stat: intel.traderCount
+      ? `${intel.traderCount.toLocaleString()} accounts scored, ${intel.whaleCount} flagged for size`
+      : 'Scoring begins at the first settled market',
   },
   {
     href: '/features/odds',
     name: 'Odds comparison',
     blurb: 'Sportsbook prices and prediction-market probabilities on one row, with the best available price on each outcome ringed.',
-    stat: `${summary.bookmakerCount} books across ${summary.eventCount} games`,
+    stat: counted(summary.bookmakerCount, `books across ${summary.eventCount} games`, 'Every book on one row'),
   },
   {
     href: '/features/live',
