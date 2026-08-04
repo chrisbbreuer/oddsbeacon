@@ -1,26 +1,59 @@
+<script server>
+/**
+ * The one nav.
+ *
+ * Every link is declared once, here, and rendered twice: the desktop row
+ * and the mobile sheet both iterate this array. They used to be two
+ * hand-written lists, which is why they drifted (the mobile sheet carried
+ * a Live link the desktop row never had). A single source means they
+ * cannot disagree again.
+ *
+ * `key` is matched against the `navActive` const each page sets in its own
+ * server scope, which is how a link knows it is the current one.
+ */
+const NAV_LINKS = [
+  { href: '/', key: 'board', label: 'Odds', router: true },
+  { href: '/live', key: 'live', label: 'Live', router: false },
+  { href: '/scores/nfl/today', key: 'scores', label: 'Scores', router: false },
+  { href: '/markets', key: 'markets', label: 'Smart money', router: false },
+  { href: '/community', key: 'community', label: 'Community', router: false },
+  { href: '/features', key: 'features', label: 'Features', router: false },
+  { href: '/pricing', key: 'pricing', label: 'Pricing', router: false },
+]
+</script>
+
 <header
   class="sticky top-0 z-30 border-b bd"
   style="background:color-mix(in srgb, var(--surface) 86%, transparent);backdrop-filter:blur(14px)"
 >
-  <div class="flex gap-3 items-center justify-between mx-auto px-4 py-3 sm:px-6 max-w-6xl">
+  <div class="flex gap-4 items-center justify-between mx-auto px-4 h-16 sm:px-6 max-w-7xl">
     <a href="/" class="flex gap-2.5 items-center shrink-0">
       <span class="grid place-items-center h-9 w-9 p-2 rounded-xl brandmark">@include('logo')</span>
       <span class="font-extrabold text-lg tracking-tight">Predict<span class="accent">HQ</span></span>
     </a>
 
     {{--
-      Kept to five items so it never wraps to a second line at lg, which
-      is where a nav stops being navigation and starts being a layout bug.
-      The per-page `navActive` const is read straight out of the including
-      page's scope.
+      Seven destinations plus a visible auth pair does not fit on one line
+      at 1024, and a nav that wraps to two lines is a layout bug. So the
+      full row starts at xl and the sheet covers everything below it,
+      rather than dropping links nobody would then be able to find.
     --}}
-    <nav class="hidden gap-7 items-center font-semibold text-sm lg:flex muted">
-      <a href="/features" data-no-router class="hover:opacity-70 {{ navActive === 'features' ? 'accent' : '' }}">Features</a>
-      <a href="/markets" data-no-router class="hover:opacity-70 {{ navActive === 'markets' ? 'accent' : '' }}">Smart money</a>
-      <a href="/scores/nfl/today" data-no-router class="hover:opacity-70 {{ navActive === 'scores' ? 'accent' : '' }}">Scores</a>
-      <a href="/community" data-no-router class="hover:opacity-70 {{ navActive === 'community' ? 'accent' : '' }}">Community</a>
-      <a href="/" class="hover:opacity-70 {{ navActive === 'board' ? 'accent' : '' }}">Odds</a>
-      <a href="/pricing" data-no-router class="hover:opacity-70 {{ navActive === 'pricing' ? 'accent' : '' }}">Pricing</a>
+    {{--
+      `.nav-row` stretches this to the full bar height. The row above is
+      `items-center`, which would otherwise size it to its content, and the
+      active rule below is positioned against the bottom of this element,
+      so it has to be full height for the rule to land on the header's own
+      border rather than float above it.
+    --}}
+    <nav class="hidden gap-6 items-center font-semibold text-sm xl:flex nav-row muted">
+      @foreach (NAV_LINKS as link)
+        <a
+          href="{{ link.href }}"
+          {{ link.router ? '' : 'data-no-router' }}
+          class="nav-link {{ navActive === link.key ? 'is-active' : '' }}"
+          {{ navActive === link.key ? 'aria-current=page' : '' }}
+        >{{ link.label }}</a>
+      @endforeach
     </nav>
 
     <div class="flex gap-2 items-center shrink-0">
@@ -28,22 +61,34 @@
         <i class="h-4 w-4 i-hugeicons-moon-02" x-show="theme !== 'dark'"></i>
         <i class="h-4 w-4 i-hugeicons-sun-03" x-show="theme === 'dark'" style="display:none"></i>
       </button>
+
+      {{--
+        The sheet is the visitor's working state, not a conversion action,
+        so it stays a secondary button and never takes the primary slot the
+        way it used to. Below xl it keeps the count and drops the words.
+      --}}
       @if (navActive === 'board')
-        <button class="hidden gap-2 items-center px-4 py-2 font-bold text-sm rounded-lg sm:inline-flex btn btn-primary" @click="drawer = true">
-          My sheet
-          <span class="grid place-items-center h-5 min-w-5 px-1 text-xs rounded-full" style="background:rgba(0,0,0,0.18)" x-text="sheet.length"></span>
+        <button
+          class="hidden gap-2 items-center px-3 py-2 h-9 font-bold text-sm rounded-lg sm:inline-flex btn"
+          @click="drawer = true"
+          aria-label="Open my sheet"
+        >
+          <i class="h-4 w-4 i-hugeicons-note-edit"></i>
+          <span class="hidden xl:inline">My sheet</span>
+          <span class="grid place-items-center h-5 min-w-5 px-1 font-bold text-xs rounded-full soft num" x-text="sheet.length"></span>
         </button>
-      @else
-        <a href="/pricing" data-no-router class="hidden px-4 py-2 font-bold text-sm rounded-lg sm:inline-block btn btn-primary">Start</a>
       @endif
 
       {{--
-        Below lg the five links were simply `hidden`, and the CTA was hidden
-        below sm, so a phone got a logo and a theme toggle and no way to
-        reach any other page. This is that missing half.
+        Log in and Sign up, on every page, in the same place. Previously
+        the only thing here was a "Start" button pointing at pricing, and
+        an existing customer had nowhere to say they were one.
       --}}
+      <a href="/login" data-no-router class="hidden items-center px-3 h-9 font-semibold text-sm rounded-lg sm:inline-flex nav-login">Log in</a>
+      <a href="/signup" data-no-router class="hidden items-center px-4 h-9 font-bold text-sm rounded-lg sm:inline-flex btn btn-primary">Sign up</a>
+
       <button
-        class="grid place-items-center h-9 w-9 rounded-lg lg:hidden icon-btn"
+        class="grid place-items-center h-9 w-9 rounded-lg xl:hidden icon-btn"
         @click="toggleMenu()"
         :aria-expanded="menu ? 'true' : 'false'"
         aria-controls="mobile-nav"
@@ -57,21 +102,73 @@
 
   <nav
     id="mobile-nav"
-    class="border-t lg:hidden bd"
+    class="border-t xl:hidden bd"
     style="background:var(--surface)"
     x-show="menu"
     x-cloak
     x-transition.opacity.duration.150ms
   >
-    <div class="flex flex-col mx-auto px-4 py-2 sm:px-6 max-w-6xl">
-      <a href="/features" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'features' ? 'accent' : '' }}" @click="menu = false">Features</a>
-      <a href="/markets" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'markets' ? 'accent' : '' }}" @click="menu = false">Smart money</a>
-      <a href="/scores/nfl/today" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'scores' ? 'accent' : '' }}" @click="menu = false">Scores</a>
-      <a href="/community" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'community' ? 'accent' : '' }}" @click="menu = false">Community</a>
-      <a href="/live" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'live' ? 'accent' : '' }}" @click="menu = false">Live</a>
-      <a href="/" class="py-3 font-semibold border-b bd {{ navActive === 'board' ? 'accent' : '' }}" @click="menu = false">Odds</a>
-      <a href="/pricing" data-no-router class="py-3 font-semibold {{ navActive === 'pricing' ? 'accent' : '' }}" @click="menu = false">Pricing</a>
-      <a href="/pricing" data-no-router class="px-4 py-3 my-3 font-bold text-center rounded-lg sm:hidden btn btn-primary" @click="menu = false">Start</a>
+    <div class="flex flex-col mx-auto px-4 py-2 sm:px-6 max-w-7xl">
+      @foreach (NAV_LINKS as link)
+        <a
+          href="{{ link.href }}"
+          {{ link.router ? '' : 'data-no-router' }}
+          class="py-3 font-semibold border-b bd {{ navActive === link.key ? 'accent' : '' }}"
+          {{ navActive === link.key ? 'aria-current=page' : '' }}
+          @click="menu = false"
+        >{{ link.label }}</a>
+      @endforeach
+
+      <div class="flex gap-2 items-center py-3 sm:hidden">
+        <a href="/login" data-no-router class="flex flex-1 items-center justify-center px-4 h-11 font-bold text-sm rounded-lg btn" @click="menu = false">Log in</a>
+        <a href="/signup" data-no-router class="flex flex-1 items-center justify-center px-4 h-11 font-bold text-sm rounded-lg btn btn-primary" @click="menu = false">Sign up</a>
+      </div>
     </div>
   </nav>
 </header>
+
+<style>
+  /*
+    The active link was carried by colour alone, which on the muted grey row
+    is a small difference to ask someone to notice. It now also sits on a
+    rule flush with the bottom of the bar, so the current page reads at a
+    glance rather than on inspection.
+  */
+  .nav-row { align-self: stretch; }
+
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    transition: color 0.12s ease;
+  }
+  .nav-link:hover { color: var(--text); }
+  .nav-link.is-active { color: var(--text); }
+  .nav-link.is-active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--accent);
+  }
+
+  /*
+    Log in is a real destination, not a quiet aside, so it gets button-sized
+    padding and a hover surface. It stays unfilled so Sign up is still the
+    one obviously-primary thing in the bar.
+  */
+  .nav-login {
+    color: var(--text);
+    transition: background 0.12s ease;
+  }
+  .nav-login:hover { background: var(--surface-2); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .nav-login { transition: none; }
+  }
+</style>
