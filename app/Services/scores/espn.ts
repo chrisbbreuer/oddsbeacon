@@ -160,6 +160,18 @@ export interface StatPair {
   awayShare: number
 }
 
+export interface GameOdds {
+  provider: string
+  /** "PHI -162" as the book writes it. */
+  details: string
+  spread: number | null
+  overUnder: number | null
+  awayMoneyLine: number | null
+  homeMoneyLine: number | null
+  /** 'home' | 'away' | null when the book has not called one. */
+  favorite: string | null
+}
+
 export interface GameDetail {
   id: string
   league: string
@@ -173,7 +185,33 @@ export interface GameDetail {
   home: Team & { line: string[], total: string }
   away: Team & { line: string[], total: string }
   stats: StatPair[]
+  odds: GameOdds | null
   note: string | null
+}
+
+/**
+ * The book's line on a game.
+ *
+ * ESPN carries several providers; we take the highest-priority one rather
+ * than showing a row per book. A page comparing eight sportsbooks is a
+ * different product, and the odds board already does that job.
+ */
+function toOdds(raw: any): GameOdds | null {
+  if (!raw)
+    return null
+
+  const away = raw?.awayTeamOdds ?? {}
+  const home = raw?.homeTeamOdds ?? {}
+
+  return {
+    provider: String(raw?.provider?.displayName ?? raw?.provider?.name ?? 'Book'),
+    details: String(raw?.details ?? ''),
+    spread: num(raw?.spread),
+    overUnder: num(raw?.overUnder),
+    awayMoneyLine: num(away?.moneyLine),
+    homeMoneyLine: num(home?.moneyLine),
+    favorite: home?.favorite === true ? 'home' : (away?.favorite === true ? 'away' : null),
+  }
 }
 
 /**
@@ -298,6 +336,9 @@ export async function fetchGame(leagueKey: string, eventId: string): Promise<Gam
     home: toDetailTeam(homeRaw, homeLine),
     away: toDetailTeam(awayRaw, awayLine),
     stats,
+    // pickcenter is the richer of the two and carries the moneylines;
+    // `odds` on the competition is the fallback when it is absent.
+    odds: toOdds((d?.pickcenter ?? [])[0] ?? (competition?.odds ?? [])[0]),
     note: d?.header?.competitions?.[0]?.notes?.[0]?.headline ?? null,
   }
 }

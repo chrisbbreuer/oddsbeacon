@@ -37,6 +37,15 @@ const isDone = game?.state === 'post'
 // Bind to locals: the template iterates these directly.
 const periods = game?.periods ?? []
 const stats = game?.stats ?? []
+const odds = game?.odds ?? null
+
+// A moneyline is written with its sign, and a favourite's negative sign is
+// the whole signal. Number formatting would drop the plus on an underdog.
+function ml(v) {
+  if (v == null) return '-'
+  return v > 0 ? `+${v}` : String(v)
+}
+
 const awayLine = game?.away.line ?? []
 const homeLine = game?.home.line ?? []
 </script>
@@ -160,6 +169,47 @@ const homeLine = game?.home.line ?? []
                   </div>
                 @endforeach
               </div>
+            </section>
+          @endif
+
+          @if (odds)
+            <section class="p-5 mt-5 rounded-2xl card sm:p-6">
+              <div class="flex flex-wrap gap-2 items-baseline justify-between">
+                <h2 class="display font-black text-lg tracking-tight">The line</h2>
+                <span class="text-xs faint">{{ odds.provider }}</span>
+              </div>
+
+              <div class="grid gap-px mt-4 grid-cols-3 rounded-xl overflow-hidden" style="background:var(--border)">
+                <div class="px-3 py-4 text-center" style="background:var(--surface-2)">
+                  <div class="font-semibold text-xs tracking-wide uppercase muted">Spread</div>
+                  <div class="mt-1 font-black text-lg num">{{ odds.details || '-' }}</div>
+                </div>
+                <div class="px-3 py-4 text-center" style="background:var(--surface-2)">
+                  <div class="font-semibold text-xs tracking-wide uppercase muted">Total</div>
+                  <div class="mt-1 font-black text-lg num">{{ odds.overUnder ?? '-' }}</div>
+                </div>
+                <div class="px-3 py-4 text-center" style="background:var(--surface-2)">
+                  <div class="font-semibold text-xs tracking-wide uppercase muted">Favourite</div>
+                  <div class="mt-1 font-black text-lg">
+                    {{ odds.favorite === 'home' ? (game.home.abbreviation || 'Home') : (odds.favorite === 'away' ? (game.away.abbreviation || 'Away') : 'Pick') }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-2 mt-4 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="muted">{{ game.away.shortName || game.away.name }} moneyline</span>
+                  <span class="font-bold num {{ odds.favorite === 'away' ? 'accent' : '' }}">{{ ml(odds.awayMoneyLine) }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="muted">{{ game.home.shortName || game.home.name }} moneyline</span>
+                  <span class="font-bold num {{ odds.favorite === 'home' ? 'accent' : '' }}">{{ ml(odds.homeMoneyLine) }}</span>
+                </div>
+              </div>
+
+              <p class="pt-4 mt-4 text-xs leading-relaxed border-t faint bd">
+                The book's number, not ours. PredictHQ prices markets against its own evidence and only acts when the two disagree by more than your floor.
+              </p>
             </section>
           @endif
 
