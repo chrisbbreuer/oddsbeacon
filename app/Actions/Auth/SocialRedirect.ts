@@ -1,7 +1,6 @@
 import { Action } from '@stacksjs/actions'
-import { config } from '@stacksjs/config'
 import { response } from '@stacksjs/router'
-import { AppleProvider, GoogleProvider } from '@stacksjs/socials'
+import { socialProvider } from '../../Support/auth'
 
 /**
  * GET /auth/{provider}/redirect - start an OAuth sign-in.
@@ -11,38 +10,21 @@ import { AppleProvider, GoogleProvider } from '@stacksjs/socials'
  * a broken authorize URL. That matters: a half-configured provider
  * otherwise sends the user to the provider's error page, which reads to
  * them as our fault and gives them nothing to act on.
+ *
+ * `socialProvider` in Support/auth knows what each provider needs and
+ * hands the driver its whole config block. This action used to do that
+ * itself, gating everything on `clientId && clientSecret` and passing only
+ * those two through, which meant Apple (no client secret, signs a JWT from
+ * teamId/keyId/privateKey instead) was rejected here even when fully
+ * configured.
  */
-
-const PROVIDERS: Record<string, any> = {
-  google: GoogleProvider,
-  apple: AppleProvider,
-}
-
-export function providerFor(name: string): any | null {
-  const Provider = PROVIDERS[name]
-  if (!Provider)
-    return null
-
-  const settings = (config as any)?.services?.[name]
-  // A provider with no client id is not configured, however present its
-  // block is. Treat it as absent.
-  if (!settings?.clientId || !settings?.clientSecret)
-    return null
-
-  return new Provider({
-    clientId: String(settings.clientId),
-    clientSecret: String(settings.clientSecret),
-    redirectUrl: String(settings.redirectUrl ?? ''),
-  })
-}
-
 export default new Action({
   name: 'SocialRedirect',
   description: 'Send the visitor to a social provider to authenticate.',
 
   async handle(request: any) {
     const name = String(request.getParam('provider') ?? '').toLowerCase()
-    const provider = providerFor(name)
+    const provider = socialProvider(name)
 
     if (!provider) {
       return response.json({

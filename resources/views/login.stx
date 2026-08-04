@@ -1,0 +1,70 @@
+<script server>
+/**
+ * PredictHQ: sign in.
+ *
+ * `Actions/Auth/SocialCallback` has always redirected here on failure
+ * (`/login?error=cancelled|provider|noemail`), and the top nav now points
+ * here too, so this route existing is the difference between those paths
+ * working and 404ing.
+ *
+ * Only social sign-in is wired in this app, so this page offers only that.
+ * A password field here would be a form with nowhere to post.
+ */
+import { configuredSocialProviders, signInError } from '../../app/Support/auth'
+
+const navActive = 'login'
+const pageTitle = 'PredictHQ: sign in'
+const pageDescription = 'Sign in to PredictHQ to keep your sheets, your venue accounts, and the markets you follow in one place.'
+
+// Read by the `auth-panel` partial out of this scope, the same way the
+// nav reads `navActive`.
+const providers = configuredSocialProviders()
+const authError = signInError(query.error)
+const authHeading = 'Welcome back'
+const authBlurb = 'Sign in with the provider you used the first time. PredictHQ matches you on the email it shares.'
+const authVerb = 'Sign in with'
+const authAltPrompt = 'New here?'
+const authAltHref = '/signup'
+const authAltLabel = 'Create an account'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body x-data="{ menu: false,
+      theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu } }">
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 py-14 sm:px-6 max-w-6xl sm:py-20">
+        <div class="grid gap-12 items-start lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:gap-20">
+          @include('auth-panel')
+
+          {{-- pt matches the card's own top padding so the two headings share a baseline. --}}
+          <section class="hidden lg:block lg:pt-8">
+            <h2 class="display font-black text-2xl tracking-tight">What your account holds</h2>
+            <div class="grid gap-px mt-6 overflow-hidden rounded-2xl" style="background:var(--border)">
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">Your sheet, across devices</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Legs you add on the board stop being browser storage and start following you.</p>
+              </div>
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">Every venue in one tape</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Connect Kalshi and Polymarket once, then read them as a single book.</p>
+              </div>
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">The evidence behind each call</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Every priced candidate keeps the signals and the sample sizes it stood on.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      @include('footer')
+    </div>
+  </body>
+</html>

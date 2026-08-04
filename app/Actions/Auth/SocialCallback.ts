@@ -2,27 +2,61 @@ import { Database } from 'bun:sqlite'
 import process from 'node:process'
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
-import { providerFor } from './SocialRedirect'
+import { socialProvider } from '../../Support/auth'
 
 /**
- * GET /auth/{provider}/callback - finish an OAuth sign-in.
+ * GET or POST /auth/{provider}/callback - finish an OAuth sign-in.
+ *
+ * Both methods, because Apple mandates `response_mode=form_post` whenever
+ * scopes are requested, so its callback arrives as a cross-site POST while
+ * everyone else redirects with a GET. `request.get()` reads query string
+ * and form body alike, so the body of this action does not care which one
+ * it was handed.
  *
  * Matching is by email, deliberately. Someone who signed up with a
- * password and later clicks "Continue with GitHub" is the same person, and
+ * password and later clicks "Continue with Google" is the same person, and
  * creating a second account for them is how you end up with two histories
  * and no way to merge them.
  *
  * The provider is the one attesting to the email, so it is trusted here.
- * That trust is the reason `providerFor` refuses to build an unconfigured
- * provider: an attacker-supplied provider name must never reach this.
+ * That trust is the reason `socialProvider` refuses to build an
+ * unconfigured provider: an attacker-supplied provider name must never
+ * reach this.
  */
+
+/**
+ * Apple's one and only chance to tell us a name.
+ *
+ * It is never in the id_token, so `SocialUser.name` from that driver is
+ * always empty. It arrives once, on the first authorisation only, as a
+ * JSON `user` field in the form_post body. Miss it and the name is gone
+ * for good, which is why it is read here rather than left to the driver.
+ */
+function nameFromCallbackBody(request: any): string {
+  const raw = request.get('user')
+  if (!raw)
+    return ''
+
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+    const first = String(parsed?.name?.firstName ?? '').trim()
+    const last = String(parsed?.name?.lastName ?? '').trim()
+    return [first, last].filter(Boolean).join(' ')
+  }
+  catch {
+    // A malformed body is not worth failing a sign-in over. The email
+    // local-part fallback below is a perfectly good display name.
+    return ''
+  }
+}
+
 export default new Action({
   name: 'SocialCallback',
   description: 'Exchange an OAuth code for a session.',
 
   async handle(request: any) {
     const name = String(request.getParam('provider') ?? '').toLowerCase()
-    const provider = providerFor(name)
+    const provider = socialProvider(name)
 
     if (!provider)
       return response.json({ message: 'Unknown sign-in provider.' }, 404)
@@ -51,7 +85,9 @@ export default new Action({
       return response.redirect('/login?error=noemail', 302)
     }
 
-    const displayName = String(profile?.name ?? profile?.nickname ?? email.split('@')[0]).slice(0, 60)
+    const displayName = String(
+      profile?.name || profile?.nickname || nameFromCallbackBody(request) || email.split('@')[0],
+    ).slice(0, 60)
     const db = new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite')
 
     try {

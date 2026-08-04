@@ -1,0 +1,76 @@
+<script server>
+/**
+ * PredictHQ: create an account.
+ *
+ * The same provider round trip as /login. `SocialCallback` inserts a user
+ * when the email it gets back matches nobody, so registration is not a
+ * separate flow and this page does not pretend otherwise. It exists
+ * because "Sign up" and "Log in" are different intentions even when they
+ * are the same click, and a visitor who has never been here should not
+ * have to work that out from a page titled "Welcome back".
+ */
+import { configuredSocialProviders, signInError } from '../../app/Support/auth'
+
+const navActive = 'signup'
+const pageTitle = 'PredictHQ: create an account'
+const pageDescription = 'Create a PredictHQ account to save your sheets, connect your venues, and follow the markets you trade.'
+
+const providers = configuredSocialProviders()
+const authError = signInError(query.error)
+const authHeading = 'Create your account'
+const authBlurb = 'One step. Pick a provider and PredictHQ builds the account from the email it shares.'
+const authVerb = 'Continue with'
+const authAltPrompt = 'Already have an account?'
+const authAltHref = '/login'
+const authAltLabel = 'Sign in'
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body x-data="{ menu: false,
+      theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu } }">
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 py-14 sm:px-6 max-w-6xl sm:py-20">
+        <div class="grid gap-12 items-start lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:gap-20">
+          @include('auth-panel')
+
+          {{-- pt matches the card's own top padding so the two headings share a baseline. --}}
+          <section class="hidden lg:block lg:pt-8">
+            <h2 class="display font-black text-2xl tracking-tight">Free reads the whole board</h2>
+            <p class="mt-3 max-w-lg leading-relaxed muted">
+              An account is not a paywall. Every price, every arb, and the evidence behind each candidate is readable without one. What the account adds is state.
+            </p>
+
+            <div class="grid gap-px mt-7 overflow-hidden rounded-2xl" style="background:var(--border)">
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">Sheets that outlive the tab</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Legs you add on the board follow you instead of living in one browser.</p>
+              </div>
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">Your venue accounts, connected</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Read Kalshi and Polymarket as one book, and let limits you set act on it.</p>
+              </div>
+              <div class="p-5" style="background:var(--surface)">
+                <h3 class="font-bold">Markets you actually follow</h3>
+                <p class="mt-1.5 text-sm leading-relaxed muted">Keep the games and questions you trade, rather than finding them again.</p>
+              </div>
+            </div>
+
+            <p class="mt-6 text-sm muted">
+              Want the plan differences first?
+              <a href="/pricing" data-no-router class="font-bold accent hover:opacity-70">See pricing</a>
+            </p>
+          </section>
+        </div>
+      </main>
+
+      @include('footer')
+    </div>
+  </body>
+</html>

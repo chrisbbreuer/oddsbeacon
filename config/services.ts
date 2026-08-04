@@ -35,6 +35,28 @@ export default {
     scopes: ['profile', 'email'],
   },
 
+  /**
+   * Sign in with Apple.
+   *
+   * Deliberately not shaped like the blocks around it. Apple issues no
+   * static client secret: the driver signs a short-lived ES256 JWT per
+   * token exchange from the team ID, the key ID, and the contents of the
+   * .p8 key downloaded from the developer portal. `clientId` is the
+   * Services ID (`org.example.web`), not the app's bundle identifier.
+   *
+   * The .p8 contents span several lines, which env files cannot carry, so
+   * paste it with literal \n separators. The driver normalises those back
+   * before handing the PEM to createPrivateKey.
+   */
+  apple: {
+    clientId: String(env.APPLE_CLIENT_ID || ''),
+    teamId: String(env.APPLE_TEAM_ID || ''),
+    keyId: String(env.APPLE_KEY_ID || ''),
+    privateKey: String(env.APPLE_PRIVATE_KEY || ''),
+    redirectUrl: String(env.APPLE_REDIRECT_URL || 'http://localhost:3000/api/auth/apple/callback'),
+    scopes: ['name', 'email'],
+  },
+
   facebook: {
     clientId: String(env.FACEBOOK_CLIENT_ID || ''),
     clientSecret: String(env.FACEBOOK_CLIENT_SECRET || ''),

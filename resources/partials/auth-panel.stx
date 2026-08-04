@@ -1,0 +1,75 @@
+{{--
+  The sign-in card, shared by /login and /signup.
+
+  Social sign-in has no separate registration step: the same provider round
+  trip either matches an existing user or creates one. So both pages render
+  this identical control and differ only in the copy the including page
+  sets (`authHeading`, `authBlurb`, `authVerb`, and the cross-link), read
+  from that page's scope the way the nav reads `navActive`.
+--}}
+<section class="p-6 rounded-2xl card sm:p-8">
+  <h1 class="display font-black text-2xl tracking-tight sm:text-3xl">{{ authHeading }}</h1>
+  <p class="mt-3 text-sm leading-relaxed muted">{{ authBlurb }}</p>
+
+  @if (authError)
+    <div class="flex gap-2.5 items-start px-4 py-3 mt-6 text-sm rounded-xl auth-error" role="alert">
+      <i class="mt-0.5 h-4 w-4 shrink-0 i-hugeicons-alert-02"></i>
+      <span>{{ authError }}</span>
+    </div>
+  @endif
+
+  @if (providers.length)
+    <div class="flex flex-col gap-3 mt-7">
+      @foreach (providers as provider)
+        <a
+          href="/api/auth/{{ provider.slug }}/redirect"
+          data-no-router
+          class="flex gap-3 items-center justify-center px-4 h-12 font-bold rounded-xl btn"
+        >
+          <i class="h-5 w-5 {{ provider.icon }}"></i>
+          <span>{{ authVerb }} {{ provider.name }}</span>
+        </a>
+      @endforeach
+    </div>
+
+    {{--
+      Said plainly because it is unusual: the callback inserts the user with
+      an empty password rather than a placeholder hash, so the provider is
+      genuinely the only way in until they set one.
+    --}}
+    <p class="mt-5 text-xs leading-relaxed faint">
+      We create your account from the email your provider shares. No password is set, so that provider stays the way in.
+    </p>
+  @else
+    {{--
+      Neither provider has credentials in this environment. Buttons here
+      would 404 in `SocialRedirect`, which reads to the visitor as our
+      fault and gives them nothing to do about it.
+    --}}
+    <div class="px-4 py-6 mt-7 text-center rounded-xl soft">
+      <p class="font-bold">Sign-in is not configured yet.</p>
+      <p class="mt-2 text-sm leading-relaxed muted">
+        No sign-in provider has credentials in this environment. Everything on the odds board is readable without an account in the meantime.
+      </p>
+      <a href="/" class="inline-flex items-center px-4 mt-4 h-10 font-bold text-sm rounded-lg btn">Back to the board</a>
+    </div>
+  @endif
+
+  <p class="pt-5 mt-6 text-sm border-t muted bd">
+    {{ authAltPrompt }}
+    <a href="{{ authAltHref }}" data-no-router class="font-bold accent hover:opacity-70">{{ authAltLabel }}</a>
+  </p>
+</section>
+
+<style>
+  /*
+    Semantic red on a tinted ground rather than the flat --neg text the
+    tables use: this is a message about the page, not a number that went
+    down, and it has to read as a block before it reads as a sentence.
+  */
+  .auth-error {
+    color: var(--neg);
+    background: color-mix(in srgb, var(--neg) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--neg) 32%, transparent);
+  }
+</style>
