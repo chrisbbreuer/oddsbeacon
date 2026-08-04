@@ -28,4 +28,13 @@ export type CommandRegistry = Record<string, string | CommandConfig>
  */
 export default {
   'inspire': 'Inspire',
+
+  // What this deployment can actually do. Run it before cutting over: the
+  // app boots fine without an odds feed or a sign-in provider, and a boot
+  // that looks healthy while serving a simulator is the failure mode this
+  // is here to catch.
+  'preflight': {
+    file: 'Preflight',
+    aliases: ['check'],
+  },
 } satisfies CommandRegistry

@@ -119,7 +119,10 @@ for (const ev of board) {
   }
 }
 const liveJson = JSON.stringify(liveMap)
-const liveUrl = `ws://localhost:${process.env.BROADCAST_PORT || 6001}`
+// Only the port comes from the server. The scheme and host are decided in
+// the browser by partials/realtime, because this value used to be
+// `ws://localhost:6001`, which pointed every visitor at their own machine.
+const broadcastPort = process.env.BROADCAST_PORT || 6001
 
 const navActive = 'board'
 </script>
@@ -130,6 +133,7 @@ const navActive = 'board'
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
+    @include('realtime')
     <meta name="description" content="PredictHQ reads the public tape on Kalshi and Polymarket, prices what the flow is worth, and places positions inside limits you set. Every decision shows the data behind it.">
     <title>PredictHQ: evidence-backed positions on Kalshi and Polymarket</title>
     <style>
@@ -208,7 +212,7 @@ const navActive = 'board'
       format: (localStorage.getItem('ob-format') || 'american'),
       live: {{ liveJson }},
       flash: {},
-      liveUrl: '{{ liveUrl }}',
+      liveUrl: predicthqRealtime.url('{{ broadcastPort }}'),
       token: (localStorage.getItem('ob-token') || (self.crypto && crypto.randomUUID ? crypto.randomUUID() : 'tok-' + Math.random().toString(36).slice(2))),
       cat: 'all',
       stake: 25,

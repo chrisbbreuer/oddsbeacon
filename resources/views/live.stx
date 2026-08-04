@@ -75,6 +75,7 @@ const navActive = 'live'
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @include('tokens')
+    @include('realtime')
     <meta name="description" content="PredictHQ live action: sports line moves and arbitrage streaming in real time.">
     <title>PredictHQ: live action</title>
     <style>
@@ -105,7 +106,7 @@ const navActive = 'live'
       clock() { const d = new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) },
       connectLive() {
         try {
-          const ws = new WebSocket('ws://' + location.hostname + ':{{ broadcastPort }}')
+          const ws = new WebSocket(predicthqRealtime.url('{{ broadcastPort }}'))
           ws.onopen = () => { this.connected = true; ws.send(JSON.stringify({ type: 'subscribe', channel: 'odds' })); ws.send(JSON.stringify({ type: 'subscribe', channel: 'alerts' })) }
           ws.onmessage = (e) => {
             let msg; try { msg = JSON.parse(e.data) } catch { return }
