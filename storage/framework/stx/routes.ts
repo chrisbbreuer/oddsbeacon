@@ -24,6 +24,7 @@ export const routes = [
   { pattern: '/live', filePath: 'resources/views/live.stx', isDynamic: false, params: [] },
   { pattern: '/markets', filePath: 'resources/views/markets.stx', isDynamic: false, params: [] },
   { pattern: '/pricing', filePath: 'resources/views/pricing.stx', isDynamic: false, params: [] },
+  { pattern: '/scores/:league/game/:id', filePath: 'resources/views/scores/[league]/game/[id].stx', isDynamic: true, params: ["league","id"] },
   { pattern: '/scores/:league/:day', filePath: 'resources/views/scores/[league]/[day].stx', isDynamic: true, params: ["league","day"] },
   { pattern: '/orders/:id', filePath: 'storage/framework/defaults/resources/views/orders/[id].stx', isDynamic: true, params: ["id"] },
 ] as const

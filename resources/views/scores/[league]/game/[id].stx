@@ -1,0 +1,195 @@
+<script server>
+/**
+ * PredictHQ - one game.
+ *
+ * Apple Sports match screen: the two teams either side of the status,
+ * a line score by period, then Match Stats as paired comparison bars.
+ *
+ * Routed as /scores/<league>/game/<id>. The `game` segment exists to keep
+ * this distinct from /scores/<league>/<day>, which would otherwise match
+ * the same shape and make an event id look like a day name.
+ *
+ * The import path is four levels up. A path that does not resolve takes
+ * the whole server scope with it and every const below becomes undefined,
+ * surfacing as "not iterable" in the template rather than as an import
+ * error, so it is worth getting right the first time.
+ */
+import { fetchGame, leagueFor } from '../../../../../app/Services/scores/espn'
+
+const navActive = 'scores'
+
+const routeParams = (typeof params !== 'undefined' && params) ? params : {}
+const league = leagueFor(String(routeParams.league ?? 'nfl'))
+const eventId = String(routeParams.id ?? '')
+
+const game = eventId ? await fetchGame(league.key, eventId) : null
+
+const pageTitle = game
+  ? `${game.away.shortName} at ${game.home.shortName} | PredictHQ`
+  : `${league.label} | PredictHQ`
+const pageDescription = game
+  ? `${game.away.name} at ${game.home.name}. Line score, team stats and status.`
+  : 'Game not found.'
+
+const isLive = game?.state === 'in'
+const isDone = game?.state === 'post'
+
+// Bind to locals: the template iterates these directly.
+const periods = game?.periods ?? []
+const stats = game?.stats ?? []
+const awayLine = game?.away.line ?? []
+const homeLine = game?.home.line ?? []
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body x-data="{ menu: false, theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu } }">
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 pt-8 pb-16 sm:px-6 max-w-3xl">
+        <a href="/scores/{{ league.key }}/today" data-no-router class="text-sm font-semibold muted hover:opacity-70">{{ league.label }} scores</a>
+
+        @if (!game)
+          <section class="px-6 py-16 mt-6 text-center rounded-2xl card">
+            <p class="display font-black text-xl">Game not found.</p>
+            <p class="mt-2 text-sm muted">This game is not on the schedule any more, or the upstream feed changed shape.</p>
+          </section>
+        @else
+          <!-- Scoreline. Teams either side of the status, as on the phone. -->
+          <section class="p-6 mt-4 rounded-2xl card sm:p-8">
+            <div class="grid gap-4 grid-cols-[1fr_auto_1fr] items-center">
+              <div class="flex flex-col gap-2 items-center text-center">
+                @if (game.away.logo)
+                  <img src="{{ game.away.logo }}" alt="" width="52" height="52" class="h-13 w-13 object-contain">
+                @endif
+                <span class="font-bold text-sm sm:text-base">{{ game.away.shortName || game.away.name }}</span>
+                @if (game.away.record)
+                  <span class="text-xs num faint">{{ game.away.record }}</span>
+                @endif
+              </div>
+
+              <div class="flex flex-col gap-1 items-center px-2 text-center">
+                <div class="flex gap-3 items-baseline">
+                  <span class="display font-black text-4xl num sm:text-5xl {{ isDone && !game.away.winner ? 'opacity-45' : '' }}">{{ game.away.total }}</span>
+                  <span class="text-lg faint">-</span>
+                  <span class="display font-black text-4xl num sm:text-5xl {{ isDone && !game.home.winner ? 'opacity-45' : '' }}">{{ game.home.total }}</span>
+                </div>
+                <span class="font-bold text-xs tracking-wide uppercase {{ isLive ? 'neg' : 'faint' }}">
+                  {{ isLive ? (game.clock || game.status) : game.status }}
+                </span>
+              </div>
+
+              <div class="flex flex-col gap-2 items-center text-center">
+                @if (game.home.logo)
+                  <img src="{{ game.home.logo }}" alt="" width="52" height="52" class="h-13 w-13 object-contain">
+                @endif
+                <span class="font-bold text-sm sm:text-base">{{ game.home.shortName || game.home.name }}</span>
+                @if (game.home.record)
+                  <span class="text-xs num faint">{{ game.home.record }}</span>
+                @endif
+              </div>
+            </div>
+          </section>
+
+          @if (periods.length > 0)
+            <section class="overflow-x-auto mt-5 rounded-2xl card">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b bd">
+                    <th class="px-4 py-3 font-bold text-xs tracking-wide text-left uppercase sm:px-5 muted">Team</th>
+                    @foreach (periods as p)
+                      <th class="px-2 py-3 w-9 font-bold text-xs text-center uppercase muted">{{ p }}</th>
+                    @endforeach
+                    <th class="px-4 py-3 font-bold text-xs text-right uppercase sm:px-5 muted">T</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y bd">
+                  <tr>
+                    <td class="px-4 py-3 font-semibold sm:px-5">{{ game.away.abbreviation || game.away.shortName }}</td>
+                    @foreach (awayLine as v)
+                      <td class="px-2 py-3 text-center num muted">{{ v }}</td>
+                    @endforeach
+                    <td class="px-4 py-3 font-black text-right sm:px-5 num">{{ game.away.total }}</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-3 font-semibold sm:px-5">{{ game.home.abbreviation || game.home.shortName }}</td>
+                    @foreach (homeLine as v)
+                      <td class="px-2 py-3 text-center num muted">{{ v }}</td>
+                    @endforeach
+                    <td class="px-4 py-3 font-black text-right sm:px-5 num">{{ game.home.total }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+          @endif
+
+          @if (stats.length > 0)
+            <section class="p-5 mt-5 rounded-2xl card sm:p-6">
+              <h2 class="display font-black text-lg text-center tracking-tight">Match Stats</h2>
+
+              <div class="flex flex-col gap-5 mt-5">
+                @foreach (stats as s)
+                  <div>
+                    <div class="flex items-baseline justify-between">
+                      <span class="font-black num">{{ s.away }}</span>
+                      <span class="text-sm muted">{{ s.label }}</span>
+                      <span class="font-black num">{{ s.home }}</span>
+                    </div>
+                    <!--
+                      One track, split at the pair's own ratio. Two bars
+                      meeting in the middle is the Apple Sports treatment and
+                      it reads faster than two independent bars, because the
+                      comparison is the length of the split rather than two
+                      lengths held in the head.
+
+                      Both halves carry a real colour. Filling only the away
+                      side and leaving the rest as track read as "away has
+                      some, home has none" rather than as a ratio. The second
+                      tone is the muted neutral, not a second accent, so the
+                      one-accent rule holds.
+                    -->
+                    <div class="flex gap-1 mt-2 h-1.5 rounded-full">
+                      <span class="rounded-full" style="width:{{ s.awayShare }}%;background:var(--accent)"></span>
+                      <span class="rounded-full grow" style="background:var(--muted)"></span>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </section>
+          @endif
+
+          <section class="p-5 mt-5 rounded-2xl card sm:p-6">
+            <h2 class="display font-black text-lg tracking-tight">Match Information</h2>
+            <div class="flex flex-col gap-2 mt-4 text-sm">
+              @if (game.venue)
+                <div class="flex gap-3">
+                  <span class="w-24 shrink-0 muted">Venue</span>
+                  <span>{{ game.venue }}</span>
+                </div>
+              @endif
+              @if (game.attendance)
+                <div class="flex gap-3">
+                  <span class="w-24 shrink-0 muted">Attendance</span>
+                  <span class="num">{{ game.attendance.toLocaleString() }}</span>
+                </div>
+              @endif
+              <div class="flex gap-3">
+                <span class="w-24 shrink-0 muted">Status</span>
+                <span>{{ game.status }}</span>
+              </div>
+            </div>
+          </section>
+
+          <p class="mt-4 text-xs faint">Scores and stats from ESPN.</p>
+        @endif
+      </main>
+
+      @include('footer')
+    </div>
+  </body>
+</html>

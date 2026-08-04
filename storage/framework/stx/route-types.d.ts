@@ -27,6 +27,7 @@ declare module "stx/routes" {
     '/live': {  }
     '/markets': {  }
     '/pricing': {  }
+    '/scores/:league/game/:id': { league: string; id: string }
     '/scores/:league/:day': { league: string; day: string }
     '/orders/:id': { id: string }
   }

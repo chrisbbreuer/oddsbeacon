@@ -127,7 +127,7 @@ const rows = games.map(g => ({
           <section class="overflow-hidden mt-4 rounded-2xl card">
             <div class="divide-y bd">
               @foreach (rows as g)
-                <a href="/scores/{{ g.league }}/{{ g.id }}" data-no-router class="block px-4 py-4 sm:px-5 hover:opacity-90">
+                <a href="/scores/{{ g.league }}/game/{{ g.id }}" data-no-router class="block px-4 py-4 sm:px-5 hover:opacity-90">
                   <div class="flex gap-4 items-center">
                     <!-- Status rail. Fixed width so every row's teams align. -->
                     <div class="w-20 shrink-0">

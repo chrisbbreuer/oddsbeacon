@@ -75,7 +75,11 @@ function toTeam(competitor: any): Team {
     abbreviation: String(team.abbreviation ?? '').slice(0, 5),
     name: String(team.displayName ?? team.name ?? 'Unknown'),
     shortName: String(team.shortDisplayName ?? team.abbreviation ?? ''),
-    logo: typeof team.logo === 'string' ? team.logo : null,
+    // The scoreboard exposes `logo`; the summary header exposes `logos[]`
+    // instead, so a detail page reading only the former rendered no crests.
+    logo: typeof team.logo === 'string'
+      ? team.logo
+      : (typeof team.logos?.[0]?.href === 'string' ? team.logos[0].href : null),
     score: num(competitor?.score),
     // ESPN nests the summary record among several; the overall one is the
     // only one worth a line on a scoreboard.
@@ -146,4 +150,154 @@ export async function fetchScoreboard(leagueKey: string, date?: string): Promise
       away: toTeam(awayRaw),
     }]
   })
+}
+
+export interface StatPair {
+  label: string
+  away: string
+  home: string
+  /** 0-100 share of the pair for the away side, for the comparison bar. */
+  awayShare: number
+}
+
+export interface GameDetail {
+  id: string
+  league: string
+  state: string
+  status: string
+  clock: string
+  venue: string | null
+  attendance: number | null
+  /** Column headings for the line score: innings, quarters, sets. */
+  periods: string[]
+  home: Team & { line: string[], total: string }
+  away: Team & { line: string[], total: string }
+  stats: StatPair[]
+  note: string | null
+}
+
+/**
+ * Which team stats are worth a row, per sport.
+ *
+ * The boxscore returns 59 stats for a baseball team. Almost none of them
+ * belong on a summary screen, and a page that prints all of them is a
+ * database dump rather than a scoreboard. These are picked by ESPN's
+ * `name` field, which is stable across sports in a way the labels are not.
+ */
+const STAT_PICKS: Record<string, string[]> = {
+  mlb: ['hits', 'runs', 'homeRuns', 'RBIs', 'strikeouts', 'walks'],
+  nba: ['fieldGoalPct', 'threePointFieldGoalPct', 'freeThrowPct', 'totalRebounds', 'assists', 'turnovers'],
+  nfl: ['totalYards', 'netPassingYards', 'rushingYards', 'firstDowns', 'turnovers', 'possessionTime'],
+  nhl: ['shotsTotal', 'powerPlayGoals', 'faceoffsWon', 'penaltyMinutes', 'hits', 'blockedShots'],
+  epl: ['possessionPct', 'totalShots', 'shotsOnTarget', 'foulsCommitted', 'wonCorners', 'saves'],
+  atp: ['aces', 'doubleFaults', 'firstServePointsWon', 'breakPoints', 'totalPointsWon', 'winners'],
+}
+
+/** Numeric part of a stat, so a percentage and a raw count both compare. */
+function statValue(display: string): number {
+  const n = Number.parseFloat(String(display).replace(/[^0-9.-]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+function flatStats(team: any): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const group of team?.statistics ?? []) {
+    // Flat sports put stats at the top level; baseball nests them a level
+    // deeper under batting/pitching/fielding.
+    const entries = Array.isArray(group?.stats) && group.stats.length > 0 ? group.stats : [group]
+    for (const s of entries) {
+      const key = s?.name
+      const value = s?.displayValue
+      if (typeof key === 'string' && value != null && !out.has(key))
+        out.set(key, String(value))
+    }
+  }
+  return out
+}
+
+/**
+ * One game in full: line score, selected team stats, venue.
+ *
+ * Same contract as `fetchScoreboard` — it returns null rather than
+ * throwing, so the page shows "not found" instead of a 500 when ESPN
+ * changes shape or an id is stale.
+ */
+export async function fetchGame(leagueKey: string, eventId: string): Promise<GameDetail | null> {
+  const league = leagueFor(leagueKey)
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${league.path}/summary?event=${encodeURIComponent(eventId)}`
+
+  let d: any
+  try {
+    const res = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
+    if (!res.ok)
+      return null
+    d = await res.json()
+  }
+  catch {
+    return null
+  }
+
+  const competition = d?.header?.competitions?.[0]
+  const competitors: any[] = competition?.competitors ?? []
+  if (competitors.length < 2)
+    return null
+
+  const homeRaw = competitors.find(c => c?.homeAway === 'home') ?? competitors[0]
+  const awayRaw = competitors.find(c => c?.homeAway === 'away') ?? competitors[1]
+  const type = competition?.status?.type ?? {}
+
+  const line = (c: any): string[] => (c?.linescores ?? []).map((l: any) => String(l?.displayValue ?? '-'))
+  const homeLine = line(homeRaw)
+  const awayLine = line(awayRaw)
+  const periodCount = Math.max(homeLine.length, awayLine.length)
+
+  // Box teams are ordered independently of the header, so match by id
+  // rather than trusting the index.
+  const boxTeams: any[] = d?.boxscore?.teams ?? []
+  const boxFor = (c: any) => boxTeams.find(b => String(b?.team?.id ?? '') === String(c?.team?.id ?? '')) ?? null
+  const homeStats = flatStats(boxFor(homeRaw))
+  const awayStats = flatStats(boxFor(awayRaw))
+
+  const picks = STAT_PICKS[league.key] ?? []
+  const stats: StatPair[] = picks.flatMap((key) => {
+    const a = awayStats.get(key)
+    const h = homeStats.get(key)
+    if (a == null || h == null)
+      return []
+
+    const av = statValue(a)
+    const hv = statValue(h)
+    const total = av + hv
+    const labelSource = boxFor(awayRaw)?.statistics?.flatMap((g: any) => g?.stats ?? [g])
+      ?.find((s: any) => s?.name === key)
+
+    return [{
+      label: String(labelSource?.displayName ?? labelSource?.shortDisplayName ?? key),
+      away: a,
+      home: h,
+      // A 0-0 pair splits evenly rather than dividing by zero.
+      awayShare: total > 0 ? Math.round((av / total) * 100) : 50,
+    }]
+  })
+
+  const toDetailTeam = (raw: any, l: string[]): Team & { line: string[], total: string } => ({
+    ...toTeam(raw),
+    line: l,
+    total: String(raw?.score ?? ''),
+  })
+
+  return {
+    id: String(eventId),
+    league: league.key,
+    state: String(type?.state ?? 'pre'),
+    status: String(type?.shortDetail ?? type?.description ?? ''),
+    clock: type?.state === 'in' ? String(competition?.status?.displayClock ?? '') : '',
+    venue: d?.gameInfo?.venue?.fullName ?? null,
+    attendance: num(d?.gameInfo?.attendance),
+    periods: Array.from({ length: periodCount }, (_, i) => String(i + 1)),
+    home: toDetailTeam(homeRaw, homeLine),
+    away: toDetailTeam(awayRaw, awayLine),
+    stats,
+    note: d?.header?.competitions?.[0]?.notes?.[0]?.headline ?? null,
+  }
 }
