@@ -8,13 +8,48 @@
 import type { EnhancedRequest } from '@stacksjs/bun-router'
 import { route } from '@stacksjs/router'
 import { projectPath } from '@stacksjs/path'
-import { setConfig, createQueryBuilder } from '@stacksjs/query-builder'
+import { setConfig, createQueryBuilder, defaultConfig } from '@stacksjs/query-builder'
 import { HttpError } from '@stacksjs/error-handling'
+import { env } from '@stacksjs/env'
 
-// Initialize query builder config from project's config/qb.ts
+// Initialize the query builder config from the project's OPTIONAL
+// `config/qb.ts` override.
+//
+// That file is a per-project escape hatch and is never scaffolded, so on
+// most projects it does not exist. The hard `await import()` this replaces
+// therefore threw `Cannot find module config/qb.ts` and aborted the whole
+// ORM-route bootstrap, which is why the router logged "No ORM routes
+// candidate loaded" and every model `useApi` endpoint 404'd.
+//
+// The fallback derives from the same DB_CONNECTION / DB_DATABASE_PATH env
+// vars the migrations and the ORM itself read. bun-query-builder's own
+// `defaultConfig` is not usable alone here: it hardcodes
+// `dialect: 'postgres'`, so a project on the framework's zero-config
+// SQLite default would point every generated REST route at Postgres.
+//
+// Mirrors storage/framework/core/orm/routes.ts upstream; this copy had
+// drifted behind it.
 const qbConfigPath = projectPath('config/qb.ts')
-const qbConfig = (await import(qbConfigPath)).default
-setConfig(qbConfig)
+try {
+  const projectQbConfig = (await import(qbConfigPath)).default
+  setConfig(projectQbConfig ?? defaultConfig)
+}
+catch {
+  const dialect = (env.DB_CONNECTION as 'sqlite' | 'mysql' | 'postgres' | undefined) || 'sqlite'
+  setConfig({
+    ...defaultConfig,
+    dialect,
+    database: dialect === 'sqlite'
+      ? { database: env.DB_DATABASE_PATH || 'database/stacks.sqlite' }
+      : {
+          database: env.DB_DATABASE || 'stacks',
+          host: env.DB_HOST || '127.0.0.1',
+          port: env.DB_PORT || (dialect === 'postgres' ? 5432 : 3306),
+          username: env.DB_USERNAME || (dialect === 'postgres' ? 'postgres' : 'root'),
+          password: env.DB_PASSWORD || '',
+        },
+  } as Parameters<typeof setConfig>[0])
+}
 
 // Load all models from app/Models/ (individually, so one broken model doesn't block the rest).
 //
