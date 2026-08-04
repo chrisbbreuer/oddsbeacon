@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS "feature_snapshots" (
+  "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+  "captured_at" TEXT not null,
+  "hours_to_start" REAL default 0,
+  "best_price" REAL default 0,
+  "fair_prob" REAL default 0,
+  "sharp_prob" REAL default 0,
+  "edge_pct" REAL default 0,
+  "overround_pct" REAL default 0,
+  "book_count" REAL default 0,
+  "price_std_dev" REAL default 0,
+  "open_price" REAL default 0,
+  "move_from_open_pct" REAL default 0,
+  "velocity_pct_per_hour" REAL default 0,
+  "steam_score" REAL default 0,
+  "reverse_line_move" INTEGER default 0,
+  "direction_changes" REAL default 0,
+  "sport_slug" TEXT default '',
+  "market_type" TEXT default '',
+  "side" TEXT default '',
+  "extra" TEXT default '',
+  "label" REAL not null default -1,
+  "closing_fair_prob" REAL default 0,
+  "clv_pct" REAL default 0,
+  "labelled_at" TEXT default '',
+  "selection_id" INTEGER REFERENCES "selections"("id"),
+  "created_at" TEXT not null default CURRENT_TIMESTAMP,
+  "updated_at" TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "feature_snapshots_selection_captured" ON "feature_snapshots" ("selection_id", "captured_at");
+CREATE INDEX IF NOT EXISTS "feature_snapshots_label_captured" ON "feature_snapshots" ("label", "captured_at");

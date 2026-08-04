@@ -1,30 +1,78 @@
-import process from 'node:process'
-import { SyntheticProvider } from './synthetic'
-import { TheOddsApiProvider } from './the-odds-api'
+import type { IngestRunTracker } from '../ingest/run'
 
-/** A single price refresh for one bookmaker on one selection. */
-export interface OddsUpdate {
-  selectionId: number
-  bookmakerId: number
+/**
+ * The normalized shape every odds source produces.
+ *
+ * Providers differ wildly in wire format; they agree only on the thing
+ * being described. Normalizing at the edge means the persistence layer has
+ * one code path, and adding a source is a matter of writing a translator
+ * rather than another set of SQL writes that can quietly disagree with the
+ * existing ones about what a price means.
+ */
+
+/** One outcome a book is quoting, already mapped to our vocabulary. */
+export interface FeedOutcome {
+  /** 'home' | 'away' | 'draw' | 'over' | 'under' | 'yes' | 'no' | 'outright' */
+  side: string
+  /** What to display — the team name, "Over", and so on. */
+  label: string
+  /** This side's handicap or total. Null on markets without one. */
+  point: number | null
+  /** Decimal odds. */
   price: number
+  /** Maximum stake, when the book publishes one. */
+  limitAmount?: number
+}
+
+/** One bet type at one line, as a single book quotes it. */
+export interface FeedMarket {
+  /** 'h2h' | 'spreads' | 'totals' | … */
+  marketType: string
+  /**
+   * The market's line. For totals it is the total; for spreads it is the
+   * **home** team's handicap, signed. Null for moneylines.
+   *
+   * Books disagree about the line, and that disagreement is information
+   * rather than noise, so each distinct line becomes its own market
+   * instead of being flattened onto a single "main" number. Keeping them
+   * separate is also what makes de-vigging correct: the two sides of a
+   * market are a genuine complementary pair only when they share a line.
+   */
+  line: number | null
+  period?: string
+  outcomes: FeedOutcome[]
+}
+
+/** Everything one book is quoting on one event. */
+export interface FeedBook {
+  /** The provider's key for the book, matched against `bookmakers`. */
+  key: string
+  title: string
+  /** The book's own timestamp for these prices. */
+  lastUpdate: string
+  markets: FeedMarket[]
+}
+
+/** One event, with every book quoting it. */
+export interface FeedEvent {
+  externalId: string
+  /** Our sport slug, already resolved by the provider. */
+  sportSlug: string
+  commenceAt: string
+  homeTeam: string
+  awayTeam: string
+  books: FeedBook[]
 }
 
 /**
- * A source of live odds. Implementations either pull from an external
- * feed (TheOddsAPI) or synthesize movement from the current board so the
- * realtime pipeline works end-to-end without an API key.
+ * A source of live odds.
+ *
+ * `fetchEvents` receives the run tracker so a provider can record its own
+ * quota headers, request count, and per-league failures. The caller cannot
+ * observe those from outside, and losing them is precisely how a feed
+ * degrades invisibly.
  */
 export interface OddsProvider {
   readonly name: string
-  fetchUpdates: () => Promise<OddsUpdate[]>
-}
-
-/**
- * Pick the active provider: the real feed when `ODDS_API_KEY` is set,
- * otherwise the synthetic mover so `./buddy dev` shows live updates out
- * of the box.
- */
-export function resolveProvider(): OddsProvider {
-  const key = process.env.ODDS_API_KEY
-  return key ? new TheOddsApiProvider(key) : new SyntheticProvider()
+  fetchEvents: (tracker: IngestRunTracker) => Promise<FeedEvent[]>
 }

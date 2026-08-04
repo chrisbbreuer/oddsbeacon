@@ -244,9 +244,14 @@ describe('entitlements', () => {
 
   function subscribe(userId: number, priceKey: string, status: string, endsAt: string | null): void {
     providerSeq++
+    // `unit_price` and `provider_type` are NOT NULL: the Subscription
+    // model declares both required, and the schema now reflects that.
+    // Entitlements are decided from the price key rather than either
+    // value, so fixed placeholders serve here.
     db.prepare(`
-      INSERT INTO subscriptions (type, plan, provider_id, provider_status, provider_price_id, user_id, ends_at)
-      VALUES ('default', ?, ?, ?, ?, ?, ?)
+      INSERT INTO subscriptions
+        (type, plan, provider_id, provider_status, provider_type, provider_price_id, unit_price, user_id, ends_at)
+      VALUES ('default', ?, ?, ?, 'stripe', ?, 0, ?, ?)
     `).run(priceKey, `sub_${providerSeq}`, status, priceKey, userId, endsAt)
   }
 

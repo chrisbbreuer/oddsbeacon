@@ -16,23 +16,27 @@ export default function () {
     .hourly()
     .setTimeZone('America/Los_Angeles')
 
-  // Live data loop: pull fresh odds, persist with history, and broadcast
-  // the refreshed board to realtime subscribers every minute. (IngestOdds
-  // broadcasts on completion, so it replaces a standalone BroadcastOdds
-  // schedule — that job stays available for a manual re-broadcast.)
+  // The full data loop: fixtures and results from ESPN, then prices, then
+  // de-vig and fair value, then feature capture, settlement, calibration,
+  // and the AI review. Scheduled as one job rather than several because
+  // each stage consumes what the previous one produced, and running them
+  // out of order does not fail loudly — it produces subtly stale numbers.
+  //
+  // See app/Actions/Ingest/RunPipeline.ts for the ordering and why.
   schedule
-    .job('IngestOdds')
-    .everyMinute()
+    .job('RunPipeline')
+    .everyFiveMinutes()
 
-  // Prediction-market loop: ingest the public Kalshi + Polymarket trade
-  // tapes and refresh smart-money analytics (win rates, whale flags).
+  // Prediction-market loop: the public Kalshi and Polymarket trade tapes
+  // plus the smart-money analytics over them. Separate from the pipeline
+  // above because it reads a different set of venues on its own cadence.
   schedule
     .job('IngestPredictionMarkets')
     .everyFiveMinutes()
 
-  // Trading loop: score markets from that tape, judge the candidates,
-  // and place what the active strategies approve. Slower than ingestion
-  // on purpose — the evidence window is 24h, so a faster pass mostly
+  // Trading loop: score markets from that tape, judge the candidates, and
+  // place what the active strategies approve. Slower than ingestion on
+  // purpose — the evidence window is 24h, so a faster pass mostly
   // re-derives the same numbers. See app/Jobs/AutoTrade.ts.
   schedule
     .job('AutoTrade')

@@ -1,52 +1,44 @@
 import { route } from '@stacksjs/router'
 
 /**
- * This file is the entry point for your application's API routes.
- * The routes defined here are automatically registered under the `/api`
- * prefix, so `route.get('/odds', …)` is served at `/api/odds`.
+ * Unversioned API routes, served under `/api`.
  *
- * The odds endpoints are backed by actions in `app/Actions/Odds/` so the
- * same query logic is reusable from routes, events (realtime broadcasts),
- * and the CLI.
+ * The odds endpoints here are aliases onto the v1 actions. They exist so
+ * the pages and any existing client keep working; new integrations should
+ * use `/api/v1/*`, where the response envelope is stable and the contract
+ * is documented at `/api/v1/openapi`.
  *
- * @see https://docs.stacksjs.com/routing
+ * @see routes/v1.ts for the versioned surface and its rate limits.
  */
 
-// Full board across every bookmaker + market.
-route.get('/odds', 'Actions/Odds/GetBoard')
-
-// Cross-book arbitrage opportunities.
-route.get('/odds/arbitrage', 'Actions/Odds/GetArbitrage')
-
-// Best available price for every outcome, flattened.
-route.get('/odds/best', 'Actions/Odds/GetBestLines')
-
-// One market by id, with the books quoting it.
-route.get('/odds/market/{id}', 'Actions/Odds/GetMarket')
-
-// Every price a single bookmaker offers, by slug.
+// ---- Odds: aliases onto v1 -------------------------------------------------
+route.get('/odds', 'Actions/V1/GetBoard')
+route.get('/odds/arbitrage', 'Actions/V1/GetArbitrage')
+route.get('/odds/edges', 'Actions/V1/GetEdges')
+route.get('/odds/movements', 'Actions/V1/GetMovements')
+route.get('/odds/market/{id}', 'Actions/V1/GetEvent')
 route.get('/odds/book/{slug}', 'Actions/Odds/GetBookmaker')
 
-// Prediction-market smart money (public Kalshi + Polymarket tape).
+// ---- Prediction markets ----------------------------------------------------
 route.get('/markets/smart-money', 'Actions/PredictionMarkets/GetSmartMoney')
 route.get('/markets/whales', 'Actions/PredictionMarkets/GetWhaleTrades')
 route.get('/markets/graph', 'Actions/PredictionMarkets/GetSignalGraph')
 
-// Server-side bet sheets (scoped to a signed-in user or an anon token).
+// ---- Bet sheets (signed-in user or an anon token) --------------------------
 route.get('/sheets', 'Actions/Sheets/ListSheets')
 route.post('/sheets', 'Actions/Sheets/SaveSheet')
 route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
 
+// ---- Community -------------------------------------------------------------
+route.post('/community/notes', 'Actions/Community/PostNote')
+
 // `/coming-soon` is served as an STX view from
-// `storage/framework/defaults/resources/views/coming-soon.stx`. The
-// view auto-resolves through stx-serve, so no route registration is
-// needed here. To activate the holding page across the whole app:
+// `storage/framework/defaults/resources/views/coming-soon.stx`. The view
+// auto-resolves through stx-serve, so no route registration is needed here.
+// To activate the holding page across the whole app:
 //
 //   ./buddy coming-soon [--secret=my-magic-token]
 //
 // Launch the site with `./buddy launch`. Maintenance mode (503 page,
-// distinct cookie + state file) is the separate `./buddy down` /
-// `./buddy up` pair.
-
-// Community: per-market discussion threads.
-route.post('/community/notes', 'Actions/Community/PostNote')
+// distinct cookie + state file) is the separate `./buddy down` / `./buddy up`
+// pair.

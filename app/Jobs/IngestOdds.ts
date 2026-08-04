@@ -1,6 +1,6 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
-import IngestOddsAction from '../Actions/Odds/IngestOdds'
+import IngestOddsAction from '../Actions/Ingest/IngestOdds'
 
 /**
  * The live data loop: pull fresh prices from the active provider, persist

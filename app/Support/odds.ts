@@ -1,19 +1,30 @@
 /**
- * PredictHQ — odds math + comparison-board assembly.
+ * Odds math and comparison-board assembly.
  *
- * Pure domain logic that turns the rows stored by the Bookmaker /
- * MarketEvent / Selection / Odd models into the view-model the page and
- * the API render: best price per outcome, how much the best line beats
- * the field, and the cross-book hold / arbitrage per market.
+ * Turns the rows written by ingestion into the view-model the API and the
+ * pages render: best price per outcome, the de-vigged fair probability
+ * behind it, and the per-market hold or arbitrage.
  *
- * `loadBoard()` reads straight from the SQLite file with Bun's built-in
- * driver so it works identically inside the API server and inside an STX
- * server-script (which has no ORM in scope) — the same pattern the
- * scaffold's order-confirmation view uses.
+ * ### What changed
+ * `loadBoard()` used to read every row in the database on every request
+ * and then run one more query *per selection* to fetch its sparkline — an
+ * N+1 that was invisible at twelve seeded events and fatal at a real
+ * schedule. It now takes filters and a limit, and fetches history for the
+ * whole page in a single windowed query.
+ *
+ * It also reports honest numbers. The old `edgeVsAvgPct` compared the best
+ * price to the *average price*, which measures how much one book disagrees
+ * with the others — not whether the bet is good. Real edge is the best
+ * price against the de-vigged fair probability, and that now comes from
+ * `fair_prices`. The old field is kept, because the pages render it, but
+ * it sits beside the meaningful one rather than standing in for it.
  */
 
+import type { Binding } from '../Services/ingest/resolve'
 import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { recentMoves } from '../Services/quant/movement'
+import { resolveDbPath } from './db'
+import { impliedProbability, toAmericanNumber } from './keys'
 
 export type BookmakerKind = 'sportsbook' | 'prediction'
 
@@ -24,46 +35,15 @@ export interface Bookmaker {
   kind: BookmakerKind
   accent: string
   short: string
+  sharp: boolean
 }
 
-export interface Quote {
-  bookmakerId: number
-  price: number
-}
+export { impliedProbability }
 
-export interface Selection {
-  id: number
-  label: string
-  position: number
-  quotes: Quote[]
-}
-
-export interface MarketEvent {
-  id: number
-  title: string
-  category: string
-  league: string
-  market: string
-  startsAt: string
-  updatedMinutesAgo: number
-  complete: boolean
-  selections: Selection[]
-}
-
-// ----------------------------------------------------------------------------
-// Odds math
-// ----------------------------------------------------------------------------
-
-/** Probability implied by decimal odds (ignores the book's margin). */
-export function impliedProbability(decimal: number): number {
-  return 1 / decimal
-}
-
-/** Convert decimal odds to American (moneyline) format, e.g. +138 / -145. */
+/** Decimal odds to American (moneyline) text, e.g. +138 / -145. */
 export function toAmerican(decimal: number): string {
-  if (decimal >= 2)
-    return `+${Math.round((decimal - 1) * 100)}`
-  return `${Math.round(-100 / (decimal - 1))}`
+  const n = toAmericanNumber(decimal)
+  return n >= 0 ? `+${n}` : String(n)
 }
 
 function gcd(a: number, b: number): number {
@@ -76,18 +56,21 @@ function gcd(a: number, b: number): number {
 }
 
 /**
- * Convert decimal odds to traditional fractional odds (e.g. 2.50 → "3/2").
- * Approximates the profit ratio (decimal − 1) with the closest fraction
- * whose denominator is ≤ 20, then reduces it — close enough to the
+ * Decimal odds to traditional fractional odds (2.50 becomes "3/2").
+ *
+ * Approximates the profit ratio with the closest fraction whose
+ * denominator is 20 or less, then reduces it — close enough to the
  * fractions books actually quote without a lookup ladder.
  */
 export function toFractional(decimal: number): string {
   const profit = decimal - 1
   if (profit <= 0)
     return '0/1'
+
   let bestP = Math.round(profit)
   let bestQ = 1
   let bestErr = Math.abs(profit - bestP)
+
   for (let q = 1; q <= 20; q++) {
     const p = Math.round(profit * q)
     const err = Math.abs(profit - p / q)
@@ -97,88 +80,71 @@ export function toFractional(decimal: number): string {
       bestErr = err
     }
   }
+
   const g = gcd(bestP, bestQ) || 1
   return `${bestP / g}/${bestQ / g}`
 }
 
-export interface BestQuote {
-  bookmakerId: number
-  price: number
-}
-
-/** Highest decimal odds (best payout for the bettor) for one selection. */
-export function bestQuote(selection: Selection): BestQuote | null {
-  let best: BestQuote | null = null
-  for (const q of selection.quotes) {
-    if (best === null || q.price > best.price)
-      best = { bookmakerId: q.bookmakerId, price: q.price }
-  }
-  return best
-}
-
-/** Average decimal odds across every book quoting a selection. */
-export function averagePrice(selection: Selection): number {
-  if (selection.quotes.length === 0)
-    return 0
-  return selection.quotes.reduce((sum, q) => sum + q.price, 0) / selection.quotes.length
-}
-
 export interface MarketHold {
   bestBookSum: number
-  /** Positive = unavoidable margin; the lower, the better for bettors. */
+  /** Positive means an unavoidable margin; the lower, the better for bettors. */
   holdPct: number
   /** True when the best prices across books guarantee a profit. */
   isArbitrage: boolean
-  /** Guaranteed return when an arbitrage exists (else 0). */
+  /** Guaranteed return when an arbitrage exists, else 0. */
   arbitragePct: number
 }
-
-/**
- * "Line shopping" hold: combine the best available price for every
- * selection. When the implied probabilities sum below 1 there is a
- * cross-book arbitrage — a guaranteed profit by splitting the stake.
- */
-export function marketHold(event: MarketEvent): MarketHold {
-  let sum = 0
-  for (const selection of event.selections) {
-    const best = bestQuote(selection)
-    if (best)
-      sum += impliedProbability(best.price)
-  }
-  return {
-    bestBookSum: sum,
-    holdPct: (sum - 1) * 100,
-    isArbitrage: sum < 1,
-    arbitragePct: sum < 1 ? (1 - sum) * 100 : 0,
-  }
-}
-
-// ----------------------------------------------------------------------------
-// View-model assembly
-// ----------------------------------------------------------------------------
 
 export interface QuoteCell {
   bookmakerId: number
   price: number | null
   american: string | null
   fractional: string | null
+  point: number | null
   isBest: boolean
 }
 
 export interface SelectionView {
   id: number
   label: string
+  side: string
+  point: number | null
   bestBookmakerId: number | null
   bestPrice: number | null
   bestAmerican: string | null
   bestFractional: string | null
   bestImpliedPct: number
   average: number
-  /** % the best price beats the field average by — the value of shopping. */
+  /**
+   * How far the best price beats the field average, as a percent.
+   *
+   * A measure of book disagreement, not of value — kept because the pages
+   * render it. `edgePct` is the number that answers "is this a good bet".
+   */
   edgeVsAvgPct: number
-  /** Recent price history (oldest→newest) for the best book — sparkline data. */
+  /** De-vigged fair probability, 0..1. Null until the quant pass has run. */
+  fairProb: number | null
+  /** Fair probability from sharp books alone. */
+  sharpProb: number | null
+  /** Expected return at the best price against fair value, as a percent. */
+  edgePct: number | null
+  /** Fractional Kelly stake at that edge. */
+  kellyFraction: number | null
+  bookCount: number
+  /** Recent prices, oldest to newest, for the best book's sparkline. */
   bestHistory: number[]
   quotes: QuoteCell[]
+}
+
+export interface MarketView {
+  id: number
+  marketType: string
+  label: string
+  line: number | null
+  period: string
+  complete: boolean
+  selections: SelectionView[]
+  hold: MarketHold | null
 }
 
 export interface EventView {
@@ -186,13 +152,33 @@ export interface EventView {
   title: string
   category: string
   league: string
-  market: string
-  startsAt: string
+  sport: string
+  /** UTC ISO-8601 kickoff. Formatting is the render layer's job. */
+  commenceAt: string
+  status: string
+  statusDetail: string
+  venue: string
+  home: string | null
+  away: string | null
+  /** Minutes since any price on this event last moved. */
   updatedMinutesAgo: number
-  complete: boolean
   bookmakerIds: number[]
-  selections: SelectionView[]
+  markets: MarketView[]
+  /** The moneyline market's hold, hoisted for the event-level display. */
   hold: MarketHold | null
+
+  // ---- projection of the primary market ------------------------------------
+  // An event now owns many markets, but the pages were written when it
+  // owned one flat list of selections. These project the primary market —
+  // the moneyline where there is one — back onto the event so those pages
+  // keep rendering. `markets` is the real structure; prefer it in new code.
+
+  /** The primary market's selections. */
+  selections: SelectionView[]
+  /** The primary market's label, e.g. "Moneyline". */
+  market: string
+  /** `commenceAt` rendered for display. Formatting belongs to the client. */
+  startsAt: string
 }
 
 export interface OddsSummary {
@@ -200,10 +186,13 @@ export interface OddsSummary {
   bookmakerCount: number
   sportsbookCount: number
   predictionCount: number
+  marketCount: number
   selectionCount: number
   arbitrageCount: number
-  /** Average best-vs-field edge across every selection, as a percent. */
+  /** Mean best-vs-field spread across every selection, as a percent. */
   avgEdgePct: number
+  /** Mean honest edge against fair value, as a percent. */
+  avgTrueEdgePct: number
 }
 
 export interface Board {
@@ -211,165 +200,390 @@ export interface Board {
   events: EventView[]
   summary: OddsSummary
   categories: string[]
+  /** Total matching the filter, before the limit — for pagination. */
+  total: number
 }
 
-function buildEventView(event: MarketEvent, allBookmakers: Bookmaker[]): EventView {
-  const order = allBookmakers.map(b => b.id)
-  const bookmakerIds = order.filter(id =>
-    event.selections.some(s => s.quotes.some(q => q.bookmakerId === id)),
-  )
-
-  const selections: SelectionView[] = event.selections.map((selection) => {
-    const best = bestQuote(selection)
-    const average = averagePrice(selection)
-    const byBook = new Map(selection.quotes.map(q => [q.bookmakerId, q.price]))
-    return {
-      id: selection.id,
-      label: selection.label,
-      bestBookmakerId: best?.bookmakerId ?? null,
-      bestPrice: best?.price ?? null,
-      bestAmerican: best ? toAmerican(best.price) : null,
-      bestFractional: best ? toFractional(best.price) : null,
-      bestImpliedPct: best ? impliedProbability(best.price) * 100 : 0,
-      average,
-      edgeVsAvgPct: best && average ? (best.price / average - 1) * 100 : 0,
-      bestHistory: [],
-      quotes: bookmakerIds.map((bookmakerId) => {
-        const price = byBook.get(bookmakerId) ?? null
-        return {
-          bookmakerId,
-          price,
-          american: price !== null ? toAmerican(price) : null,
-          fractional: price !== null ? toFractional(price) : null,
-          isBest: best !== null && bookmakerId === best.bookmakerId,
-        }
-      }),
-    }
-  })
-
-  return {
-    id: event.id,
-    title: event.title,
-    category: event.category,
-    league: event.league,
-    market: event.market,
-    startsAt: event.startsAt,
-    updatedMinutesAgo: event.updatedMinutesAgo,
-    complete: event.complete,
-    bookmakerIds,
-    selections,
-    hold: event.complete ? marketHold(event) : null,
-  }
-}
-
-/** Turn raw model rows into the full comparison board the UI renders. */
-export function assembleBoard(events: MarketEvent[], bookmakers: Bookmaker[]): Board {
-  const views = events.map(e => buildEventView(e, bookmakers))
-
-  let edgeSum = 0
-  let edgeCount = 0
-  for (const v of views) {
-    for (const s of v.selections) {
-      edgeSum += s.edgeVsAvgPct
-      edgeCount++
-    }
-  }
-
-  const summary: OddsSummary = {
-    eventCount: events.length,
-    bookmakerCount: bookmakers.length,
-    sportsbookCount: bookmakers.filter(b => b.kind === 'sportsbook').length,
-    predictionCount: bookmakers.filter(b => b.kind === 'prediction').length,
-    selectionCount: events.reduce((sum, e) => sum + e.selections.length, 0),
-    arbitrageCount: views.filter(v => v.hold?.isArbitrage).length,
-    avgEdgePct: edgeCount ? edgeSum / edgeCount : 0,
-  }
-
-  const categories = Array.from(new Set(events.map(e => e.category)))
-
-  return { bookmakers, events: views, summary, categories }
-}
-
-// ----------------------------------------------------------------------------
-// Data access (Bun SQLite)
-// ----------------------------------------------------------------------------
-
-function resolveDbPath(): string {
-  const configured = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  if (configured.startsWith('/'))
-    return configured
-  return `${process.cwd()}/${configured}`
-}
-
-export interface LineMove {
-  selectionId: number
-  bookmakerId: number
-  pick: string
-  game: string
-  league: string
-  category: string
-  book: string
-  bookSlug: string
-  from: number
-  to: number
-  dir: 'up' | 'down'
-  at: string
+export interface BoardOptions {
+  sport?: string
+  category?: string
+  status?: string
+  marketType?: string
+  /** Only events starting at or after this ISO instant. */
+  from?: string
+  /** Only events starting at or before this ISO instant. */
+  to?: string
+  limit?: number
+  offset?: number
+  /** Points of history per selection. 0 skips the query entirely. */
+  historyPoints?: number
+  dbPath?: string
 }
 
 /**
- * The most recent line moves across all books — the latest price for each
- * (selection, bookmaker) versus the one before it, newest first. Powers
- * the live-action feed; realtime `board:updated` messages extend it on the
- * client.
+ * Line-shopping hold across books.
+ *
+ * Combines the best available price for every selection in one market.
+ * When the implied probabilities sum below 1 there is a cross-book
+ * arbitrage — a guaranteed profit from splitting the stake.
+ *
+ * Only meaningful on a complete market, where the outcomes partition the
+ * space. Summing across an incomplete one produces a number that looks
+ * like a hold and means nothing.
  */
-export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): LineMove[] {
-  const db = new Database(dbPath, { readonly: true })
+export function marketHold(selections: Array<{ bestPrice: number | null }>): MarketHold {
+  let sum = 0
+  for (const selection of selections) {
+    if (selection.bestPrice && selection.bestPrice > 1)
+      sum += impliedProbability(selection.bestPrice)
+  }
+  return {
+    bestBookSum: sum,
+    holdPct: (sum - 1) * 100,
+    isArbitrage: sum > 0 && sum < 1,
+    arbitragePct: sum > 0 && sum < 1 ? (1 - sum) * 100 : 0,
+  }
+}
+
+interface QuoteRow {
+  selection_id: number
+  bookmaker_id: number
+  price: number
+  point: number | null
+  updated_at: string
+}
+
+/**
+ * Load the comparison board.
+ *
+ * Five queries regardless of how many events match: books, the event page,
+ * markets, selections with their fair prices, and every quote. History is
+ * one more, and only when asked for. Nothing runs per row.
+ */
+export function loadBoard(options: BoardOptions = {}): Board {
+  const limit = Math.min(200, Math.max(1, options.limit ?? 50))
+  const offset = Math.max(0, options.offset ?? 0)
+  const historyPoints = options.historyPoints ?? 30
+
+  const db = new Database(options.dbPath ?? resolveDbPath(), { readonly: true })
   try {
-    const rows = db.query(`
-      SELECT os.selection_id, os.bookmaker_id, os.price, os.captured_at,
-             s.label AS pick, e.title AS game, e.league AS league, e.category AS category,
-             b.name AS book, b.slug AS slug
-      FROM odds_snapshots os
-      JOIN selections s ON s.id = os.selection_id
-      JOIN market_events e ON e.id = s.market_event_id
-      JOIN bookmakers b ON b.id = os.bookmaker_id
-      ORDER BY os.captured_at DESC, os.id DESC
-      LIMIT 6000
+    const bookmakers = (db
+      .query('SELECT id, name, slug, kind, accent, short, sharp FROM bookmakers WHERE active = 1 ORDER BY id ASC')
+      .all() as Array<Record<string, any>>)
+      .map(b => ({
+        id: b.id,
+        name: b.name,
+        slug: b.slug,
+        kind: (b.kind === 'prediction' ? 'prediction' : 'sportsbook') as BookmakerKind,
+        accent: b.accent,
+        short: b.short,
+        sharp: b.sharp === 1,
+      }))
+
+    const where: string[] = ['1 = 1']
+    const params: Binding[] = []
+
+    // Default to events that can still be bet on.
+    //
+    // Without this the board is ordered by kickoff ascending and the first
+    // page is whatever finished earliest — games with no live prices at
+    // all, so the comparison tables render empty while the event count
+    // says there is plenty to show. An explicit `status`, `from`, or `to`
+    // turns the default off, so asking for finished games still works.
+    if (!options.status && !options.from && !options.to)
+      where.push(`e.status IN ('scheduled', 'live')`)
+
+    if (options.sport) {
+      where.push('sp.slug = ?')
+      params.push(options.sport)
+    }
+    if (options.category) {
+      where.push('e.category = ?')
+      params.push(options.category)
+    }
+    if (options.status) {
+      where.push('e.status = ?')
+      params.push(options.status)
+    }
+    if (options.from) {
+      where.push('e.commence_at >= ?')
+      params.push(options.from)
+    }
+    if (options.to) {
+      where.push('e.commence_at <= ?')
+      params.push(options.to)
+    }
+
+    const clause = where.join(' AND ')
+
+    const total = (db.query(`
+      SELECT COUNT(*) AS n FROM market_events e
+      JOIN sports sp ON sp.id = e.sport_id
+      WHERE ${clause}
+    `).get(...params) as { n: number }).n
+
+    const eventRows = db.query(`
+      SELECT e.id, e.title, e.category, e.league, e.commence_at, e.status, e.status_detail,
+             e.venue, sp.slug AS sport,
+             home.name AS home_name, away.name AS away_name
+      FROM market_events e
+      JOIN sports sp ON sp.id = e.sport_id
+      LEFT JOIN sports_teams home ON home.id = e.home_sports_team_id
+      LEFT JOIN sports_teams away ON away.id = e.away_sports_team_id
+      WHERE ${clause}
+      ORDER BY e.commence_at ASC, e.id ASC
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset) as Array<Record<string, any>>
+
+    if (eventRows.length === 0) {
+      return {
+        bookmakers,
+        events: [],
+        summary: emptySummary(bookmakers),
+        categories: loadCategories(db),
+        total,
+      }
+    }
+
+    const eventIds = eventRows.map(r => r.id as number)
+    const idList = eventIds.join(',')
+    const typeFilter = options.marketType ? `AND m.market_type = '${options.marketType.replace(/[^a-z0-9_]/gi, '')}'` : ''
+
+    const marketRows = db.query(`
+      SELECT id, market_event_id, market_type, label, line, period, complete
+      FROM markets m
+      WHERE m.market_event_id IN (${idList}) ${typeFilter}
+      ORDER BY m.position ASC, m.id ASC
     `).all() as Array<Record<string, any>>
 
-    // rows are newest-first; keep the two newest prices per (sel, book).
-    const points = new Map<string, Array<{ price: number, at: string, row: Record<string, any> }>>()
-    for (const r of rows) {
-      const key = `${r.selection_id}:${r.bookmaker_id}`
-      const list = points.get(key) ?? []
-      if (list.length < 2)
-        list.push({ price: r.price, at: r.captured_at, row: r })
-      points.set(key, list)
+    const selectionRows = db.query(`
+      SELECT s.id, s.market_id, s.label, s.side, s.point, s.position,
+             f.prob_consensus, f.prob_sharp, f.edge_pct, f.kelly_fraction, f.book_count
+      FROM selections s
+      JOIN markets m ON m.id = s.market_id
+      LEFT JOIN fair_prices f ON f.selection_id = s.id
+      WHERE m.market_event_id IN (${idList}) ${typeFilter}
+      ORDER BY s.position ASC, s.id ASC
+    `).all() as Array<Record<string, any>>
+
+    const quoteRows = db.query(`
+      SELECT o.selection_id, o.bookmaker_id, o.price, o.point, o.updated_at
+      FROM odds o
+      JOIN selections s ON s.id = o.selection_id
+      JOIN markets m ON m.id = s.market_id
+      WHERE m.market_event_id IN (${idList}) AND o.available = 1 ${typeFilter}
+    `).all() as QuoteRow[]
+
+    const quotesBySelection = new Map<number, QuoteRow[]>()
+    for (const row of quoteRows) {
+      const list = quotesBySelection.get(row.selection_id) ?? []
+      list.push(row)
+      quotesBySelection.set(row.selection_id, list)
     }
 
-    const moves: LineMove[] = []
-    for (const pts of points.values()) {
-      const [latest, previous] = pts
-      if (!latest || !previous || latest.price === previous.price)
-        continue
-      const r = latest.row
-      moves.push({
-        selectionId: r.selection_id,
-        bookmakerId: r.bookmaker_id,
-        pick: r.pick,
-        game: r.game,
-        league: r.league,
-        category: r.category,
-        book: r.book,
-        bookSlug: r.slug,
-        from: previous.price,
-        to: latest.price,
-        dir: latest.price > previous.price ? 'up' : 'down',
-        at: latest.at,
-      })
+    // History for every selection on the page in one windowed query,
+    // replacing the per-selection query that made this endpoint O(n).
+    const historyBySelection = new Map<number, number[]>()
+    if (historyPoints > 0) {
+      const historyRows = db.query(`
+        WITH ranked AS (
+          SELECT os.selection_id, os.price, os.captured_at,
+                 ROW_NUMBER() OVER (
+                   PARTITION BY os.selection_id ORDER BY os.captured_at DESC, os.id DESC
+                 ) AS rn
+          FROM odds_snapshots os
+          JOIN selections s ON s.id = os.selection_id
+          JOIN markets m ON m.id = s.market_id
+          WHERE m.market_event_id IN (${idList}) ${typeFilter}
+        )
+        SELECT selection_id, price FROM ranked WHERE rn <= ?
+        ORDER BY selection_id ASC, captured_at ASC
+      `).all(historyPoints) as Array<{ selection_id: number, price: number }>
+
+      for (const row of historyRows) {
+        const list = historyBySelection.get(row.selection_id) ?? []
+        list.push(row.price)
+        historyBySelection.set(row.selection_id, list)
+      }
     }
-    moves.sort((a, b) => (a.at < b.at ? 1 : -1))
-    return moves.slice(0, limit)
+
+    const selectionsByMarket = new Map<number, SelectionView[]>()
+    for (const row of selectionRows) {
+      const quotes = quotesBySelection.get(row.id) ?? []
+
+      let best: { bookmakerId: number, price: number } | null = null
+      let sum = 0
+      for (const q of quotes) {
+        sum += q.price
+        if (best === null || q.price > best.price)
+          best = { bookmakerId: q.bookmaker_id, price: q.price }
+      }
+      const average = quotes.length > 0 ? sum / quotes.length : 0
+
+      const view: SelectionView = {
+        id: row.id,
+        label: row.label,
+        side: row.side,
+        point: row.point,
+        bestBookmakerId: best?.bookmakerId ?? null,
+        bestPrice: best?.price ?? null,
+        bestAmerican: best ? toAmerican(best.price) : null,
+        bestFractional: best ? toFractional(best.price) : null,
+        bestImpliedPct: best ? impliedProbability(best.price) * 100 : 0,
+        average,
+        edgeVsAvgPct: best && average ? (best.price / average - 1) * 100 : 0,
+        fairProb: row.prob_consensus ?? null,
+        sharpProb: row.prob_sharp ?? null,
+        edgePct: row.edge_pct ?? null,
+        kellyFraction: row.kelly_fraction ?? null,
+        bookCount: row.book_count ?? quotes.length,
+        bestHistory: historyBySelection.get(row.id) ?? [],
+        quotes: [],
+      }
+
+      const byBook = new Map(quotes.map(q => [q.bookmaker_id, q]))
+      view.quotes = bookmakers
+        .filter(b => byBook.has(b.id))
+        .map((b) => {
+          const q = byBook.get(b.id)!
+          return {
+            bookmakerId: b.id,
+            price: q.price,
+            american: toAmerican(q.price),
+            fractional: toFractional(q.price),
+            point: q.point,
+            isBest: best !== null && b.id === best.bookmakerId,
+          }
+        })
+
+      const list = selectionsByMarket.get(row.market_id) ?? []
+      list.push(view)
+      selectionsByMarket.set(row.market_id, list)
+    }
+
+    const marketsByEvent = new Map<number, MarketView[]>()
+    for (const row of marketRows) {
+      const selections = selectionsByMarket.get(row.id) ?? []
+      const view: MarketView = {
+        id: row.id,
+        marketType: row.market_type,
+        label: row.label,
+        line: row.line,
+        period: row.period,
+        complete: Boolean(row.complete),
+        selections,
+        hold: row.complete && selections.length >= 2 ? marketHold(selections) : null,
+      }
+      const list = marketsByEvent.get(row.market_event_id) ?? []
+      list.push(view)
+      marketsByEvent.set(row.market_event_id, list)
+    }
+
+    // Freshness per event, from the newest quote on it — derived rather
+    // than stored, so it cannot go stale the moment it is written.
+    //
+    // Indexed rather than searched: resolving each quote's event with a
+    // linear `find` over the selection and market arrays is quadratic, and
+    // at a few thousand quotes on a page that alone costs more than every
+    // database query combined.
+    const eventBySelection = new Map<number, number>()
+    const eventByMarket = new Map<number, number>(
+      marketRows.map(m => [m.id as number, m.market_event_id as number]),
+    )
+    for (const row of selectionRows) {
+      const eventId = eventByMarket.get(row.market_id)
+      if (eventId !== undefined)
+        eventBySelection.set(row.id, eventId)
+    }
+
+    const freshness = new Map<number, string>()
+    for (const row of quoteRows) {
+      const eventId = eventBySelection.get(row.selection_id)
+      if (eventId === undefined)
+        continue
+      const current = freshness.get(eventId)
+      if (!current || row.updated_at > current)
+        freshness.set(eventId, row.updated_at)
+    }
+
+    const now = Date.now()
+    const events: EventView[] = eventRows.map((row) => {
+      const markets = marketsByEvent.get(row.id) ?? []
+      const bookmakerIds = bookmakers
+        .map(b => b.id)
+        .filter(id => markets.some(m => m.selections.some(s => s.quotes.some(q => q.bookmakerId === id))))
+
+      const updatedAt = freshness.get(row.id)
+      const updatedMinutesAgo = updatedAt
+        ? Math.max(0, Math.round((now - Date.parse(updatedAt)) / 60_000))
+        : 0
+
+      const primary = markets.find(m => m.marketType === 'h2h') ?? markets[0] ?? null
+
+      return {
+        id: row.id,
+        title: row.title,
+        category: row.category,
+        league: row.league,
+        sport: row.sport,
+        commenceAt: row.commence_at,
+        status: row.status,
+        statusDetail: row.status_detail ?? '',
+        venue: row.venue ?? '',
+        home: row.home_name ?? null,
+        away: row.away_name ?? null,
+        updatedMinutesAgo,
+        bookmakerIds,
+        markets,
+        hold: primary?.hold ?? null,
+        selections: primary?.selections ?? [],
+        market: primary?.label || primary?.marketType || '',
+        startsAt: formatStart(row.commence_at, row.status),
+      }
+    })
+
+    let edgeSum = 0
+    let edgeCount = 0
+    let trueEdgeSum = 0
+    let trueEdgeCount = 0
+    let marketCount = 0
+    let selectionCount = 0
+    let arbitrageCount = 0
+
+    for (const event of events) {
+      for (const market of event.markets) {
+        marketCount++
+        if (market.hold?.isArbitrage)
+          arbitrageCount++
+        for (const selection of market.selections) {
+          selectionCount++
+          edgeSum += selection.edgeVsAvgPct
+          edgeCount++
+          if (selection.edgePct !== null) {
+            trueEdgeSum += selection.edgePct
+            trueEdgeCount++
+          }
+        }
+      }
+    }
+
+    return {
+      bookmakers,
+      events,
+      summary: {
+        eventCount: events.length,
+        bookmakerCount: bookmakers.length,
+        sportsbookCount: bookmakers.filter(b => b.kind === 'sportsbook').length,
+        predictionCount: bookmakers.filter(b => b.kind === 'prediction').length,
+        marketCount,
+        selectionCount,
+        arbitrageCount,
+        avgEdgePct: edgeCount ? edgeSum / edgeCount : 0,
+        avgTrueEdgePct: trueEdgeCount ? trueEdgeSum / trueEdgeCount : 0,
+      },
+      categories: loadCategories(db),
+      total,
+    }
   }
   finally {
     db.close()
@@ -377,83 +591,108 @@ export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): L
 }
 
 /**
- * Load every event, selection, bookmaker, and odd from SQLite and
- * assemble the comparison board. Read-only — safe to call on every
- * request from both the API and SSR.
+ * A short human rendering of a kickoff time.
+ *
+ * The stored value is a real UTC timestamp; this is only for the pages
+ * that previously received a pre-formatted string. Anything new should
+ * take `commenceAt` and format it client-side, where the viewer's timezone
+ * is actually known — this necessarily guesses at it.
  */
-export function loadBoard(dbPath: string = resolveDbPath()): Board {
+function formatStart(commenceAt: string, status: string): string {
+  const ms = Date.parse(commenceAt)
+  if (!Number.isFinite(ms))
+    return ''
+
+  if (status === 'final')
+    return 'Final'
+  if (status === 'live')
+    return 'Live'
+  if (status === 'postponed' || status === 'cancelled')
+    return status.charAt(0).toUpperCase() + status.slice(1)
+
+  const date = new Date(ms)
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+    timeZoneName: 'short',
+  })
+
+  const days = Math.floor((ms - Date.now()) / 86_400_000)
+  if (days <= 0)
+    return `Today · ${time}`
+  if (days === 1)
+    return `Tomorrow · ${time}`
+
+  return `${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' })} · ${time}`
+}
+
+function loadCategories(db: Database): string[] {
+  return (db
+    .query(`SELECT DISTINCT category FROM market_events WHERE category != '' ORDER BY category`)
+    .all() as Array<{ category: string }>)
+    .map(r => r.category)
+}
+
+function emptySummary(bookmakers: Bookmaker[]): OddsSummary {
+  return {
+    eventCount: 0,
+    bookmakerCount: bookmakers.length,
+    sportsbookCount: bookmakers.filter(b => b.kind === 'sportsbook').length,
+    predictionCount: bookmakers.filter(b => b.kind === 'prediction').length,
+    marketCount: 0,
+    selectionCount: 0,
+    arbitrageCount: 0,
+    avgEdgePct: 0,
+    avgTrueEdgePct: 0,
+  }
+}
+
+export interface LineMove {
+  selectionId: number
+  marketEventId: number
+  pick: string
+  game: string
+  league: string
+  category: string
+  book: string
+  bookSlug: string
+  marketType: string
+  from: number
+  to: number
+  dir: 'up' | 'down'
+  movePct: number
+  at: string
+}
+
+/**
+ * The most recent price moves across all books, newest first.
+ *
+ * Delegates to the windowed query in `Services/quant/movement.ts`, which
+ * finds each quote's last two observations in the database. The previous
+ * implementation pulled a fixed 6,000 rows and paired them in JavaScript,
+ * so it both did far more work than needed and silently missed moves once
+ * the tape grew past that slab.
+ */
+export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): LineMove[] {
   const db = new Database(dbPath, { readonly: true })
   try {
-    const bookmakers = db
-      .query('SELECT id, name, slug, kind, accent, short FROM bookmakers ORDER BY id ASC')
-      .all() as Array<Omit<Bookmaker, 'kind'> & { kind: string }>
-
-    const eventRows = db
-      .query('SELECT id, title, category, league, market, starts_at, updated_minutes_ago, complete FROM market_events ORDER BY id ASC')
-      .all() as Array<Record<string, unknown>>
-
-    const selectionRows = db
-      .query('SELECT id, market_event_id, label, position FROM selections ORDER BY position ASC, id ASC')
-      .all() as Array<Record<string, unknown>>
-
-    const oddRows = db
-      .query('SELECT selection_id, bookmaker_id, price FROM odds')
-      .all() as Array<{ selection_id: number, bookmaker_id: number, price: number }>
-
-    const quotesBySelection = new Map<number, Quote[]>()
-    for (const row of oddRows) {
-      const list = quotesBySelection.get(row.selection_id) ?? []
-      list.push({ bookmakerId: row.bookmaker_id, price: row.price })
-      quotesBySelection.set(row.selection_id, list)
-    }
-
-    const selectionsByEvent = new Map<number, Selection[]>()
-    for (const row of selectionRows) {
-      const eventId = row.market_event_id as number
-      const list = selectionsByEvent.get(eventId) ?? []
-      list.push({
-        id: row.id as number,
-        label: row.label as string,
-        position: (row.position as number) ?? 0,
-        quotes: quotesBySelection.get(row.id as number) ?? [],
-      })
-      selectionsByEvent.set(eventId, list)
-    }
-
-    const events: MarketEvent[] = eventRows.map(row => ({
-      id: row.id as number,
-      title: row.title as string,
-      category: row.category as string,
-      league: row.league as string,
-      market: row.market as string,
-      startsAt: row.starts_at as string,
-      updatedMinutesAgo: (row.updated_minutes_ago as number) ?? 0,
-      complete: Boolean(row.complete),
-      selections: selectionsByEvent.get(row.id as number) ?? [],
+    return recentMoves(db, limit).map(m => ({
+      selectionId: m.selectionId,
+      marketEventId: m.marketEventId,
+      pick: m.pick,
+      game: m.title,
+      league: m.league,
+      category: m.league,
+      book: m.book,
+      bookSlug: m.bookSlug,
+      marketType: m.marketType,
+      from: m.from,
+      to: m.to,
+      dir: m.dir,
+      movePct: m.movePct,
+      at: m.at,
     }))
-
-    const normalizedBooks: Bookmaker[] = bookmakers.map(b => ({
-      ...b,
-      kind: b.kind === 'prediction' ? 'prediction' : 'sportsbook',
-    }))
-
-    const board = assembleBoard(events, normalizedBooks)
-
-    // Attach the recent price history for each outcome's best book so the
-    // UI can draw a sparkline and an open→current delta.
-    const historyStmt = db.query(
-      'SELECT price FROM odds_snapshots WHERE selection_id = ?1 AND bookmaker_id = ?2 ORDER BY captured_at ASC LIMIT 40',
-    )
-    for (const ev of board.events) {
-      for (const s of ev.selections) {
-        if (s.bestBookmakerId != null) {
-          const rows = historyStmt.all(s.id, s.bestBookmakerId) as Array<{ price: number }>
-          s.bestHistory = rows.map(r => r.price)
-        }
-      }
-    }
-
-    return board
   }
   finally {
     db.close()

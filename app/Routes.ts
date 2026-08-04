@@ -30,5 +30,9 @@ export default {
   // costs nothing beyond registering the fuller path with them.
   'auth': { path: 'auth', prefix: '/api' },
 
-  'v1': { path: 'v1', prefix: 'v1' },
+  // The versioned public API. Served under /api/v1 rather than /v1: the
+  // stx page server owns the document root and answers unknown root paths
+  // with its own 404, so a root-level prefix is shadowed before the API
+  // router sees it — the same reason `auth` carries the /api prefix.
+  'v1': { path: 'v1', prefix: '/api/v1' },
 } satisfies RouteRegistry

@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX IF NOT EXISTS "prediction_markets_prediction_markets_venue_external_id" ON "prediction_markets" ("venue", "external_id");

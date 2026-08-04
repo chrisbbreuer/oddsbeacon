@@ -1,1 +1,0 @@
-CREATE INDEX IF NOT EXISTS "market_trades_trader" ON "market_trades" ("market_trader_id");
