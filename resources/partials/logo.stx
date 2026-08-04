@@ -1,30 +1,23 @@
 {{--
   PredictHQ mark.
 
-  A probability, drawn. The ring is the full distribution and the filled
-  arc is the part a forecast has claimed, swept to roughly 68%, which is
-  one standard deviation and reads as "confident but not certain". The
-  centre dot is the point estimate the arc is built around.
+  Two bars and a step up. It reads as a chart moving in your favour, which
+  is the one thing every visitor already knows how to read, and the step
+  doubles as the H of HQ once you have seen it.
 
-  It is an inline SVG rather than a glyph because the previous mark was a
-  literal `◎` character: it rendered as a different shape on every
-  platform, could not take the brand colour independently of its
-  container, and disappeared entirely where the font lacked it.
+  The previous mark was a ring with a gap and a centre dot, meant as a
+  probability arc. Nobody read it that way. At nav size the gap closed
+  optically and it became a circle with a dot, which says nothing, and an
+  abstract mark that needs its own caption is not a mark.
 
-  currentColor throughout, so one file serves the light nav, the dark
-  nav, and the footer without a second copy. Size comes from the wrapper.
+  Squared ends and equal stroke weights so it holds at 18px in the nav and
+  still looks deliberate at 52px. currentColor throughout, so one file
+  serves the light nav, the dark nav, and the footer.
 --}}
 <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="width:100%;height:100%;display:block">
-  <circle cx="16" cy="16" r="11" stroke="currentColor" stroke-width="2.5" opacity="0.28" />
-  {{--
-    Arc from 12 o'clock, swept clockwise ~245° (68% of the circle).
-    Drawn with an explicit large-arc flag so the sweep is unambiguous.
-  --}}
-  <path
-    d="M16 5 A11 11 0 1 1 6.5 21.5"
-    stroke="currentColor"
-    stroke-width="2.5"
-    stroke-linecap="round"
-  />
-  <circle cx="16" cy="16" r="3.25" fill="currentColor" />
+  {{-- Baseline bar, held short so the rise reads as a change rather than a pair. --}}
+  <rect x="5" y="18" width="6" height="9" rx="1.6" fill="currentColor" opacity="0.55" />
+  {{-- The step up. Full opacity: this is the subject. --}}
+  <rect x="13" y="11" width="6" height="16" rx="1.6" fill="currentColor" />
+  <rect x="21" y="5" width="6" height="22" rx="1.6" fill="currentColor" />
 </svg>

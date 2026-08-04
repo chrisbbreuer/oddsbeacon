@@ -28,7 +28,14 @@
         <i class="h-4 w-4 i-hugeicons-moon-02" x-show="theme !== 'dark'"></i>
         <i class="h-4 w-4 i-hugeicons-sun-03" x-show="theme === 'dark'" style="display:none"></i>
       </button>
-      <a href="/pricing" data-no-router class="hidden px-4 py-2 font-bold text-sm rounded-lg sm:inline-block btn btn-primary">Start</a>
+      @if (navActive === 'board')
+        <button class="hidden gap-2 items-center px-4 py-2 font-bold text-sm rounded-lg sm:inline-flex btn btn-primary" @click="drawer = true">
+          My sheet
+          <span class="grid place-items-center h-5 min-w-5 px-1 text-xs rounded-full" style="background:rgba(0,0,0,0.18)" x-text="sheet.length"></span>
+        </button>
+      @else
+        <a href="/pricing" data-no-router class="hidden px-4 py-2 font-bold text-sm rounded-lg sm:inline-block btn btn-primary">Start</a>
+      @endif
 
       {{--
         Below lg the five links were simply `hidden`, and the CTA was hidden

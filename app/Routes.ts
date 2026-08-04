@@ -23,5 +23,9 @@ export default {
   // Subscription checkout and the Stripe webhook. See routes/billing.ts.
   'billing': { path: 'billing', prefix: '/api' },
 
+  // Social sign-in. No /api prefix: a provider redirects a browser to the
+  // callback, and the URL is registered with the provider by hand.
+  'auth': 'auth',
+
   'v1': { path: 'v1', prefix: 'v1' },
 } satisfies RouteRegistry
