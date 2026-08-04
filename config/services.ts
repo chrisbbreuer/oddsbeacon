@@ -31,7 +31,7 @@ export default {
   google: {
     clientId: String(env.GOOGLE_CLIENT_ID || ''),
     clientSecret: String(env.GOOGLE_CLIENT_SECRET || ''),
-    redirectUrl: String(env.GOOGLE_REDIRECT_URL || 'http://localhost:3000/auth/google/callback'),
+    redirectUrl: String(env.GOOGLE_REDIRECT_URL || 'http://localhost:3000/api/auth/google/callback'),
     scopes: ['profile', 'email'],
   },
 

@@ -1,7 +1,7 @@
 import { Action } from '@stacksjs/actions'
 import { config } from '@stacksjs/config'
 import { response } from '@stacksjs/router'
-import { GitHubProvider, GoogleProvider } from '@stacksjs/socials'
+import { AppleProvider, GoogleProvider } from '@stacksjs/socials'
 
 /**
  * GET /auth/{provider}/redirect - start an OAuth sign-in.
@@ -14,8 +14,8 @@ import { GitHubProvider, GoogleProvider } from '@stacksjs/socials'
  */
 
 const PROVIDERS: Record<string, any> = {
-  github: GitHubProvider,
   google: GoogleProvider,
+  apple: AppleProvider,
 }
 
 export function providerFor(name: string): any | null {

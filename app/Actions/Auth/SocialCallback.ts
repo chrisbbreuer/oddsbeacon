@@ -45,8 +45,9 @@ export default new Action({
 
     const email = String(profile?.email ?? '').trim().toLowerCase()
     if (!email) {
-      // GitHub hides an address the user marked private. Without one there
-      // is no safe key to match on, so we say so rather than inventing one.
+      // Apple lets the user hide their address behind a relay, and only
+      // releases it on the FIRST authorisation. Without one there is no safe
+      // key to match on, so we say so rather than inventing one.
       return response.redirect('/login?error=noemail', 302)
     }
 

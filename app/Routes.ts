@@ -23,9 +23,12 @@ export default {
   // Subscription checkout and the Stripe webhook. See routes/billing.ts.
   'billing': { path: 'billing', prefix: '/api' },
 
-  // Social sign-in. No /api prefix: a provider redirects a browser to the
-  // callback, and the URL is registered with the provider by hand.
-  'auth': 'auth',
+  // Social sign-in. Under /api like every other route file: the stx page
+  // server owns the document root and answers unknown root paths with its
+  // own 404 page, so a root-level route here is shadowed before the API
+  // router ever sees it. Providers accept any callback URL, so the prefix
+  // costs nothing beyond registering the fuller path with them.
+  'auth': { path: 'auth', prefix: '/api' },
 
   'v1': { path: 'v1', prefix: 'v1' },
 } satisfies RouteRegistry
