@@ -1,0 +1,181 @@
+<script server>
+/**
+ * PredictHQ - live scores.
+ *
+ * Apple Sports layout: a league pill in the header, Yesterday / Today /
+ * Upcoming as one segmented control, and a card per day holding one row
+ * per game. Rows carry the logo, the name, the record, and the score,
+ * with the leader in full contrast and the trailer dimmed, so the state
+ * of a game reads without being read.
+ *
+ * Data is ESPN's public site API, fetched server-side at render. It is
+ * undocumented and unkeyed, so `fetchScoreboard` swallows its own
+ * failures and this page renders an empty state rather than an error.
+ *
+ * Routed as /scores/<league>/<day>. stx injects route params into the
+ * server scope but NOT query strings, so both selectors are path segments
+ * rather than ?league=&day=.
+ */
+import { fetchScoreboard, LEAGUES, leagueFor } from '../../../../app/Services/scores/espn'
+
+const navActive = 'scores'
+
+// Bind imports to locals before the template touches them. A bare imported
+// binding is not iterable from an @foreach in this scope, and the failure is
+// a render-time "not iterable" rather than anything at import.
+const leagues = [...LEAGUES]
+
+// Route params, injected by stx as `params`. Read defensively: a direct
+// hit on /scores with no segments should still render today's NFL rather
+// than throw.
+const routeParams = (typeof params !== 'undefined' && params) ? params : {}
+const league = leagueFor(String(routeParams.league ?? 'nfl'))
+const day = ['yesterday', 'today', 'upcoming'].includes(String(routeParams.day ?? ''))
+  ? String(routeParams.day)
+  : 'today'
+
+/** ESPN wants YYYYMMDD, and treats an absent date as today. */
+function espnDate(offsetDays) {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+}
+
+const offset = day === 'yesterday' ? -1 : day === 'upcoming' ? 1 : 0
+const games = await fetchScoreboard(league.key, offset === 0 ? undefined : espnDate(offset))
+
+const days = ['yesterday', 'today', 'upcoming']
+const live = games.filter(g => g.state === 'in')
+const rest = games.filter(g => g.state !== 'in')
+
+const pageTitle = `${league.label} scores | PredictHQ`
+const pageDescription = `Live ${league.label} scores and schedule, alongside the prediction markets pricing the same games.`
+
+function timeLabel(game) {
+  if (game.state === 'in') return game.clock || game.status
+  if (game.state === 'post') return game.status || 'Final'
+  try {
+    return new Date(game.startsAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+  catch {
+    return game.status
+  }
+}
+
+const rows = games.map(g => ({
+  ...g,
+  label: timeLabel(g),
+  isLive: g.state === 'in',
+  isDone: g.state === 'post',
+  // Before a game starts nobody leads, so nothing should be dimmed.
+  homeLeads: g.state !== 'pre' && (g.home.score ?? 0) >= (g.away.score ?? 0),
+  awayLeads: g.state !== 'pre' && (g.away.score ?? 0) >= (g.home.score ?? 0),
+}))
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    @include('head')
+  </head>
+
+  <body x-data="{ menu: false, theme: predicthqTheme.current(), toggleTheme() { this.theme = predicthqTheme.toggle() }, toggleMenu() { this.menu = !this.menu } }">
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 pt-10 pb-16 sm:px-6 max-w-3xl">
+        <div class="flex flex-wrap gap-3 items-center justify-between">
+          <h1 class="display font-black text-3xl tracking-tight sm:text-4xl">Scores</h1>
+
+          <!-- League switcher. A pill, like the sport pill in Apple Sports. -->
+          <div class="flex overflow-x-auto gap-2 max-w-full">
+            @foreach (leagues as l)
+              <a
+                href="/scores/{{ l.key }}/{{ day }}"
+                data-no-router
+                class="px-3.5 py-2 font-bold text-sm rounded-full shrink-0 {{ l.key === league.key ? 'btn btn-primary' : 'btn' }}"
+              >{{ l.label }}</a>
+            @endforeach
+          </div>
+        </div>
+
+        <!-- Segmented day control. -->
+        <div class="grid grid-cols-3 gap-1 p-1 mt-6 rounded-xl soft" role="group" aria-label="Day">
+          @foreach (days as d)
+            <a
+              href="/scores/{{ league.key }}/{{ d }}"
+              data-no-router
+              class="px-4 py-2 font-bold text-sm text-center rounded-lg capitalize {{ d === day ? '' : 'muted' }}"
+              style="{{ d === day ? 'background:var(--surface);box-shadow:var(--shadow-sm)' : '' }}"
+            >{{ d }}</a>
+          @endforeach
+        </div>
+
+        @if (rows.length === 0)
+          <section class="px-6 py-16 mt-6 text-center rounded-2xl card">
+            <p class="display font-black text-xl">Nothing scheduled.</p>
+            <p class="mt-2 text-sm muted">No {{ league.label }} games for this day. Try another league or another day.</p>
+          </section>
+        @else
+          @if (live.length > 0)
+            <p class="flex gap-2 items-center mt-6 font-bold text-xs tracking-wide uppercase">
+              <span class="inline-block h-2 w-2 rounded-full" style="background:var(--neg)"></span>
+              <span class="neg">{{ live.length }} live now</span>
+            </p>
+          @endif
+
+          <section class="overflow-hidden mt-4 rounded-2xl card">
+            <div class="divide-y bd">
+              @foreach (rows as g)
+                <a href="/scores/{{ g.league }}/{{ g.id }}" data-no-router class="block px-4 py-4 sm:px-5 hover:opacity-90">
+                  <div class="flex gap-4 items-center">
+                    <!-- Status rail. Fixed width so every row's teams align. -->
+                    <div class="w-20 shrink-0">
+                      <div class="font-bold text-xs num {{ g.isLive ? 'neg' : 'faint' }}">{{ g.label }}</div>
+                      @if (g.broadcast)
+                        <div class="mt-0.5 text-[11px] truncate faint">{{ g.broadcast }}</div>
+                      @endif
+                    </div>
+
+                    <div class="flex flex-col gap-2 min-w-0 grow">
+                      <!-- Away first, matching how every scoreboard is read. -->
+                      <div class="flex gap-3 items-center {{ g.isDone && !g.awayLeads ? 'opacity-55' : '' }}">
+                        @if (g.away.logo)
+                          <img src="{{ g.away.logo }}" alt="" width="22" height="22" class="h-[22px] w-[22px] object-contain shrink-0" loading="lazy">
+                        @else
+                          <span class="grid place-items-center h-[22px] w-[22px] text-[10px] font-black rounded-full shrink-0 soft">{{ g.away.abbreviation }}</span>
+                        @endif
+                        <span class="font-semibold truncate">{{ g.away.shortName || g.away.name }}</span>
+                        @if (g.away.record)
+                          <span class="text-xs num faint shrink-0">{{ g.away.record }}</span>
+                        @endif
+                        <span class="ml-auto font-black text-lg num shrink-0">{{ g.away.score ?? '' }}</span>
+                      </div>
+
+                      <div class="flex gap-3 items-center {{ g.isDone && !g.homeLeads ? 'opacity-55' : '' }}">
+                        @if (g.home.logo)
+                          <img src="{{ g.home.logo }}" alt="" width="22" height="22" class="h-[22px] w-[22px] object-contain shrink-0" loading="lazy">
+                        @else
+                          <span class="grid place-items-center h-[22px] w-[22px] text-[10px] font-black rounded-full shrink-0 soft">{{ g.home.abbreviation }}</span>
+                        @endif
+                        <span class="font-semibold truncate">{{ g.home.shortName || g.home.name }}</span>
+                        @if (g.home.record)
+                          <span class="text-xs num faint shrink-0">{{ g.home.record }}</span>
+                        @endif
+                        <span class="ml-auto font-black text-lg num shrink-0">{{ g.home.score ?? '' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              @endforeach
+            </div>
+          </section>
+
+          <p class="mt-4 text-xs faint">Scores from ESPN. {{ rest.length }} scheduled or final, {{ live.length }} in play.</p>
+        @endif
+      </main>
+
+      @include('footer')
+    </div>
+  </body>
+</html>

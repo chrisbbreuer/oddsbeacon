@@ -17,6 +17,7 @@
     <nav class="hidden gap-7 items-center font-semibold text-sm lg:flex muted">
       <a href="/features" data-no-router class="hover:opacity-70 {{ navActive === 'features' ? 'accent' : '' }}">Features</a>
       <a href="/markets" data-no-router class="hover:opacity-70 {{ navActive === 'markets' ? 'accent' : '' }}">Smart money</a>
+      <a href="/scores/nfl/today" data-no-router class="hover:opacity-70 {{ navActive === 'scores' ? 'accent' : '' }}">Scores</a>
       <a href="/community" data-no-router class="hover:opacity-70 {{ navActive === 'community' ? 'accent' : '' }}">Community</a>
       <a href="/" class="hover:opacity-70 {{ navActive === 'board' ? 'accent' : '' }}">Odds</a>
       <a href="/pricing" data-no-router class="hover:opacity-70 {{ navActive === 'pricing' ? 'accent' : '' }}">Pricing</a>
@@ -58,6 +59,7 @@
     <div class="flex flex-col mx-auto px-4 py-2 sm:px-6 max-w-6xl">
       <a href="/features" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'features' ? 'accent' : '' }}" @click="menu = false">Features</a>
       <a href="/markets" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'markets' ? 'accent' : '' }}" @click="menu = false">Smart money</a>
+      <a href="/scores/nfl/today" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'scores' ? 'accent' : '' }}" @click="menu = false">Scores</a>
       <a href="/community" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'community' ? 'accent' : '' }}" @click="menu = false">Community</a>
       <a href="/live" data-no-router class="py-3 font-semibold border-b bd {{ navActive === 'live' ? 'accent' : '' }}" @click="menu = false">Live</a>
       <a href="/" class="py-3 font-semibold border-b bd {{ navActive === 'board' ? 'accent' : '' }}" @click="menu = false">Odds</a>
