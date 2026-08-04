@@ -12,8 +12,14 @@
 import { brandFor, sportIcon, teamFor } from '../../app/Support/branding'
 import { loadIntelSummary, loadTopCandidate } from '../../app/Support/intel'
 import { loadBoard } from '../../app/Support/odds'
+import { loadFeedState } from '../../app/Support/pipeline'
 
 const { bookmakers, events, summary } = loadBoard()
+
+// Whether the prices below are real. Every number on this page is a
+// property of the simulator when they are not, and a page that sells
+// traceable data is the last place that should go unsaid.
+const feed = loadFeedState()
 
 // The evidence section renders a real candidate off the ingested tape.
 // Both can be empty on a cold database, and the template handles that
@@ -184,6 +190,14 @@ const navActive = 'board'
       @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--accent-weak); } 70% { box-shadow: 0 0 0 9px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
       .board-scroll::-webkit-scrollbar { height: 8px; }
       .board-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
+
+      /* Reads as a warning without shouting over the numbers it labels. */
+      .sim-pill {
+        color: var(--neg);
+        background: color-mix(in srgb, var(--neg) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--neg) 35%, transparent);
+      }
+      .sim-pill:hover { background: color-mix(in srgb, var(--neg) 18%, transparent); }
     </style>
   </head>
 
@@ -274,9 +288,22 @@ const navActive = 'board'
         --}}
         @if (summary.eventCount)
           <div class="p-6 rounded-2xl card sm:p-7">
-            <div class="flex gap-2 items-center pb-5 border-b bd">
-              <span class="h-2 w-2 rounded-full" style="background:var(--pos)" aria-hidden="true"></span>
-              <span class="font-bold text-xs tracking-wide uppercase muted">Reading right now</span>
+            <div class="flex flex-wrap gap-2 items-center justify-between pb-5 border-b bd">
+              <div class="flex gap-2 items-center">
+                <span class="h-2 w-2 rounded-full" style="background:{{ feed.live ? 'var(--pos)' : 'var(--neg)' }}" aria-hidden="true"></span>
+                <span class="font-bold text-xs tracking-wide uppercase muted">Reading right now</span>
+              </div>
+              {{--
+                Linked rather than merely stated: someone who learns the
+                board is simulated immediately wants to know what else is,
+                and the pipeline page is the answer to all of it.
+              --}}
+              @if (!feed.live)
+                <a href="/pipeline" data-no-router class="inline-flex gap-1.5 items-center px-2 py-0.5 font-bold text-[11px] tracking-wide uppercase rounded-full sim-pill">
+                  Simulated data
+                  <i class="h-3 w-3 i-hugeicons-arrow-right-01"></i>
+                </a>
+              @endif
             </div>
             <div class="grid gap-y-6 grid-cols-2 gap-x-8 pt-5">
               <div>
