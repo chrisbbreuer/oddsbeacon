@@ -43,14 +43,17 @@ export default defineModel({
       factory: faker => faker.number.int({ min: 1, max: 100 }),
     },
 
-    // Null for a note left before signing in. The display name is stored
-    // alongside rather than joined, so a thread renders in one query and
-    // survives the account being deleted.
+    // Null for a note left before signing in. Not 0: user_id carries a
+    // foreign key, and 0 is a user id that does not exist rather than an
+    // absent one, so the constraint rejects it.
+    //
+    // The display name is stored alongside rather than joined, so a thread
+    // renders in one query and survives the account being deleted.
     userId: {
       type: 'number',
       fillable: true,
-      validation: { rule: schema.number().min(0) },
-      factory: faker => faker.number.int({ min: 0, max: 50 }),
+      validation: { rule: schema.number().min(1).optional() },
+      factory: () => null,
     },
 
     authorName: {

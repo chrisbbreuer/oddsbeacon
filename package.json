@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "Prin.tel — Prediction Intel. Signals and automated positions across Kalshi and Polymarket.",
+  "description": "Prin.tel \u2014 Prediction Intel. Signals and automated positions across Kalshi and Polymarket.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
@@ -71,7 +71,7 @@
   "dependencies": {
     "@stacksjs/stx": "^0.2.152",
     "bun-plugin-stx": "^0.2.152",
-    "stacks": "^0.70.255",
+    "stacks": "^0.70.256",
     "ts-charts": "github:stacksjs/ts-charts",
     "viem": "^2.55.10"
   },

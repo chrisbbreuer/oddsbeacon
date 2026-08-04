@@ -1,7 +1,6 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
+import MarketNote from '../../Models/MarketNote'
 
 /**
  * POST /api/community/notes - leave a note on a market.
@@ -35,32 +34,20 @@ export default new Action({
     // that claims least.
     const stance = ['yes', 'no', 'watching'].includes(rawStance) ? rawStance : 'watching'
 
-    // Parameterized raw insert, matching Actions/Sheets/SaveSheet. The ORM
-    // path refuses this write: MarketNote declares `predictionMarketId` as
-    // fillable and `.create()` still rejects it as outside the allowlist,
-    // which looks like the allowlist being built from column names while the
-    // check reads attribute names. Raised upstream rather than worked around
-    // with forceCreate, which would disable the guard for every field.
-    const authorName = rawName.slice(0, 60) || 'Anonymous'
-    const db = new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite')
+    const note = await MarketNote.create({
+      predictionMarketId: marketId,
+      userId: null,
+      authorName: rawName.slice(0, 60) || 'Anonymous',
+      stance,
+      body: trimmed,
+      hidden: false,
+    })
 
-    try {
-      const now = new Date().toISOString()
-      const result = db.prepare(
-        `INSERT INTO market_notes
-           (prediction_market_id, user_id, author_name, stance, body, hidden, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-      ).run(marketId, 0, authorName, stance, trimmed, now, now)
-
-      return response.json({
-        id: Number(result.lastInsertRowid),
-        authorName,
-        stance,
-        body: trimmed,
-      }, 201)
-    }
-    finally {
-      db.close()
-    }
+    return response.json({
+      id: note.id,
+      authorName: note.authorName,
+      stance: note.stance,
+      body: note.body,
+    }, 201)
   },
 })
