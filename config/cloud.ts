@@ -709,6 +709,11 @@ export const tsCloud: TsCloudConfig = {
         APP_ENV: 'production',
         NODE_ENV: 'production',
         DB_DATABASE_PATH: '/var/www/predicthq-shared/database/stacks.sqlite',
+        // Where `main` proxies /api. On a shared host the server refuses to
+        // guess a port, and rightly so: guessing would forward this app's API
+        // traffic to whichever neighbour happened to hold the default. Must
+        // match the `api` site's port below.
+        PORT_API: '3071',
       },
     },
 
