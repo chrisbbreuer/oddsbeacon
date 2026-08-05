@@ -11,7 +11,7 @@
  * a 6% edge off the board had no way to learn it came from a simulator
  * and that nothing had ever been checked against an outcome.
  */
-import { loadFeedState, loadFundamentalsCoverage, loadProviderRuns, loadTrackRecord, LIVE_FEED_ENV, relativeAge } from '../../app/Support/pipeline'
+import { isMeaningful, loadFeedState, loadFundamentalsCoverage, loadProviderRuns, loadTrackRecord, LIVE_FEED_ENV, MIN_MEANINGFUL_SAMPLES, relativeAge, scoreSignals } from '../../app/Support/pipeline'
 
 const navActive = 'pipeline'
 const pageTitle = 'PredictHQ: pipeline health'
@@ -21,6 +21,7 @@ const feed = loadFeedState()
 const runs = loadProviderRuns()
 const record = loadTrackRecord()
 const coverage = loadFundamentalsCoverage()
+const signals = scoreSignals()
 const coveragePct = coverage.teamsTotal > 0
   ? Math.round((coverage.teamsWithStanding / coverage.teamsTotal) * 100)
   : 0
@@ -178,6 +179,53 @@ const beatsCoinFlip = record.sampleSize > 0 && record.brierScore < COIN_FLIP_BRI
               <div class="mt-1 text-xs faint">Appended, never overwritten.</div>
             </div>
           </div>
+        </section>
+
+        {{--
+          Which signals earned their weight. Every number the model uses
+          to combine them is an assertion until this table has rows, so
+          it is shown even when empty: an unscored signal is not a
+          neutral one, it is one nobody has checked.
+        --}}
+        <section class="mt-12">
+          <h2 class="display font-black text-2xl tracking-tight">Signal scorecard</h2>
+          <p class="mt-2 max-w-2xl leading-relaxed muted">
+            Each signal against the closing line. Beating the close is the fastest evidence that an estimate carried real information, long before a win rate says anything.
+          </p>
+
+          @if (signals.length)
+            <div class="overflow-hidden mt-6 rounded-2xl card">
+              <div class="divide-y bd">
+                @foreach (signals as signal)
+                  <div class="flex flex-col gap-2 items-start justify-between sm:flex-row sm:items-center px-5 py-4 sm:px-6">
+                    <div class="min-w-0">
+                      <div class="font-bold">{{ signal.kind }}</div>
+                      <div class="mt-0.5 text-xs faint">
+                        {{ isMeaningful(signal) ? `${signal.samples} scored decisions` : `${signal.samples} so far, too few to read` }}
+                      </div>
+                    </div>
+                    <div class="flex gap-6 items-center shrink-0">
+                      <div class="text-right">
+                        <div class="font-bold text-sm num {{ isMeaningful(signal) ? (signal.avgClvPoints > 0 ? 'pos' : 'neg') : 'muted' }}">{{ signal.avgClvPoints.toFixed(2) }}</div>
+                        <div class="text-xs faint">avg CLV pts</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="font-bold text-sm num {{ isMeaningful(signal) ? '' : 'muted' }}">{{ (signal.hitRate * 100).toFixed(0) }}%</div>
+                        <div class="text-xs faint">beat the close</div>
+                      </div>
+                    </div>
+                  </div>
+                @endforeach
+              </div>
+            </div>
+          @else
+            <div class="p-7 mt-6 rounded-2xl card">
+              <p class="font-bold text-lg">No signal has been scored yet.</p>
+              <p class="mt-2 max-w-2xl leading-relaxed muted">
+                A signal is scored once a market it argued about has closed. Until then every weight in the model is an assertion, including the ones that look most reasonable. {{ MIN_MEANINGFUL_SAMPLES }} scored decisions is roughly where a hit rate stops being a coin flip.
+              </p>
+            </div>
+          @endif
         </section>
 
         <!-- providers -->

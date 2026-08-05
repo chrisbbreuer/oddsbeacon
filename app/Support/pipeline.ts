@@ -140,6 +140,15 @@ export function loadFundamentalsCoverage(db: Database = openRead()): Fundamental
   }
 }
 
+/**
+ * Per-signal scoring, for the page that reports it.
+ *
+ * Re-exported through here so the view has one import for everything it
+ * shows, and so the meaningfulness threshold travels with the numbers
+ * rather than being re-guessed in the template.
+ */
+export { isMeaningful, MIN_MEANINGFUL_SAMPLES, scoreSignals, type SignalScore } from '../Services/quant/attribution'
+
 export interface ProviderRun {
   provider: string
   kind: string
