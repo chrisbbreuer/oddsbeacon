@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS `mail_preferences` (
+  `id` bigint PRIMARY KEY auto_increment,
+  `mailbox` text not null,
+  `account_name` varchar(255) not null default 'Stacks',
+  `signature` text,
+  `display_density` ENUM('comfortable', 'default', 'compact') not null default 'default',
+  `theme` ENUM('light', 'dark', 'system') not null default 'system',
+  `language` ENUM('en', 'fr', 'de', 'es', 'ja') not null default 'en',
+  `default_reply_behavior` ENUM('reply', 'replyAll') not null default 'replyAll',
+  `send_and_archive` tinyint(1) not null default 1,
+  `auto_advance` ENUM('newer', 'older', 'back') not null default 'newer',
+  `desktop_notifications` tinyint(1) not null default 1,
+  `notification_sound` ENUM('default', 'subtle', 'none') not null default 'default',
+  `notification_preview` tinyint(1) not null default 1,
+  `filters` varchar(255) not null default '[]',
+  `blocked_senders` varchar(255) not null default '[]',
+  `labels` varchar(255) not null default '[]',
+  `load_remote_images` tinyint(1) not null default 0,
+  `show_external_content` tinyint(1) not null default 0,
+  `vacation_enabled` tinyint(1) not null default 0,
+  `vacation_start_date` varchar(255),
+  `vacation_end_date` varchar(255),
+  `vacation_subject` varchar(255),
+  `vacation_message` text,
+  `created_at` datetime not null default CURRENT_TIMESTAMP,
+  `updated_at` datetime
+);
+CREATE UNIQUE INDEX `mail_preferences_mailbox_unique` ON `mail_preferences` (`mailbox`);

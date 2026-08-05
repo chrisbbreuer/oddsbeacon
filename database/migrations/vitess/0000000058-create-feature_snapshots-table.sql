@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS `feature_snapshots` (
+  `id` bigint PRIMARY KEY auto_increment,
+  `captured_at` varchar(40) not null,
+  `hours_to_start` decimal(10,2) default 0,
+  `best_price` decimal(10,2) default 0,
+  `fair_prob` decimal(10,2) default 0,
+  `sharp_prob` decimal(10,2) default 0,
+  `edge_pct` decimal(10,2) default 0,
+  `overround_pct` decimal(10,2) default 0,
+  `book_count` decimal(10,2) default 0,
+  `price_std_dev` decimal(10,2) default 0,
+  `open_price` decimal(10,2) default 0,
+  `move_from_open_pct` decimal(10,2) default 0,
+  `velocity_pct_per_hour` decimal(10,2) default 0,
+  `steam_score` decimal(10,2) default 0,
+  `reverse_line_move` tinyint(1) default 0,
+  `direction_changes` decimal(10,2) default 0,
+  `sport_slug` varchar(40) default '',
+  `market_type` varchar(40) default '',
+  `side` varchar(20) default '',
+  `extra` varchar(255) default '',
+  `label` decimal(10,2) not null default -1,
+  `closing_fair_prob` decimal(10,2) default 0,
+  `clv_pct` decimal(10,2) default 0,
+  `labelled_at` varchar(40) default '',
+  `selection_id` bigint REFERENCES `selections`(`id`),
+  `created_at` datetime not null default CURRENT_TIMESTAMP,
+  `updated_at` datetime
+);
+CREATE UNIQUE INDEX `feature_snapshots_selection_captured` ON `feature_snapshots` (`selection_id`, `captured_at`);
+CREATE INDEX `feature_snapshots_label_captured` ON `feature_snapshots` (`label`, `captured_at`);

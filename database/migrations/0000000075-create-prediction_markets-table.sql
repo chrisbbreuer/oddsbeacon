@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS "prediction_markets" (
   "venue" TEXT,
   "external_id" TEXT,
   "question" TEXT,
+  "outcome_label" TEXT default '',
   "category" TEXT,
   "status" TEXT,
   "result" TEXT,

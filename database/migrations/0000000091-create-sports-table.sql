@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "sports" (
   "active" INTEGER default 1,
   "position" REAL default 0,
   "non_sporting" INTEGER default 0,
+  "tier" REAL default 0,
   "created_at" TEXT not null default CURRENT_TIMESTAMP,
   "updated_at" TEXT
 );
