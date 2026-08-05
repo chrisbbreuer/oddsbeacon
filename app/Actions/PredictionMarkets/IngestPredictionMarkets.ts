@@ -60,10 +60,11 @@ export default {
       ))).flat()
 
       const upsertMarket = db.prepare(`
-        INSERT INTO prediction_markets (venue, external_id, question, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO prediction_markets (venue, external_id, question, outcome_label, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(venue, external_id) DO UPDATE SET
           question = excluded.question,
+          outcome_label = excluded.outcome_label,
           status = excluded.status,
           result = excluded.result,
           volume = excluded.volume,
@@ -88,7 +89,7 @@ export default {
 
       db.run('BEGIN')
       for (const m of markets) {
-        upsertMarket.run(m.venue, m.externalId, m.question, m.category, m.status, m.result, m.volume, m.liquidity, m.lastPrice, m.endsAt, now, now)
+        upsertMarket.run(m.venue, m.externalId, m.question, m.outcomeLabel ?? '', m.category, m.status, m.result, m.volume, m.liquidity, m.lastPrice, m.endsAt, now, now)
         marketsUpserted++
       }
 

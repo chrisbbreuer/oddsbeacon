@@ -46,6 +46,23 @@ export default defineModel({
       validation: { rule: schema.string().min(1).max(300) },
       factory: faker => `Will ${faker.company.name()} win?`,
     },
+    /**
+     * Which outcome this market's YES represents, in the venue's own
+     * words: 'Reg Time: Watford', 'Guatemala', 'Tie'.
+     *
+     * Kalshi lists a fixture as one market per outcome, all sharing a
+     * question, so without this the rows are indistinguishable and any
+     * signal about one side cannot tell which side it is looking at. The
+     * ticker abbreviates it, but by prefix for clubs and by FIFA code for
+     * nations, so the ticker alone resolves only some of them.
+     */
+    outcomeLabel: {
+      type: 'string',
+      fillable: true,
+      default: '',
+      validation: { rule: schema.string().max(120) },
+      factory: () => '',
+    },
     category: {
       type: 'string',
       fillable: true,

@@ -36,6 +36,16 @@ export function migrationsFor(tables: string[]): string[] {
       if (createTable?.[1] && wanted.has(createTable[1]))
         return true
 
+      // Alters, too. The generator emits a column addition as its own
+      // `alter` file rather than by rewriting the create, so matching
+      // only creates builds a schema frozen at whenever the table was
+      // first added. A test then passes against a shape the real
+      // database has not had for months, which is the same class of
+      // breakage the name-based lookup above exists to prevent.
+      const alterTable = file.match(/^\d+-alter-(.+?)-[a-z]+\.sql$/)
+      if (alterTable?.[1] && wanted.has(alterTable[1]))
+        return true
+
       const createIndex = file.match(/-index-in-(.+)\.sql$/)
       return Boolean(createIndex?.[1] && wanted.has(createIndex[1]))
     })

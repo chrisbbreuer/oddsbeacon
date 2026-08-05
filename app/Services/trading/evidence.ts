@@ -1,4 +1,6 @@
 import { Database } from 'bun:sqlite'
+import { assessMismatch, loadTeamFundamentals } from '../fundamentals/mismatch'
+import { outcomeSideOf, resolveFixture } from '../ingest/kalshi-games'
 
 /**
  * Evidence — the measurable case for or against a side, computed from
@@ -65,6 +67,7 @@ interface MarketRow {
   category: string
   last_price: number
   liquidity: number
+  outcome_label: string
 }
 
 interface FlowRow {
@@ -119,7 +122,7 @@ export function buildCandidates(db: Database, options: EvidenceOptions = {}): Ca
   }
 
   const markets = db.prepare(`
-    SELECT id, venue, external_id, question, category, last_price, liquidity
+    SELECT id, venue, external_id, question, outcome_label, category, last_price, liquidity
     FROM prediction_markets
     WHERE ${where.join(' AND ')}
     ORDER BY volume DESC
@@ -292,6 +295,52 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
       sampleSize: 1,
       windowHours: WINDOW_HOURS,
     })
+  }
+
+  // ---- Squad mismatch -------------------------------------------------
+  // The only signal here that does not come from a price. Everything
+  // above reads the tape: flow, trader records, trend, the other venue's
+  // quote. All of them can tell you what the market believes and none can
+  // tell you it is wrong, because the market is their input.
+  //
+  // Tier and squad value are an outside opinion, which is what a cup tie
+  // between a second-division side and a fourth-division one needs: the
+  // fixture arrives as two names and a price, and nothing else in this
+  // file can see that it is lopsided.
+  const fixture = resolveFixture(db, { ticker: market.external_id, title: market.question })
+
+  // Which of the three outcomes this market is. Null on a draw market or
+  // an unreadable ticker, and both are skipped: a strength read says who
+  // is better, which is not an argument for or against a draw.
+  const outcome = fixture ? outcomeSideOf(market.external_id, fixture, market.outcome_label) : null
+
+  if (fixture?.matched && (outcome === 'home' || outcome === 'away')) {
+    const home = loadTeamFundamentals(db, fixture.homeTeamId!)
+    const away = loadTeamFundamentals(db, fixture.awayTeamId!)
+    const mismatch = assessMismatch(home, away)
+
+    if (mismatch.confidence > 0 && Math.abs(mismatch.edge) > 0.01) {
+      // `edge` favours home. Flip it for an away market, then flip again
+      // when the flow leads 'no', because backing 'no' on the stronger
+      // side is a bet against them.
+      const towardsOutcome = outcome === 'home' ? mismatch.edge : -mismatch.edge
+      const favoursLeader = leader.side === 'yes' ? towardsOutcome : -towardsOutcome
+
+      // Scaled by confidence and held well under the per-signal cap. The
+      // strength read is an ordering, not a calibrated probability, and
+      // until settled results say what a tier gap is worth it has no
+      // business moving fair value as hard as a measured flow imbalance.
+      const contribution = favoursLeader * mismatch.confidence * 0.06
+
+      evidence.push({
+        kind: 'squad_mismatch',
+        summary: mismatch.reasons.join('; ') || 'Fundamentals favour one side',
+        value: round(mismatch.edge, 4),
+        contribution: clampSignal(contribution),
+        sampleSize: mismatch.reasons.length,
+        windowHours: 0,
+      })
+    }
   }
 
   const totalContribution = clamp(

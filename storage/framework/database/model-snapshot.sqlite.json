@@ -8560,6 +8560,16 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": false
+          },
+          {
+            "name": "outcome_label",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 120
           }
         ],
         "indexes": [
@@ -13111,7 +13121,7 @@
       }
     ]
   },
-  "hash": "4363fbbdaabd120dc9e3614c7039d09f47359495e0eda65b60d5d35adec30bf1",
+  "hash": "609d1e389bcdff12e4455b7580f156c355b444d1374e7bb16d4218adccf1dcfb",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-05T00:07:35.936Z"
+  "updatedAt": "2026-08-05T00:29:26.196Z"
 }

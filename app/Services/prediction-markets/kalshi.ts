@@ -22,6 +22,7 @@ interface KalshiMarket {
   volume_fp?: string
   liquidity_dollars?: string
   last_price_dollars?: string
+  yes_sub_title?: string
   close_time?: string
 }
 
@@ -86,6 +87,9 @@ export class KalshiProvider implements PredictionMarketProvider {
           venue: 'kalshi',
           externalId: m.ticker,
           question: m.title,
+          // Kalshi lists a fixture as one market per outcome, all sharing
+          // a title, so without this the rows are indistinguishable.
+          outcomeLabel: m.yes_sub_title ?? '',
           category: m.category ?? '',
           status: normalizeStatus(m.status),
           result: m.result ?? '',

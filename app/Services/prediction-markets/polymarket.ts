@@ -112,6 +112,9 @@ export class PolymarketProvider implements PredictionMarketProvider {
             venue: 'polymarket',
             externalId: m.conditionId,
             question: m.question,
+          // Polymarket asks one binary question per market, so YES has no
+          // separate outcome name the way a three-way Kalshi fixture does.
+          outcomeLabel: '',
             category: m.category ?? '',
             status: m.closed
               ? (m.umaResolutionStatus === 'resolved' ? 'settled' : 'closed')

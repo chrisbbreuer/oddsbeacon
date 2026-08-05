@@ -10,6 +10,8 @@ export interface VenueMarket {
   venue: 'kalshi' | 'polymarket'
   externalId: string
   question: string
+  /** Which outcome this market's YES is, in the venue's words. '' when it has none. */
+  outcomeLabel: string
   category: string
   /** 'open' | 'closed' | 'settled' */
   status: string
