@@ -54,27 +54,27 @@ function ctx(overrides: Partial<ScheduleContext> = {}): ScheduleContext {
 }
 
 describe('loadScheduleContext', () => {
-  it('measures rest from the previous fixture', () => {
+  it('measures rest from the previous fixture', async () => {
     const db = freshDb()
     addGame(db, 1, 1, 3, day(0))
     addGame(db, 2, 1, 2, day(3))
 
-    expect(loadScheduleContext(db, 1, day(3)).restDays).toBe(3)
+    expect((await loadScheduleContext(db, 1, day(3))).restDays).toBe(3)
   })
 
-  it('never counts the fixture being priced as its own history', () => {
+  it('never counts the fixture being priced as its own history', async () => {
     const db = freshDb()
     addGame(db, 1, 1, 2, day(5))
 
     // The only fixture on file IS the one being priced. Counting it would
     // report zero rest and a game already played.
-    const context = loadScheduleContext(db, 1, day(5))
+    const context = await loadScheduleContext(db, 1, day(5))
 
     expect(context.restDays).toBeNull()
     expect(context.gamesInWindow).toBe(0)
   })
 
-  it('counts games inside the congestion window and not before it', () => {
+  it('counts games inside the congestion window and not before it', async () => {
     const db = freshDb()
     addGame(db, 1, 1, 3, day(0))
     addGame(db, 2, 3, 1, day(2))
@@ -82,36 +82,36 @@ describe('loadScheduleContext', () => {
     addGame(db, 4, 1, 3, day(-20)) // long before the window
     addGame(db, 5, 1, 2, day(5))
 
-    expect(loadScheduleContext(db, 1, day(5)).gamesInWindow).toBe(3)
+    expect((await loadScheduleContext(db, 1, day(5))).gamesInWindow).toBe(3)
   })
 
-  it('counts a fixture whether the team was home or away', () => {
+  it('counts a fixture whether the team was home or away', async () => {
     const db = freshDb()
     addGame(db, 1, 3, 1, day(1)) // team 1 away
     addGame(db, 2, 1, 2, day(2))
 
-    expect(loadScheduleContext(db, 1, day(2)).restDays).toBe(1)
+    expect((await loadScheduleContext(db, 1, day(2))).restDays).toBe(1)
   })
 
-  it('flags a back-to-back', () => {
+  it('flags a back-to-back', async () => {
     const db = freshDb()
     addGame(db, 1, 1, 3, day(0))
     addGame(db, 2, 1, 2, day(1))
 
-    expect(loadScheduleContext(db, 1, day(1)).backToBack).toBe(true)
+    expect((await loadScheduleContext(db, 1, day(1))).backToBack).toBe(true)
   })
 
-  it('does not flag two nights apart as a back-to-back', () => {
+  it('does not flag two nights apart as a back-to-back', async () => {
     const db = freshDb()
     addGame(db, 1, 1, 3, day(0))
     addGame(db, 2, 1, 2, day(2))
 
-    expect(loadScheduleContext(db, 1, day(2)).backToBack).toBe(false)
+    expect((await loadScheduleContext(db, 1, day(2))).backToBack).toBe(false)
   })
 
-  it('is safe on a team with no history at all', () => {
+  it('is safe on a team with no history at all', async () => {
     const db = freshDb()
-    const context = loadScheduleContext(db, 2, day(0))
+    const context = await loadScheduleContext(db, 2, day(0))
 
     expect(context.restDays).toBeNull()
     expect(context.gamesInWindow).toBe(0)

@@ -22,8 +22,8 @@ const fmtUsd = (n) => {
 }
 const truncate = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s)
 
-const graph = loadGraph()
-const leaders = loadSmartMoney(12).map(t => ({
+const graph = await loadGraph()
+const leaders = (await loadSmartMoney(12)).map(t => ({
   alias: truncate(t.alias, 22),
   venue: t.venue,
   record: `${t.winningTradeCount}-${t.resolvedTradeCount - t.winningTradeCount}`,
@@ -33,7 +33,7 @@ const leaders = loadSmartMoney(12).map(t => ({
   maxBet: fmtUsd(t.maxTradeSize),
   whale: t.isWhale,
 }))
-const whales = loadBigTrades(10).map(t => ({
+const whales = (await loadBigTrades(10)).map(t => ({
   venue: t.venue,
   mark: t.venue === 'kalshi' ? 'KAL' : 'PM',
   question: truncate(t.question, 60),

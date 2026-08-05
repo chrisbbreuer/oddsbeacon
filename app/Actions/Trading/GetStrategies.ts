@@ -1,7 +1,6 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { response } from '@stacksjs/router'
 import { resolveEntitlements } from '../../Services/billing/entitlements'
-import { databasePath } from '../../Services/trading/run'
 
 interface StrategyRow {
   id: number
@@ -39,10 +38,10 @@ export default {
     if (!userId)
       return response.error('Sign in to view strategies.', 401)
 
-    const db = new Database(databasePath(), { readonly: true })
+    const db = new Database()
 
     try {
-      const strategies = db.prepare(`
+      const strategies = await db.prepare<StrategyRow>(`
         SELECT
           s.id, s.name, s.venue, s.categories, s.bankroll, s.max_stake, s.min_edge,
           s.min_confidence, s.max_open_positions, s.daily_loss_limit, s.auto_execute,
@@ -62,9 +61,9 @@ export default {
         ) AS o ON o.sid = s.id
         WHERE s.user_id = ?
         ORDER BY s.id
-      `).all(userId) as StrategyRow[]
+      `).all(userId)
 
-      const entitlements = resolveEntitlements(db, userId)
+      const entitlements = await resolveEntitlements(db, userId)
 
       return {
         entitlements,

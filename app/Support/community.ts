@@ -1,5 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { Database } from './db'
 
 /**
  * Read helpers for the community threads.
@@ -29,7 +28,7 @@ export interface Thread {
 }
 
 function open(): Database {
-  return new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite', { readonly: true })
+  return new Database()
 }
 
 /**
@@ -39,10 +38,10 @@ function open(): Database {
  * page that opens with forty silent rows reads as abandoned, and the empty
  * state below says something more useful than forty zeroes would.
  */
-export function loadThreads(limit = 12): Thread[] {
+export async function loadThreads(limit = 12): Promise<Thread[]> {
   const db = open()
   try {
-    const rows = db.query(`
+    const rows = await db.query<any>(`
       SELECT
         m.id                AS marketId,
         m.venue             AS venue,
@@ -58,16 +57,16 @@ export function loadThreads(limit = 12): Thread[] {
       GROUP BY m.id
       ORDER BY lastAt DESC
       LIMIT ?
-    `).all(limit) as any[]
+    `).all(limit)
 
-    return rows.map((r) => {
-      const latest = db.query(`
+    return await Promise.all(rows.map(async (r) => {
+      const latest = await db.query<Note>(`
         SELECT id, author_name AS authorName, stance, body, created_at AS createdAt
         FROM market_notes
         WHERE prediction_market_id = ? AND hidden = 0
         ORDER BY created_at DESC
         LIMIT 3
-      `).all(r.marketId) as Note[]
+      `).all(r.marketId)
 
       return {
         marketId: r.marketId,
@@ -79,7 +78,7 @@ export function loadThreads(limit = 12): Thread[] {
         watching: r.watching ?? 0,
         latest,
       }
-    })
+    }))
   }
   catch {
     // A cold database has no market_notes table yet. An empty room is a
@@ -92,15 +91,15 @@ export function loadThreads(limit = 12): Thread[] {
 }
 
 /** Markets worth opening a thread on when none exist yet. */
-export function loadSeedMarkets(limit = 6): Array<{ id: number, venue: string, question: string }> {
+export async function loadSeedMarkets(limit = 6): Promise<Array<{ id: number, venue: string, question: string }>> {
   const db = open()
   try {
-    return db.query(`
+    return await db.query<{ id: number, venue: string, question: string }>(`
       SELECT id, venue, question
       FROM prediction_markets
       ORDER BY id DESC
       LIMIT ?
-    `).all(limit) as Array<{ id: number, venue: string, question: string }>
+    `).all(limit)
   }
   catch {
     return []

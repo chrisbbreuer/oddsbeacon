@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 
 /**
  * Rest and congestion, derived from fixtures we already hold.
@@ -49,28 +49,28 @@ const EMPTY: ScheduleEdge = { edge: 0, confidence: 0, reasons: [] }
  * `commence_at < ?` rather than `<=`, so the fixture being priced is
  * never counted as its own history.
  */
-export function loadScheduleContext(db: Database, teamId: number, commenceAt: string): ScheduleContext {
+export async function loadScheduleContext(db: Database, teamId: number, commenceAt: string): Promise<ScheduleContext> {
   if (!commenceAt) {
     return { teamId, restDays: null, gamesInWindow: 0, backToBack: false }
   }
 
-  const previous = db.query(`
+  const previous = await db.query<{ commence_at: string }>(`
     SELECT commence_at
     FROM market_events
     WHERE (home_sports_team_id = ? OR away_sports_team_id = ?)
       AND commence_at != '' AND commence_at < ?
     ORDER BY commence_at DESC
     LIMIT 1
-  `).get(teamId, teamId, commenceAt) as { commence_at: string } | null
+  `).get(teamId, teamId, commenceAt)
 
   const windowStart = new Date(Date.parse(commenceAt) - CONGESTION_WINDOW_DAYS * 86_400_000).toISOString()
 
-  const congestion = db.query(`
+  const congestion = await db.query<{ games: number }>(`
     SELECT COUNT(*) AS games
     FROM market_events
     WHERE (home_sports_team_id = ? OR away_sports_team_id = ?)
       AND commence_at != '' AND commence_at < ? AND commence_at >= ?
-  `).get(teamId, teamId, commenceAt, windowStart) as { games: number }
+  `).get(teamId, teamId, commenceAt, windowStart)
 
   let restDays: number | null = null
   if (previous?.commence_at) {

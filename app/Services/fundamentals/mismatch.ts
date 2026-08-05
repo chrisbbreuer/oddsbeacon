@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 
 /**
  * How lopsided is this fixture, on evidence the bookmaker did not supply?
@@ -52,37 +52,39 @@ export interface Mismatch {
 
 const EMPTY: Mismatch = { edge: 0, confidence: 0, reasons: [] }
 
-export function loadTeamFundamentals(db: Database, teamId: number): TeamFundamentals {
-  const standing = db.query(`
+export async function loadTeamFundamentals(db: Database, teamId: number): Promise<TeamFundamentals> {
+  const [standing, valuation, league, injuries] = await Promise.all([
+    db.query<any>(`
     SELECT win_percent, point_differential, games_played
     FROM team_standings WHERE sports_team_id = ?
     ORDER BY captured_at DESC, id DESC LIMIT 1
-  `).get(teamId) as any
+    `).get(teamId),
 
-  const valuation = db.query(`
+    db.query<any>(`
     SELECT squad_value_eur, league_tier
     FROM club_valuations WHERE sports_team_id = ?
     ORDER BY captured_at DESC, id DESC LIMIT 1
-  `).get(teamId) as any
+    `).get(teamId),
 
   // Tier from the league the club is ingested under. This is free and
   // covers every side in a cup tie, because a club's division is simply
   // which feed it appears in. A valuation row overrides it when a paid
   // source knows the club better, but nothing has to be configured for
   // the tier gap that decides most mismatches to be visible.
-  const league = db.query(`
+    db.query<any>(`
     SELECT sp.tier FROM sports_teams t JOIN sports sp ON sp.id = t.sport_id
     WHERE t.id = ?
-  `).get(teamId) as any
+    `).get(teamId),
 
   // Only the most recent capture, so a player listed across many runs is
   // counted once rather than accumulating with every pipeline pass.
-  const injuries = db.query(`
+    db.query<any>(`
     SELECT COALESCE(SUM(severity), 0) AS burden
     FROM team_injuries
     WHERE sports_team_id = ?
       AND captured_at = (SELECT MAX(captured_at) FROM team_injuries WHERE sports_team_id = ?)
-  `).get(teamId, teamId) as any
+    `).get(teamId, teamId),
+  ])
 
   return {
     teamId,

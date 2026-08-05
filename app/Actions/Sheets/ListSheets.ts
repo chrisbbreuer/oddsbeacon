@@ -1,10 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
-
-function dbPath(): string {
-  const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  return p.startsWith('/') ? p : `${process.cwd()}/${p}`
-}
+import { Database } from '../../Support/db'
 
 interface RequestLike {
   get?: (key: string) => unknown
@@ -28,21 +22,21 @@ export default {
     if (!userId && !token)
       return { sheets: [] }
 
-    const db = new Database(dbPath(), { readonly: true })
+    const db = new Database()
     try {
-      const sheets = (userId
+      const sheets = await (userId
         ? db.query('SELECT id, name, leg_count, parlay_decimal FROM bet_sheets WHERE user_id = ?1 ORDER BY id DESC').all(userId)
-        : db.query('SELECT id, name, leg_count, parlay_decimal FROM bet_sheets WHERE token = ?1 ORDER BY id DESC').all(token)) as Array<Record<string, unknown>>
+        : db.query('SELECT id, name, leg_count, parlay_decimal FROM bet_sheets WHERE token = ?1 ORDER BY id DESC').all(token))
 
       const itemStmt = db.query('SELECT selection_id, pick, game, league, price FROM bet_sheet_items WHERE bet_sheet_id = ?1')
       return {
-        sheets: sheets.map(s => ({
+        sheets: await Promise.all(sheets.map(async s => ({
           id: s.id,
           name: s.name,
           legCount: s.leg_count,
           parlay: s.parlay_decimal,
-          legs: itemStmt.all(s.id as number),
-        })),
+          legs: await itemStmt.all(s.id as number),
+        }))),
       }
     }
     finally {

@@ -109,8 +109,8 @@ afterAll(() => {
 })
 
 describe('evidence', () => {
-  it('favours the side carrying the accurate money', () => {
-    const candidates = buildCandidates(db, { minEdge: 0 })
+  it('favours the side carrying the accurate money', async () => {
+    const candidates = await buildCandidates(db, { minEdge: 0 })
     const lopsided = candidates.find(c => c.externalId === '0xlopsided')
 
     expect(lopsided).toBeDefined()
@@ -120,8 +120,8 @@ describe('evidence', () => {
     expect(lopsided!.edge).toBeGreaterThan(0)
   })
 
-  it('records the evidence that moved fair value', () => {
-    const candidate = buildCandidates(db, { minEdge: 0 }).find(c => c.externalId === '0xlopsided')!
+  it('records the evidence that moved fair value', async () => {
+    const candidate = (await buildCandidates(db, { minEdge: 0 })).find(c => c.externalId === '0xlopsided')!
     const kinds = candidate.evidence.map(e => e.kind)
 
     expect(kinds).toContain('flow_imbalance')
@@ -134,31 +134,31 @@ describe('evidence', () => {
     expect(candidate.fairValue).toBeCloseTo(candidate.marketPrice + total, 3)
   })
 
-  it('reports liquidity without letting it argue a direction', () => {
-    const candidate = buildCandidates(db, { minEdge: 0 }).find(c => c.externalId === '0xlopsided')!
+  it('reports liquidity without letting it argue a direction', async () => {
+    const candidate = (await buildCandidates(db, { minEdge: 0 })).find(c => c.externalId === '0xlopsided')!
     const liquidity = candidate.evidence.find(e => e.kind === 'liquidity')!
 
     expect(liquidity.value).toBeGreaterThan(0)
     expect(liquidity.contribution).toBe(0)
   })
 
-  it('skips markets with too few fills to model', () => {
-    const candidates = buildCandidates(db, { minEdge: 0 })
+  it('skips markets with too few fills to model', async () => {
+    const candidates = await buildCandidates(db, { minEdge: 0 })
     expect(candidates.some(c => c.externalId === '0xthin')).toBe(false)
   })
 
-  it('finds no edge worth taking in balanced flow', () => {
-    const candidates = buildCandidates(db, { minEdge: 0.03 })
+  it('finds no edge worth taking in balanced flow', async () => {
+    const candidates = await buildCandidates(db, { minEdge: 0.03 })
     expect(candidates.some(c => c.externalId === '0xbalanced')).toBe(false)
   })
 
-  it('honours the venue and category filters', () => {
-    expect(buildCandidates(db, { minEdge: 0, venues: ['kalshi'] })).toHaveLength(0)
-    expect(buildCandidates(db, { minEdge: 0, categories: ['politics'] }).length).toBeGreaterThan(0)
+  it('honours the venue and category filters', async () => {
+    expect(await buildCandidates(db, { minEdge: 0, venues: ['kalshi'] })).toHaveLength(0)
+    expect((await buildCandidates(db, { minEdge: 0, categories: ['politics'] })).length).toBeGreaterThan(0)
   })
 
-  it('never lets one signal run away with fair value', () => {
-    for (const candidate of buildCandidates(db, { minEdge: 0 })) {
+  it('never lets one signal run away with fair value', async () => {
+    for (const candidate of await buildCandidates(db, { minEdge: 0 })) {
       for (const item of candidate.evidence)
         expect(Math.abs(item.contribution)).toBeLessThanOrEqual(0.08)
 
@@ -262,52 +262,52 @@ describe('entitlements', () => {
     expect(tierFrom('something_else')).toBe('none')
   })
 
-  it('entitles nobody without a subscription', () => {
-    const entitlements = entitlementsFor(db, 999)
+  it('entitles nobody without a subscription', async () => {
+    const entitlements = await entitlementsFor(db, 999)
     expect(entitlements.tier).toBe('none')
     expect(entitlements.canAutoExecute).toBe(false)
   })
 
-  it('lets Signal read but not trade', () => {
+  it('lets Signal read but not trade', async () => {
     subscribe(10, 'predicthq_signal_monthly', 'active', null)
-    const entitlements = entitlementsFor(db, 10)
+    const entitlements = await entitlementsFor(db, 10)
 
     expect(entitlements.tier).toBe('signal')
     expect(entitlements.canAutoExecute).toBe(false)
     expect(entitlements.maxStrategies).toBe(1)
   })
 
-  it('lets Auto trade', () => {
+  it('lets Auto trade', async () => {
     subscribe(11, 'predicthq_auto_monthly', 'active', null)
-    expect(entitlementsFor(db, 11).canAutoExecute).toBe(true)
+    expect((await entitlementsFor(db, 11)).canAutoExecute).toBe(true)
   })
 
-  it('gives Desk unlimited strategies', () => {
+  it('gives Desk unlimited strategies', async () => {
     subscribe(12, 'predicthq_desk_yearly', 'active', null)
-    expect(entitlementsFor(db, 12).maxStrategies).toBeNull()
+    expect((await entitlementsFor(db, 12)).maxStrategies).toBeNull()
   })
 
-  it('stops entitling once a failed payment goes past due', () => {
+  it('stops entitling once a failed payment goes past due', async () => {
     subscribe(13, 'predicthq_auto_monthly', 'past_due', null)
-    expect(entitlementsFor(db, 13).canAutoExecute).toBe(false)
+    expect((await entitlementsFor(db, 13)).canAutoExecute).toBe(false)
   })
 
-  it('keeps a cancelled subscription until its period ends', () => {
+  it('keeps a cancelled subscription until its period ends', async () => {
     subscribe(14, 'predicthq_auto_monthly', 'active', future)
-    expect(entitlementsFor(db, 14).canAutoExecute).toBe(true)
+    expect((await entitlementsFor(db, 14)).canAutoExecute).toBe(true)
 
     subscribe(15, 'predicthq_auto_monthly', 'active', past)
-    expect(entitlementsFor(db, 15).tier).toBe('none')
+    expect((await entitlementsFor(db, 15)).tier).toBe('none')
   })
 
-  it('takes the better of two live subscriptions', () => {
+  it('takes the better of two live subscriptions', async () => {
     subscribe(16, 'predicthq_signal_monthly', 'active', null)
     subscribe(16, 'predicthq_desk_monthly', 'active', null)
-    expect(entitlementsFor(db, 16).tier).toBe('desk')
+    expect((await entitlementsFor(db, 16)).tier).toBe('desk')
   })
 
-  it('counts a trial as live', () => {
+  it('counts a trial as live', async () => {
     subscribe(17, 'predicthq_auto_monthly', 'trialing', null)
-    expect(entitlementsFor(db, 17).canAutoExecute).toBe(true)
+    expect((await entitlementsFor(db, 17)).canAutoExecute).toBe(true)
   })
 })

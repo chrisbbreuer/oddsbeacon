@@ -1,6 +1,6 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { log } from '@stacksjs/logging'
-import { databasePath, runAllStrategies } from '../../Services/trading/run'
+import { runAllStrategies } from '../../Services/trading/run'
 
 /**
  * One pass of the automated trading loop across every active strategy.
@@ -15,7 +15,7 @@ export default {
   description: 'Score markets, judge candidates, and place approved orders for every active strategy.',
 
   async handle() {
-    const db = new Database(databasePath())
+    const db = new Database()
 
     try {
       const summaries = await runAllStrategies(db)

@@ -60,14 +60,14 @@ function seed(database: Database): void {
   trade.run(1, 1, 'polymarket', 't1', 'yes', 0.60, 100, 60, now, now, now)
 }
 
-beforeAll(() => {
+beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), 'ob-pm-test-'))
   dbPath = join(dir, 'test.sqlite')
   db = schemaFor(dbPath, TABLES)
   seed(db)
   previousDbPath = process.env.DB_DATABASE_PATH
   process.env.DB_DATABASE_PATH = dbPath
-  runAnalytics(db)
+  await runAnalytics(db)
 })
 
 afterAll(() => {
@@ -139,7 +139,7 @@ describe('runAnalytics — trader aggregates', () => {
 describe('support query helpers', () => {
   it('loadSmartMoney ranks the sharp account first and includes the whale', async () => {
     const { loadSmartMoney } = await import('../../app/Support/prediction-markets')
-    const traders = loadSmartMoney()
+    const traders = await loadSmartMoney(50, db)
     expect(traders[0].alias).toBe('sharp')
     expect(traders[0].winRate).toBe(1)
     expect(traders.some(t => t.alias === 'whale' && t.isWhale)).toBe(true)
@@ -150,15 +150,15 @@ describe('support query helpers', () => {
 
   it('loadBigTrades orders by notional and labels anonymous fills', async () => {
     const { loadBigTrades } = await import('../../app/Support/prediction-markets')
-    const trades = loadBigTrades(3)
+    const trades = await loadBigTrades(3, db)
     expect(trades[0].notional).toBe(15_000)
-    const anon = loadBigTrades(20).find(t => t.venue === 'kalshi')
+    const anon = (await loadBigTrades(20, db)).find(t => t.venue === 'kalshi')
     expect(anon?.alias).toBe('')
   })
 
   it('loadGraph returns trader + market nodes and notional-weighted links', async () => {
     const { loadGraph } = await import('../../app/Support/prediction-markets')
-    const graph = loadGraph()
+    const graph = await loadGraph(40, db)
     const traderNodes = graph.nodes.filter(n => n.kind === 'trader')
     const marketNodes = graph.nodes.filter(n => n.kind === 'market')
     expect(traderNodes.length).toBe(3)

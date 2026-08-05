@@ -120,111 +120,111 @@ function finish(db: ReturnType<typeof freshDb>, options: { homeWon: boolean, eve
  * (grading and labelling). Collapsing that into one call would test an
  * ordering production never uses.
  */
-function runThroughSettlement(
+async function runThroughSettlement(
   db: ReturnType<typeof freshDb>,
   options: { homeWon: boolean, eventId?: number },
 ) {
-  settle(db)
+  await settle(db)
   finish(db, options)
-  return settle(db)
+  return await settle(db)
 }
 
 describe('settle to calibration', () => {
-  it('carries one settled event through to a scored bucket', () => {
+  it('carries one settled event through to a scored bucket', async () => {
     const db = freshDb()
     seedUpcomingEvent(db, { fairProbHome: 0.75 })
 
-    settle(db)
+    await settle(db)
     // The close has to be frozen while the game is still upcoming.
     expect(db.query('SELECT COUNT(*) c FROM closing_lines').get()).toMatchObject({ c: 2 })
 
     finish(db, { homeWon: true })
-    const settlement = settle(db)
+    const settlement = await settle(db)
 
     expect(settlement.eventsGraded).toBe(1)
     // The critical link: a graded selection must label its snapshot, or
     // calibration has nothing to read no matter how many games finish.
     expect(settlement.snapshotsLabelled).toBe(1)
 
-    const calibration = computeCalibration(db)
+    const calibration = await computeCalibration(db)
 
     expect(calibration.sampleSize).toBe(1)
     expect(calibration.buckets).toBeGreaterThan(0)
     expect(calibration.scopes).toBeGreaterThan(0)
   })
 
-  it('scores a confident correct call better than a confident wrong one', () => {
+  it('scores a confident correct call better than a confident wrong one', async () => {
     const right = freshDb()
     seedUpcomingEvent(right, { fairProbHome: 0.9 })
-    runThroughSettlement(right, { homeWon: true })
+    await runThroughSettlement(right, { homeWon: true })
 
     const wrong = freshDb()
     seedUpcomingEvent(wrong, { fairProbHome: 0.9 })
-    runThroughSettlement(wrong, { homeWon: false })
+    await runThroughSettlement(wrong, { homeWon: false })
 
     // Brier is a squared error, so lower is better. A model that says 90%
     // and is right must score below one that says 90% and is wrong;
     // if this inverts, every track record on the site is backwards.
-    expect(computeCalibration(right).overallBrier)
-      .toBeLessThan(computeCalibration(wrong).overallBrier)
+    expect((await computeCalibration(right)).overallBrier)
+      .toBeLessThan((await computeCalibration(wrong)).overallBrier)
   })
 
-  it('records positive CLV when the price beat the close', () => {
+  it('records positive CLV when the price beat the close', async () => {
     const db = freshDb()
     // Took 2.20, market closed 1.80: the line moved our way.
     seedUpcomingEvent(db, { fairProbHome: 0.6, bestPrice: 2.2, closePrice: 1.8 })
 
-    runThroughSettlement(db, { homeWon: true })
+    await runThroughSettlement(db, { homeWon: true })
 
     const snapshot = db.query('SELECT clv_pct FROM feature_snapshots').get() as { clv_pct: number }
     expect(snapshot.clv_pct).toBeGreaterThan(0)
   })
 
-  it('records negative CLV when the market moved against the price taken', () => {
+  it('records negative CLV when the market moved against the price taken', async () => {
     const db = freshDb()
     // Took 1.80, market closed 2.20: worse than the close.
     seedUpcomingEvent(db, { fairProbHome: 0.6, bestPrice: 1.8, closePrice: 2.2 })
 
-    runThroughSettlement(db, { homeWon: true })
+    await runThroughSettlement(db, { homeWon: true })
 
     const snapshot = db.query('SELECT clv_pct FROM feature_snapshots').get() as { clv_pct: number }
     expect(snapshot.clv_pct).toBeLessThan(0)
   })
 
-  it('leaves an event with no result alone', () => {
+  it('leaves an event with no result alone', async () => {
     const db = freshDb()
     seedUpcomingEvent(db, { fairProbHome: 0.75 })
 
     // The game has not finished, so nothing may be graded or scored.
-    const settlement = settle(db)
+    const settlement = await settle(db)
 
     expect(settlement.eventsGraded).toBe(0)
     expect(settlement.snapshotsLabelled).toBe(0)
-    expect(computeCalibration(db).sampleSize).toBe(0)
+    expect((await computeCalibration(db)).sampleSize).toBe(0)
   })
 
-  it('accumulates across events rather than replacing', () => {
+  it('accumulates across events rather than replacing', async () => {
     const db = freshDb()
     for (const [eventId, fairProbHome] of [[1, 0.7], [2, 0.3], [3, 0.8]] as const)
       seedUpcomingEvent(db, { fairProbHome, eventId })
 
-    settle(db)
+    await settle(db)
     for (const [eventId, homeWon] of [[1, true], [2, false], [3, true]] as const)
       finish(db, { homeWon, eventId })
-    settle(db)
+    await settle(db)
 
-    expect(computeCalibration(db).sampleSize).toBe(3)
+    expect((await computeCalibration(db)).sampleSize).toBe(3)
   })
 
-  it('is idempotent, so a re-run does not double count', () => {
+  it('is idempotent, so a re-run does not double count', async () => {
     const db = freshDb()
     seedUpcomingEvent(db, { fairProbHome: 0.75 })
-    runThroughSettlement(db, { homeWon: true })
+    await runThroughSettlement(db, { homeWon: true })
 
-    computeCalibration(db)
+    await computeCalibration(db)
     // The pipeline runs every five minutes over the same settled history.
-    settle(db)
-    const second = computeCalibration(db)
+    await settle(db)
+    const second = await computeCalibration(db)
 
     expect(second.sampleSize).toBe(1)
   })

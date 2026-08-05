@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import type { FeedEvent, OddsProvider } from '../odds/provider'
 import type { PriceWrite } from './prices'
 import process from 'node:process'
@@ -33,12 +33,12 @@ const MARKET_LABELS: Record<string, string> = {
  * synthetic board that looks live is exactly how the previous system
  * concealed a feed that had never matched anything.
  */
-export function resolveProvider(db: Database): OddsProvider {
+export async function resolveProvider(db: Database): Promise<OddsProvider> {
   const key = process.env.ODDS_API_KEY
   if (!key)
     return new SyntheticProvider(db)
 
-  const sports = loadSports(db).filter(s => s.odds_api_key)
+  const sports = (await loadSports(db)).filter(s => s.odds_api_key)
   return new TheOddsApiProvider(key, sports)
 }
 
@@ -57,9 +57,9 @@ export interface OddsIngestResult {
 }
 
 export async function ingestOdds(db: Database, provider?: OddsProvider): Promise<OddsIngestResult> {
-  const active = provider ?? resolveProvider(db)
+  const active = provider ?? await resolveProvider(db)
   const tracker = new IngestRunTracker(db, active.name, 'odds')
-  tracker.start()
+  await tracker.start()
 
   let feed: FeedEvent[] = []
   try {
@@ -69,26 +69,26 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
     tracker.fail(err instanceof Error ? err.message : String(err))
   }
 
-  const bookIndex = loadBookmakerIndex(db)
-  const sportBySlug = new Map(loadSports(db).map(s => [s.slug, s]))
+  const bookIndex = await loadBookmakerIndex(db)
+  const sportBySlug = new Map((await loadSports(db)).map(s => [s.slug, s]))
 
   let markets = 0
   let selections = 0
   const writes: PriceWrite[] = []
 
-  db.run('BEGIN')
   try {
-    for (const event of feed) {
+    const result = await db.transaction(async (transaction) => {
+      for (const event of feed) {
       const sport = sportBySlug.get(event.sportSlug)
       if (!sport) {
         tracker.unmatchedCount++
         continue
       }
 
-      const homeTeamId = resolveTeam(db, sport.id, event.homeTeam)
-      const awayTeamId = resolveTeam(db, sport.id, event.awayTeam)
+        const homeTeamId = await resolveTeam(transaction, sport.id, event.homeTeam)
+        const awayTeamId = await resolveTeam(transaction, sport.id, event.awayTeam)
 
-      const { eventId } = resolveEvent(db, {
+        const { eventId } = await resolveEvent(transaction, {
         sportId: sport.id,
         provider: active.name,
         externalId: event.externalId,
@@ -111,7 +111,7 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
         }
 
         for (const market of book.markets) {
-          const marketId = resolveMarket(db, {
+          const marketId = await resolveMarket(transaction, {
             eventId,
             marketType: market.marketType,
             line: market.line,
@@ -125,7 +125,7 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
           markets++
 
           for (const [index, outcome] of market.outcomes.entries()) {
-            const selectionId = resolveSelection(db, {
+            const selectionId = await resolveSelection(transaction, {
               marketId,
               label: outcome.label,
               side: outcome.side,
@@ -147,14 +147,14 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
           }
         }
       }
-    }
+      }
 
-    const result = writePrices(db, writes)
+      return await writePrices(transaction, writes)
+    })
     tracker.rowsWritten = result.written
-    db.run('COMMIT')
 
     const summary = `${feed.length} events · ${markets} markets · ${result.written} prices (${result.changed} moved)`
-    const { status, errors } = tracker.finish(summary)
+    const { status, errors } = await tracker.finish(summary)
 
     return {
       provider: active.name,
@@ -171,14 +171,8 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
     }
   }
   catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch {
-      // Connection already gone; the original error is the useful one.
-    }
     tracker.fail(err instanceof Error ? err.message : String(err))
-    const { status, errors } = tracker.finish('failed')
+    const { status, errors } = await tracker.finish('failed')
     return {
       provider: active.name,
       status,

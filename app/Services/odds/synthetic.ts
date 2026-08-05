@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import type { IngestRunTracker } from '../ingest/run'
 import type { FeedBook, FeedEvent, FeedMarket, OddsProvider } from './provider'
 import { decimalFromProbability } from '../../Support/keys'
@@ -35,17 +35,7 @@ export class SyntheticProvider implements OddsProvider {
   constructor(private readonly db: Database) {}
 
   async fetchEvents(tracker: IngestRunTracker): Promise<FeedEvent[]> {
-    const events = this.db.query(`
-      SELECT e.id, e.title, e.commence_at, s.slug AS sport_slug, s.grouping,
-             home.name AS home_name, away.name AS away_name
-      FROM market_events e
-      JOIN sports s ON s.id = e.sport_id
-      LEFT JOIN sports_teams home ON home.id = e.home_sports_team_id
-      LEFT JOIN sports_teams away ON away.id = e.away_sports_team_id
-      WHERE e.status IN ('scheduled', 'live')
-      ORDER BY e.commence_at ASC
-      LIMIT 120
-    `).all() as Array<{
+    const events = await this.db.query<{
       id: number
       title: string
       commence_at: string
@@ -53,11 +43,21 @@ export class SyntheticProvider implements OddsProvider {
       grouping: string
       home_name: string | null
       away_name: string | null
-    }>
+    }>(`
+      SELECT e.id, e.title, e.commence_at, s.slug AS sport_slug, s.grouping,
+            home.name AS home_name, away.name AS away_name
+      FROM market_events e
+      JOIN sports s ON s.id = e.sport_id
+      LEFT JOIN sports_teams home ON home.id = e.home_sports_team_id
+      LEFT JOIN sports_teams away ON away.id = e.away_sports_team_id
+      WHERE e.status IN ('scheduled', 'live')
+      ORDER BY e.commence_at ASC
+      LIMIT 120
+    `).all()
 
-    const books = this.db.query(`
+    const books = await this.db.query<{ slug: string, name: string, kind: string, sharp: number }>(`
       SELECT slug, name, kind, sharp FROM bookmakers WHERE active = 1 ORDER BY id ASC
-    `).all() as Array<{ slug: string, name: string, kind: string, sharp: number }>
+    `).all()
 
     tracker.rowsRead += events.length
 

@@ -14,8 +14,8 @@ const navActive = 'community'
 const pageTitle = 'PredictHQ community: talk the calls through'
 const pageDescription = 'Per-market threads where people trading the same contracts compare reasoning, take a side, and say why.'
 
-const threads = loadThreads(12)
-const seeds = threads.length === 0 ? loadSeedMarkets(6) : []
+const threads = await loadThreads(12)
+const seeds = threads.length === 0 ? await loadSeedMarkets(6) : []
 
 const totalNotes = threads.reduce((n, t) => n + t.noteCount, 0)
 </script>

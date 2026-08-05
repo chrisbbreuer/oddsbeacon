@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { nowIso } from '../../Support/keys'
 
 /**
@@ -56,14 +56,14 @@ interface Scope {
  * inputs are immutable once labelled, and a full rebuild cannot drift out
  * of sync with its source the way an incremental one can.
  */
-export function computeCalibration(db: Database): CalibrationResult {
+export async function computeCalibration(db: Database): Promise<CalibrationResult> {
   // Pushes are excluded: a voided market has no outcome to be right or
   // wrong about, and scoring it either way would distort the curve.
-  const rows = db.query(`
+  const rows = await db.query<LabelledRow>(`
     SELECT fair_prob, label, clv_pct, sport_slug, market_type
     FROM feature_snapshots
     WHERE label IN (0, 1) AND fair_prob > 0
-  `).all() as LabelledRow[]
+  `).all()
 
   if (rows.length === 0)
     return { scopes: 0, buckets: 0, sampleSize: 0, overallBrier: 0, overallLogLoss: 0 }
@@ -89,30 +89,12 @@ export function computeCalibration(db: Database): CalibrationResult {
       add('market_type', row.market_type, row)
   }
 
-  const upsert = db.prepare(`
-    INSERT INTO calibration_buckets
-      (scope, scope_key, bucket_lower, bucket_upper, predicted_avg, observed_rate,
-       sample_size, brier_score, log_loss, avg_clv_pct, computed_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (scope, scope_key, bucket_lower) DO UPDATE SET
-      bucket_upper = excluded.bucket_upper,
-      predicted_avg = excluded.predicted_avg,
-      observed_rate = excluded.observed_rate,
-      sample_size = excluded.sample_size,
-      brier_score = excluded.brier_score,
-      log_loss = excluded.log_loss,
-      avg_clv_pct = excluded.avg_clv_pct,
-      computed_at = excluded.computed_at,
-      updated_at = excluded.updated_at
-  `)
-
   const now = nowIso()
   let bucketsWritten = 0
   let overallBrier = 0
   let overallLogLoss = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
     for (const entry of scopes.values()) {
       for (let i = 0; i < BUCKET_COUNT; i++) {
         const lower = i / BUCKET_COUNT
@@ -132,21 +114,21 @@ export function computeCalibration(db: Database): CalibrationResult {
           return -(r.label * Math.log(p) + (1 - r.label) * Math.log(1 - p))
         }))
 
-        upsert.run(
-          entry.scope,
-          entry.scopeKey,
-          lower,
-          upper,
-          mean(inBucket.map(r => r.fair_prob)),
-          mean(inBucket.map(r => r.label)),
-          inBucket.length,
-          brier,
-          logLoss,
-          mean(inBucket.map(r => r.clv_pct)),
-          now,
-          now,
-          now,
-        )
+        await transaction.updateOrInsert('calibration_buckets', {
+          scope: entry.scope,
+          scope_key: entry.scopeKey,
+          bucket_lower: lower,
+        }, {
+          bucket_upper: upper,
+          predicted_avg: mean(inBucket.map(r => r.fair_prob)),
+          observed_rate: mean(inBucket.map(r => r.label)),
+          sample_size: inBucket.length,
+          brier_score: brier,
+          log_loss: logLoss,
+          avg_clv_pct: mean(inBucket.map(r => r.clv_pct)),
+          computed_at: now,
+          updated_at: now,
+        })
         bucketsWritten++
 
         if (entry.scope === 'overall') {
@@ -155,17 +137,7 @@ export function computeCalibration(db: Database): CalibrationResult {
         }
       }
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch {
-      // The original error is the one worth surfacing.
-    }
-    throw err
-  }
+  })
 
   return {
     scopes: scopes.size,

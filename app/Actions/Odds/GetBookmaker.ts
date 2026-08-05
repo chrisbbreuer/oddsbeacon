@@ -10,7 +10,7 @@ export default {
 
   async handle(request: { get?: (key: string) => unknown }) {
     const slug = String(request?.get?.('slug') ?? '')
-    const board = loadBoard()
+    const board = await loadBoard()
     const book = board.bookmakers.find(b => b.slug === slug)
 
     if (!book)

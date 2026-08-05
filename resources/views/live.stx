@@ -10,10 +10,10 @@ import { brandFor, teamFor } from '../../app/Support/branding'
 import { loadBoard, loadRecentMoves } from '../../app/Support/odds'
 
 const appName = 'PredictHQ'
-const { bookmakers, events, summary } = loadBoard()
+const { bookmakers, events, summary } = await loadBoard()
 
 // Initial feed (recent line moves): rendered server-side with @foreach.
-const feed = loadRecentMoves(40).map((m) => {
+const feed = (await loadRecentMoves(40)).map((m) => {
   const team = teamFor(m.pick)
   const brand = brandFor(m.bookSlug, m.book.slice(0, 3).toUpperCase())
   return {

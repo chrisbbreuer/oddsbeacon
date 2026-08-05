@@ -20,10 +20,10 @@ export default {
 
     const db = openRead()
     try {
-      return ok(recentMoves(db, limit), {
+      return ok(await recentMoves(db, limit), {
         request,
         cacheSeconds: 15,
-        meta: { freshness: freshness() },
+        meta: { freshness: await freshness() },
       })
     }
     finally {

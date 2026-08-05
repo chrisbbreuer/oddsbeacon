@@ -1,7 +1,6 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { response } from '@stacksjs/router'
 import { executeStrategy, type Strategy } from '../../Services/trading/execute'
-import { databasePath } from '../../Services/trading/run'
 
 /**
  * POST /api/trading/decisions/{id}/review — approve or reject by hand.
@@ -30,15 +29,15 @@ export default {
       return response.error('A decision id is required.', 422)
 
     const approve = request?.get?.('approve') !== 'false'
-    const db = new Database(databasePath())
+    const db = new Database()
 
     try {
-      const decision = db.prepare(`
+      const decision = await db.prepare<{ id: number, status: string, trading_strategy_id: number, user_id: number }>(`
         SELECT d.id, d.status, d.trading_strategy_id, s.user_id
         FROM trade_decisions d
         JOIN trading_strategies s ON s.id = d.trading_strategy_id
         WHERE d.id = ?
-      `).get(decisionId) as { id: number, status: string, trading_strategy_id: number, user_id: number } | null
+      `).get(decisionId)
 
       if (!decision || decision.user_id !== userId)
         return response.error('Decision not found.', 404)
@@ -52,17 +51,17 @@ export default {
       const now = new Date().toISOString()
 
       if (!approve) {
-        db.prepare(`UPDATE trade_decisions SET status = 'rejected', status_reason = 'rejected by user', updated_at = ? WHERE id = ?`)
+        await db.prepare(`UPDATE trade_decisions SET status = 'rejected', status_reason = 'rejected by user', updated_at = ? WHERE id = ?`)
           .run(now, decisionId)
 
         return { id: decisionId, status: 'rejected' }
       }
 
-      const strategy = db.prepare(`
+      const strategy = await db.prepare<Strategy>(`
         SELECT id, user_id, venue, bankroll, max_stake, min_edge, min_confidence,
-               max_open_positions, daily_loss_limit, auto_execute, status
+              max_open_positions, daily_loss_limit, auto_execute, status
         FROM trading_strategies WHERE id = ?
-      `).get(decision.trading_strategy_id) as Strategy | null
+      `).get(decision.trading_strategy_id)
 
       if (!strategy)
         return response.error('The strategy behind this decision no longer exists.', 404)

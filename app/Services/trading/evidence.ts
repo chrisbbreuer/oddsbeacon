@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { assessMismatch, loadTeamFundamentals } from '../fundamentals/mismatch'
 import { outcomeSideOf, resolveFixture } from '../ingest/kalshi-games'
 import { findIncoherence, fixtureKeyOf, strikeOf } from '../quant/coherence'
@@ -101,7 +101,7 @@ export interface EvidenceOptions {
  * an untraded market has no evidence, and a fair value derived from
  * nothing is worse than no opinion.
  */
-export function buildCandidates(db: Database, options: EvidenceOptions = {}): Candidate[] {
+export async function buildCandidates(db: Database, options: EvidenceOptions = {}): Promise<Candidate[]> {
   const venues = options.venues?.filter(Boolean) ?? []
   const categories = options.categories?.filter(Boolean) ?? []
   const minEdge = options.minEdge ?? 0.03
@@ -124,18 +124,18 @@ export function buildCandidates(db: Database, options: EvidenceOptions = {}): Ca
     params.push(...categories.map(c => c.toLowerCase()))
   }
 
-  const markets = db.prepare(`
+  const markets = await db.prepare<MarketRow>(`
     SELECT id, venue, external_id, question, outcome_label, category, last_price, liquidity
     FROM prediction_markets
     WHERE ${where.join(' AND ')}
     ORDER BY volume DESC
     LIMIT 400
-  `).all(...params) as MarketRow[]
+  `).all(...params)
 
   const candidates: Candidate[] = []
 
   for (const market of markets) {
-    const candidate = evaluateMarket(db, market)
+    const candidate = await evaluateMarket(db, market)
     if (candidate && Math.abs(candidate.edge) >= minEdge)
       candidates.push(candidate)
   }
@@ -151,10 +151,10 @@ export function buildCandidates(db: Database, options: EvidenceOptions = {}): Ca
  * Evaluate one market: gather the per-side flow, pick the side the
  * evidence favours, and record what moved the estimate.
  */
-function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
+async function evaluateMarket(db: Database, market: MarketRow): Promise<Candidate | null> {
   const since = new Date(Date.now() - WINDOW_HOURS * 3600_000).toISOString()
 
-  const flows = db.prepare(`
+  const flows = await db.prepare<FlowRow>(`
     SELECT
       t.side AS side,
       COUNT(*) AS fills,
@@ -166,7 +166,7 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
     LEFT JOIN market_traders tr ON tr.id = t.market_trader_id
     WHERE t.prediction_market_id = ? AND t.traded_at >= ?
     GROUP BY t.side
-  `).all(market.id, since) as FlowRow[]
+  `).all(market.id, since)
 
   const totalFills = flows.reduce((sum, f) => sum + f.fills, 0)
   if (totalFills < MIN_FILLS)
@@ -238,7 +238,7 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
 
   // ---- Price trend ----------------------------------------------------
   // Where the side has traded recently versus the window as a whole.
-  const trend = db.prepare(`
+  const trend = await db.prepare<{ recent: number, baseline: number, n: number }>(`
     SELECT
       COALESCE(AVG(CASE WHEN traded_at >= ? THEN price END), 0) AS recent,
       COALESCE(AVG(price), 0) AS baseline,
@@ -250,9 +250,9 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
     market.id,
     leader.side,
     since,
-  ) as { recent: number, baseline: number, n: number }
+  )
 
-  if (trend.recent > 0 && trend.baseline > 0) {
+  if (trend && trend.recent > 0 && trend.baseline > 0) {
     const drift = trend.recent - trend.baseline
     evidence.push({
       kind: 'price_trend',
@@ -280,12 +280,12 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   // The same question priced on the other venue. Two venues that
   // disagree is the cleanest signal available, and the only one here
   // that does not depend on our own trader modelling.
-  const other = db.prepare(`
+  const other = await db.prepare<{ venue: string, last_price: number }>(`
     SELECT venue, last_price
     FROM prediction_markets
     WHERE venue != ? AND status = 'open' AND question = ? AND last_price > 0
     LIMIT 1
-  `).get(market.venue, market.question) as { venue: string, last_price: number } | null
+  `).get(market.venue, market.question)
 
   if (other) {
     const otherPrice = leader.side === 'yes' ? other.last_price : 1 - other.last_price
@@ -302,7 +302,7 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
 
   // The fixture this market is about, resolved once. Two signals below
   // need it, and both need the same answer.
-  const fixture = resolveFixture(db, { ticker: market.external_id, title: market.question })
+  const fixture = await resolveFixture(db, { ticker: market.external_id, title: market.question })
 
   // Which of the three outcomes this market is. Null on a draw market or
   // an unreadable ticker, and both are skipped: a strength read says who
@@ -323,18 +323,18 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   // zero since it was added, so this is the first real computation of it.
   const half = new Date(Date.now() - (WINDOW_HOURS / 2) * 3600_000).toISOString()
 
-  const halves = db.prepare(`
+  const halves = await db.prepare<{ earlier: number, later: number, recentFills: number }>(`
     SELECT
       COALESCE(AVG(CASE WHEN traded_at < ? THEN price END), 0) AS earlier,
       COALESCE(AVG(CASE WHEN traded_at >= ? THEN price END), 0) AS later,
       COALESCE(SUM(CASE WHEN traded_at >= ? THEN 1 ELSE 0 END), 0) AS recentFills
     FROM market_trades
     WHERE prediction_market_id = ? AND traded_at >= ?
-  `).get(half, half, half, market.id, since) as { earlier: number, later: number, recentFills: number }
+  `).get(half, half, half, market.id, since)
 
   // Both halves need real trades, or the "move" is just one half being
   // empty and averaging to zero.
-  if (halves.earlier > 0 && halves.later > 0 && halves.recentFills >= MIN_FILLS / 2) {
+  if (halves && halves.earlier > 0 && halves.later > 0 && halves.recentFills >= MIN_FILLS / 2) {
     // Price move expressed for the leader's side, so the comparison with
     // its flow share is like for like.
     const rawMove = halves.later - halves.earlier
@@ -366,11 +366,11 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   const fixtureKey = fixtureKeyOf(market.external_id)
 
   if (fixtureKey && strikeOf(market.external_id) !== null) {
-    const siblings = db.prepare(`
+    const siblings = await db.prepare<{ ticker: string, price: number }>(`
       SELECT external_id AS ticker, last_price AS price
       FROM prediction_markets
       WHERE venue = ? AND status = 'open' AND external_id LIKE ?
-    `).all(market.venue, `%-${fixtureKey}-%`) as Array<{ ticker: string, price: number }>
+    `).all(market.venue, `%-${fixtureKey}-%`)
 
     for (const violation of findIncoherence(siblings)) {
       // Only the rung being priced, and only when this market is the one
@@ -399,8 +399,8 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   // the effect books price slowest: the second night of a back-to-back
   // for the road side is well documented and routinely under-adjusted.
   if (fixture?.matched && fixture.commenceAt) {
-    const homeSchedule = loadScheduleContext(db, fixture.homeTeamId!, fixture.commenceAt)
-    const awaySchedule = loadScheduleContext(db, fixture.awayTeamId!, fixture.commenceAt)
+    const homeSchedule = await loadScheduleContext(db, fixture.homeTeamId!, fixture.commenceAt)
+    const awaySchedule = await loadScheduleContext(db, fixture.awayTeamId!, fixture.commenceAt)
     const schedule = assessScheduleEdge(homeSchedule, awaySchedule)
 
     if (schedule.confidence > 0 && Math.abs(schedule.edge) > 0.01 && (outcome === 'home' || outcome === 'away')) {
@@ -432,16 +432,16 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   // nothing consumed it, because the two halves of the system had no
   // link between them.
   if (fixture?.marketEventId && (outcome === 'home' || outcome === 'away')) {
-    const selection = db.prepare(`
+    const selection = await db.prepare<{ id: number }>(`
       SELECT s.id AS id
       FROM selections s
       JOIN markets mk ON mk.id = s.market_id
       WHERE mk.market_event_id = ? AND mk.market_type = 'h2h' AND s.side = ?
       LIMIT 1
-    `).get(fixture.marketEventId, outcome) as { id: number } | null
+    `).get(fixture.marketEventId, outcome)
 
     if (selection) {
-      const move = movementFor(db, selection.id)
+      const move = await movementFor(db, selection.id)
 
       if (move.steamScore > 0 && Math.abs(move.moveFromOpenPct) > 0.1) {
         // Decimal odds falling means the selection shortened, which is
@@ -475,8 +475,8 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
 
 
   if (fixture?.matched && (outcome === 'home' || outcome === 'away')) {
-    const home = loadTeamFundamentals(db, fixture.homeTeamId!)
-    const away = loadTeamFundamentals(db, fixture.awayTeamId!)
+    const home = await loadTeamFundamentals(db, fixture.homeTeamId!)
+    const away = await loadTeamFundamentals(db, fixture.awayTeamId!)
     const mismatch = assessMismatch(home, away)
 
     if (mismatch.confidence > 0 && Math.abs(mismatch.edge) > 0.01) {

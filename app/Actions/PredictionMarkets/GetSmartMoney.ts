@@ -10,7 +10,7 @@ export default {
   description: 'Smart-money trader leaderboard with win rates and sizing.',
 
   async handle() {
-    const traders = loadSmartMoney()
+    const traders = await loadSmartMoney()
     return { count: traders.length, traders }
   },
 }

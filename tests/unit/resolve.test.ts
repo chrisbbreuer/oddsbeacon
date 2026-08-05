@@ -37,28 +37,28 @@ afterEach(() => {
 })
 
 describe('resolveTeam', () => {
-  it('returns the same row for the same name', () => {
+  it('returns the same row for the same name', async () => {
     const db = freshDb()
-    const a = resolveTeam(db, 1, 'Baltimore Orioles')
-    const b = resolveTeam(db, 1, 'Baltimore Orioles')
+    const a = await resolveTeam(db, 1, 'Baltimore Orioles')
+    const b = await resolveTeam(db, 1, 'Baltimore Orioles')
     expect(a).toBe(b!)
     db.close()
   })
 
-  it('ignores punctuation and casing', () => {
+  it('ignores punctuation and casing', async () => {
     const db = freshDb()
-    const a = resolveTeam(db, 1, 'St. Louis Cardinals')
-    const b = resolveTeam(db, 1, 'st louis cardinals')
+    const a = await resolveTeam(db, 1, 'St. Louis Cardinals')
+    const b = await resolveTeam(db, 1, 'st louis cardinals')
     expect(a).toBe(b!)
     db.close()
   })
 
-  it('matches a near-identical spelling and learns it as an alias', () => {
+  it('matches a near-identical spelling and learns it as an alias', async () => {
     const db = freshDb()
     // Matching requires the nickname *and* most of the qualifier to
     // agree, which a feed still carrying a club's former name satisfies.
-    const current = resolveTeam(db, 1, 'Tampa Bay Rays')
-    const former = resolveTeam(db, 1, 'Tampa Bay Devil Rays')
+    const current = await resolveTeam(db, 1, 'Tampa Bay Rays')
+    const former = await resolveTeam(db, 1, 'Tampa Bay Devil Rays')
     expect(former).toBe(current!)
 
     // The spelling is written back, so the next occurrence is an indexed
@@ -68,16 +68,16 @@ describe('resolveTeam', () => {
     db.close()
   })
 
-  it('reuses a learned alias without re-running the fuzzy pass', () => {
+  it('reuses a learned alias without re-running the fuzzy pass', async () => {
     const db = freshDb()
-    const full = resolveTeam(db, 1, 'Los Angeles Angels')
+    const full = await resolveTeam(db, 1, 'Los Angeles Angels')
     db.run('UPDATE sports_teams SET aliases = ? WHERE id = ?', ['laangels', full])
 
-    expect(resolveTeam(db, 1, 'LA Angels')).toBe(full!)
+    expect(await resolveTeam(db, 1, 'LA Angels')).toBe(full!)
     db.close()
   })
 
-  it('refuses an ambiguous match rather than risking a wrong merge', () => {
+  it('refuses an ambiguous match rather than risking a wrong merge', async () => {
     // "LA Angels" shares only its nickname with "Los Angeles Angels" and
     // scores below the bar, so a second row is created. That is the
     // intended trade: the same score would merge "Georgia Bulldogs" with
@@ -85,33 +85,33 @@ describe('resolveTeam', () => {
     // A duplicate team is visible and fixable; a wrong merge silently
     // misattributes every price, result, and grade that follows.
     const db = freshDb()
-    const full = resolveTeam(db, 1, 'Los Angeles Angels')
-    expect(resolveTeam(db, 1, 'LA Angels')).not.toBe(full!)
+    const full = await resolveTeam(db, 1, 'Los Angeles Angels')
+    expect(await resolveTeam(db, 1, 'LA Angels')).not.toBe(full!)
     db.close()
   })
 
-  it('keeps two colleges sharing a nickname apart', () => {
+  it('keeps two colleges sharing a nickname apart', async () => {
     const db = freshDb()
-    expect(resolveTeam(db, 1, 'Georgia Bulldogs')).not.toBe(resolveTeam(db, 1, 'Butler Bulldogs')!)
+    expect(await resolveTeam(db, 1, 'Georgia Bulldogs')).not.toBe(await resolveTeam(db, 1, 'Butler Bulldogs'))
     db.close()
   })
 
-  it('keeps two clubs from the same city apart', () => {
+  it('keeps two clubs from the same city apart', async () => {
     // "Los Angeles Lakers" and "Los Angeles Clippers" share two of three
     // tokens. A naive overlap score merges them; weighting the nickname is
     // what stops it, and a wrong merge silently misattributes every price,
     // result, and grade that follows.
     const db = freshDb()
-    const lakers = resolveTeam(db, 1, 'Los Angeles Lakers')
-    const clippers = resolveTeam(db, 1, 'Los Angeles Clippers')
+    const lakers = await resolveTeam(db, 1, 'Los Angeles Lakers')
+    const clippers = await resolveTeam(db, 1, 'Los Angeles Clippers')
     expect(lakers).not.toBe(clippers!)
     db.close()
   })
 
-  it('scopes teams to their sport', () => {
+  it('scopes teams to their sport', async () => {
     const db = freshDb()
     db.run(`INSERT INTO sports (id, slug, title, grouping, active, position) VALUES (2, 'nba', 'NBA', 'Basketball', 1, 2)`)
-    expect(resolveTeam(db, 1, 'Giants')).not.toBe(resolveTeam(db, 2, 'Giants')!)
+    expect(await resolveTeam(db, 1, 'Giants')).not.toBe(await resolveTeam(db, 2, 'Giants'))
     db.close()
   })
 })
@@ -123,10 +123,10 @@ describe('resolveEvent', () => {
     commenceAt: '2026-08-04T22:35:00.000Z',
   }
 
-  it('is idempotent on the provider id', () => {
+  it('is idempotent on the provider id', async () => {
     const db = freshDb()
-    const a = resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1' })
-    const b = resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1' })
+    const a = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1' })
+    const b = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1' })
 
     expect(a.created).toBe(true)
     expect(b.created).toBe(false)
@@ -134,15 +134,15 @@ describe('resolveEvent', () => {
     db.close()
   })
 
-  it('links a second provider onto the same event via the team pair', () => {
+  it('links a second provider onto the same event via the team pair', async () => {
     const db = freshDb()
-    const home = resolveTeam(db, 1, 'Baltimore Orioles')
-    const away = resolveTeam(db, 1, 'Los Angeles Angels')
+    const home = await resolveTeam(db, 1, 'Baltimore Orioles')
+    const away = await resolveTeam(db, 1, 'Los Angeles Angels')
 
-    const espn = resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1', homeTeamId: home, awayTeamId: away })
+    const espn = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'e1', homeTeamId: home, awayTeamId: away })
     // The odds feed reports the same game with its own id and a start time
     // a few minutes off, which is normal disagreement between feeds.
-    const odds = resolveEvent(db, {
+    const odds = await resolveEvent(db, {
       ...base,
       provider: 'the-odds-api',
       externalId: 'x9',
@@ -156,31 +156,31 @@ describe('resolveEvent', () => {
     db.close()
   })
 
-  it('keeps consecutive games between the same two clubs apart', () => {
+  it('keeps consecutive games between the same two clubs apart', async () => {
     // A baseball series is three or four straight meetings of the same
     // pair. A day-wide match window merges them into one event, which is
     // exactly what happened before the window was tightened.
     const db = freshDb()
-    const home = resolveTeam(db, 1, 'Baltimore Orioles')
-    const away = resolveTeam(db, 1, 'Los Angeles Angels')
+    const home = await resolveTeam(db, 1, 'Baltimore Orioles')
+    const away = await resolveTeam(db, 1, 'Los Angeles Angels')
 
-    const monday = resolveEvent(db, { ...base, provider: 'espn', externalId: 'g1', commenceAt: '2026-08-04T22:35:00.000Z', homeTeamId: home, awayTeamId: away })
-    const tuesday = resolveEvent(db, { ...base, provider: 'espn', externalId: 'g2', commenceAt: '2026-08-05T22:35:00.000Z', homeTeamId: home, awayTeamId: away })
+    const monday = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'g1', commenceAt: '2026-08-04T22:35:00.000Z', homeTeamId: home, awayTeamId: away })
+    const tuesday = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'g2', commenceAt: '2026-08-05T22:35:00.000Z', homeTeamId: home, awayTeamId: away })
 
     expect(tuesday.eventId).not.toBe(monday.eventId)
     expect(tuesday.created).toBe(true)
     db.close()
   })
 
-  it('never merges two ids from the same provider', () => {
+  it('never merges two ids from the same provider', async () => {
     // Within one provider its own ids are authoritative: a different id is
     // a different game, whatever the teams and kickoff say.
     const db = freshDb()
-    const home = resolveTeam(db, 1, 'Baltimore Orioles')
-    const away = resolveTeam(db, 1, 'Los Angeles Angels')
+    const home = await resolveTeam(db, 1, 'Baltimore Orioles')
+    const away = await resolveTeam(db, 1, 'Los Angeles Angels')
 
-    const first = resolveEvent(db, { ...base, provider: 'espn', externalId: 'g1', homeTeamId: home, awayTeamId: away })
-    const second = resolveEvent(db, { ...base, provider: 'espn', externalId: 'g2', homeTeamId: home, awayTeamId: away })
+    const first = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'g1', homeTeamId: home, awayTeamId: away })
+    const second = await resolveEvent(db, { ...base, provider: 'espn', externalId: 'g2', homeTeamId: home, awayTeamId: away })
 
     expect(second.eventId).not.toBe(first.eventId)
     db.close()
@@ -188,63 +188,63 @@ describe('resolveEvent', () => {
 })
 
 describe('resolveMarket and resolveSelection', () => {
-  function seedEvent(db: ReturnType<typeof freshDb>) {
-    return resolveEvent(db, {
+  async function seedEvent(db: ReturnType<typeof freshDb>) {
+    return (await resolveEvent(db, {
       sportId: 1,
       provider: 'espn',
       externalId: 'e1',
       title: 'Away at Home',
       commenceAt: '2026-08-04T22:35:00.000Z',
-    }).eventId
+    })).eventId
   }
 
-  it('is idempotent for a market with no line', () => {
+  it('is idempotent for a market with no line', async () => {
     // The unique index keys on `line_key` rather than the nullable `line`
     // for exactly this case: SQL treats NULLs as distinct, so a nullable
     // column in a unique index constrains nothing and every pass would
     // insert a fresh duplicate moneyline.
     const db = freshDb()
-    const eventId = seedEvent(db)
+    const eventId = await seedEvent(db)
 
-    const a = resolveMarket(db, { eventId, marketType: 'h2h', line: null })
-    const b = resolveMarket(db, { eventId, marketType: 'h2h', line: null })
+    const a = await resolveMarket(db, { eventId, marketType: 'h2h', line: null })
+    const b = await resolveMarket(db, { eventId, marketType: 'h2h', line: null })
 
     expect(a).toBe(b)
     expect((db.query('SELECT COUNT(*) AS n FROM markets').get() as { n: number }).n).toBe(1)
     db.close()
   })
 
-  it('treats two lines on the same bet type as different markets', () => {
+  it('treats two lines on the same bet type as different markets', async () => {
     const db = freshDb()
-    const eventId = seedEvent(db)
+    const eventId = await seedEvent(db)
 
-    const half = resolveMarket(db, { eventId, marketType: 'totals', line: 8.5 })
-    const nine = resolveMarket(db, { eventId, marketType: 'totals', line: 9 })
+    const half = await resolveMarket(db, { eventId, marketType: 'totals', line: 8.5 })
+    const nine = await resolveMarket(db, { eventId, marketType: 'totals', line: 9 })
 
     expect(half).not.toBe(nine)
     db.close()
   })
 
-  it('is idempotent for a selection with no point', () => {
+  it('is idempotent for a selection with no point', async () => {
     const db = freshDb()
-    const marketId = resolveMarket(db, { eventId: seedEvent(db), marketType: 'h2h', line: null })
+    const marketId = await resolveMarket(db, { eventId: await seedEvent(db), marketType: 'h2h', line: null })
 
-    const a = resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
-    const b = resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
+    const a = await resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
+    const b = await resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
 
     expect(a).toBe(b)
     db.close()
   })
 
-  it('identifies a selection by side, not by label', () => {
+  it('identifies a selection by side, not by label', async () => {
     // The label is what a feed calls the outcome and it varies between
     // feeds and over time; the side is the closed vocabulary grading
     // switches on. Keying on the label is the original bug.
     const db = freshDb()
-    const marketId = resolveMarket(db, { eventId: seedEvent(db), marketType: 'h2h', line: null })
+    const marketId = await resolveMarket(db, { eventId: await seedEvent(db), marketType: 'h2h', line: null })
 
-    const first = resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
-    const renamed = resolveSelection(db, { marketId, label: 'Orioles', side: 'home', point: null })
+    const first = await resolveSelection(db, { marketId, label: 'Baltimore Orioles', side: 'home', point: null })
+    const renamed = await resolveSelection(db, { marketId, label: 'Orioles', side: 'home', point: null })
 
     expect(renamed).toBe(first)
     const row = db.query('SELECT label FROM selections WHERE id = ?').get(first) as { label: string }
@@ -252,12 +252,12 @@ describe('resolveMarket and resolveSelection', () => {
     db.close()
   })
 
-  it('keeps two sides of the same market apart', () => {
+  it('keeps two sides of the same market apart', async () => {
     const db = freshDb()
-    const marketId = resolveMarket(db, { eventId: seedEvent(db), marketType: 'h2h', line: null })
+    const marketId = await resolveMarket(db, { eventId: await seedEvent(db), marketType: 'h2h', line: null })
 
-    const home = resolveSelection(db, { marketId, label: 'Home', side: 'home', point: null })
-    const away = resolveSelection(db, { marketId, label: 'Away', side: 'away', point: null })
+    const home = await resolveSelection(db, { marketId, label: 'Home', side: 'home', point: null })
+    const away = await resolveSelection(db, { marketId, label: 'Away', side: 'away', point: null })
 
     expect(home).not.toBe(away)
     db.close()

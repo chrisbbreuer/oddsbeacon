@@ -1,10 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
-
-function dbPath(): string {
-  const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  return p.startsWith('/') ? p : `${process.cwd()}/${p}`
-}
+import { Database } from './db'
 
 /** Traders need this many scored fills before ranking as smart money. */
 const MIN_RESOLVED = 2
@@ -61,7 +55,7 @@ export interface GraphPayload {
 }
 
 function openDb(): Database {
-  return new Database(dbPath(), { readonly: true })
+  return new Database()
 }
 
 /**
@@ -69,17 +63,17 @@ function openDb(): Database {
  * accounts that keep buying the side that ends up winning, with their
  * sizing profile. Whales ride along even with a thin resolved history.
  */
-export function loadSmartMoney(limit = 50): SmartTrader[] {
-  const db = openDb()
+export async function loadSmartMoney(limit = 50, database?: Database): Promise<SmartTrader[]> {
+  const db = database ?? openDb()
   try {
-    return (db.query(`
+    return (await db.query<any>(`
       SELECT id, venue, external_id, alias, trade_count, total_notional, avg_trade_size,
-             max_trade_size, resolved_trade_count, winning_trade_count, win_rate, smart_score, is_whale
+            max_trade_size, resolved_trade_count, winning_trade_count, win_rate, smart_score, is_whale
       FROM market_traders
       WHERE resolved_trade_count >= ? OR is_whale = 1
       ORDER BY smart_score DESC, total_notional DESC
       LIMIT ?
-    `).all(MIN_RESOLVED, limit) as any[]).map(r => ({
+    `).all(MIN_RESOLVED, limit)).map(r => ({
       id: r.id,
       venue: r.venue,
       wallet: r.external_id,
@@ -96,26 +90,28 @@ export function loadSmartMoney(limit = 50): SmartTrader[] {
     }))
   }
   finally {
-    db.close()
+    if (!database)
+      db.close()
   }
 }
 
 /** Largest recent fills across both venues (Kalshi fills are anonymous). */
-export function loadBigTrades(limit = 30): BigTrade[] {
-  const db = openDb()
+export async function loadBigTrades(limit = 30, database?: Database): Promise<BigTrade[]> {
+  const db = database ?? openDb()
   try {
-    return db.query(`
+    return await db.query<BigTrade>(`
       SELECT t.venue, pm.question, t.side, t.price, t.size, t.notional, t.is_winner AS isWinner,
-             t.traded_at AS tradedAt, COALESCE(NULLIF(tr.alias, ''), tr.external_id, '') AS alias
+            t.traded_at AS tradedAt, COALESCE(NULLIF(tr.alias, ''), tr.external_id, '') AS alias
       FROM market_trades t
       JOIN prediction_markets pm ON pm.id = t.prediction_market_id
       LEFT JOIN market_traders tr ON tr.id = t.market_trader_id
       ORDER BY t.notional DESC
       LIMIT ?
-    `).all(limit) as BigTrade[]
+    `).all(limit)
   }
   finally {
-    db.close()
+    if (!database)
+      db.close()
   }
 }
 
@@ -126,16 +122,16 @@ export function loadBigTrades(limit = 30): BigTrade[] {
  * tracks the flow between them; wins/losses ride on each edge so the
  * UI can color winning flow.
  */
-export function loadGraph(traderLimit = 40): GraphPayload {
-  const db = openDb()
+export async function loadGraph(traderLimit = 40, database?: Database): Promise<GraphPayload> {
+  const db = database ?? openDb()
   try {
-    const traders = db.query(`
+    const traders = await db.query<any>(`
       SELECT id, alias, external_id, total_notional, win_rate, smart_score, is_whale, resolved_trade_count
       FROM market_traders
       WHERE trade_count > 0 AND (resolved_trade_count >= ${MIN_RESOLVED} OR is_whale = 1 OR total_notional > 0)
       ORDER BY smart_score DESC, total_notional DESC
       LIMIT ?
-    `).all(traderLimit) as any[]
+    `).all(traderLimit)
 
     if (!traders.length)
       return { nodes: [], links: [] }
@@ -143,21 +139,21 @@ export function loadGraph(traderLimit = 40): GraphPayload {
     const ids = traders.map(t => t.id)
     const placeholders = ids.map(() => '?').join(',')
 
-    const flows = db.query(`
+    const flows = await db.query<any>(`
       SELECT t.market_trader_id AS tid, t.prediction_market_id AS mid,
-             SUM(t.notional) AS notional, COUNT(*) AS trades,
-             SUM(t.is_winner = 1) AS wins, SUM(t.is_winner = 0) AS losses
+            SUM(t.notional) AS notional, COUNT(*) AS trades,
+            SUM(t.is_winner = 1) AS wins, SUM(t.is_winner = 0) AS losses
       FROM market_trades t
       WHERE t.market_trader_id IN (${placeholders})
       GROUP BY t.market_trader_id, t.prediction_market_id
-    `).all(...ids) as any[]
+    `).all(...ids)
 
     const marketIds = [...new Set(flows.map(f => f.mid))]
     const markets = marketIds.length
-      ? db.query(`
+      ? await db.query<any>(`
           SELECT id, venue, question, status, volume
           FROM prediction_markets WHERE id IN (${marketIds.map(() => '?').join(',')})
-        `).all(...marketIds) as any[]
+        `).all(...marketIds)
       : []
 
     const nodes: GraphPayload['nodes'] = [
@@ -194,6 +190,7 @@ export function loadGraph(traderLimit = 40): GraphPayload {
     return { nodes, links }
   }
   finally {
-    db.close()
+    if (!database)
+      db.close()
   }
 }

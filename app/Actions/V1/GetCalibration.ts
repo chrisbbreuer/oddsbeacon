@@ -29,13 +29,13 @@ export default {
 
     const db = openRead()
     try {
-      const buckets = db.query(`
+      const buckets = await db.query<Record<string, any>>(`
         SELECT bucket_lower, bucket_upper, predicted_avg, observed_rate,
-               sample_size, brier_score, log_loss, avg_clv_pct, computed_at
+              sample_size, brier_score, log_loss, avg_clv_pct, computed_at
         FROM calibration_buckets
         WHERE scope = ? AND scope_key = ?
         ORDER BY bucket_lower ASC
-      `).all(scope, scopeKey) as Array<Record<string, any>>
+      `).all(scope, scopeKey)
 
       const sampleSize = buckets.reduce((sum, b) => sum + b.sample_size, 0)
 
@@ -68,7 +68,7 @@ export default {
         },
         // Calibration moves only when markets settle, so it tolerates a
         // far longer cache than anything price-derived.
-        { request, cacheSeconds: 300, meta: { freshness: freshness() } },
+        { request, cacheSeconds: 300, meta: { freshness: await freshness() } },
       )
     }
     finally {

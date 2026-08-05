@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { nowIso } from '../../Support/keys'
 import { movementFor } from './movement'
 
@@ -34,14 +34,26 @@ export interface SnapshotResult {
   skipped: number
 }
 
-export function captureFeatureSnapshots(db: Database, options: { horizonHours?: number } = {}): SnapshotResult {
+export async function captureFeatureSnapshots(db: Database, options: { horizonHours?: number } = {}): Promise<SnapshotResult> {
   const horizon = options.horizonHours ?? HORIZON_HOURS
   const now = Date.now()
   const upper = new Date(now + horizon * 3_600_000).toISOString()
   const nowStr = new Date(now).toISOString()
   const gapCutoff = new Date(now - MIN_GAP_MINUTES * 60_000).toISOString()
 
-  const candidates = db.query(`
+  const candidates = await db.query<{
+    selection_id: number
+    prob_consensus: number
+    prob_sharp: number
+    edge_pct: number
+    overround_pct: number
+    book_count: number
+    best_price: number
+    side: string
+    market_type: string
+    commence_at: string
+    sport_slug: string
+  }>(`
     SELECT
       f.selection_id, f.prob_consensus, f.prob_sharp, f.edge_pct, f.overround_pct,
       f.book_count, f.best_price,
@@ -58,40 +70,16 @@ export function captureFeatureSnapshots(db: Database, options: { horizonHours?: 
         SELECT 1 FROM feature_snapshots fs
         WHERE fs.selection_id = f.selection_id AND fs.captured_at > ?
       )
-  `).all(nowStr, upper, gapCutoff) as Array<{
-    selection_id: number
-    prob_consensus: number
-    prob_sharp: number
-    edge_pct: number
-    overround_pct: number
-    book_count: number
-    best_price: number
-    side: string
-    market_type: string
-    commence_at: string
-    sport_slug: string
-  }>
+  `).all(nowStr, upper, gapCutoff)
 
   if (candidates.length === 0)
     return { captured: 0, skipped: 0 }
-
-  const insert = db.prepare(`
-    INSERT INTO feature_snapshots
-      (selection_id, captured_at, hours_to_start, best_price, fair_prob, sharp_prob, edge_pct,
-       overround_pct, book_count, price_std_dev, open_price, move_from_open_pct,
-       velocity_pct_per_hour, steam_score, reverse_line_move, direction_changes,
-       sport_slug, market_type, side, extra, label, closing_fair_prob, clv_pct, labelled_at,
-       created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', -1, 0, 0, '', ?, ?)
-    ON CONFLICT (selection_id, captured_at) DO NOTHING
-  `)
 
   const capturedAt = nowIso()
   let captured = 0
   let skipped = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
     for (const row of candidates) {
       const startMs = Date.parse(row.commence_at)
       if (!Number.isFinite(startMs)) {
@@ -99,48 +87,46 @@ export function captureFeatureSnapshots(db: Database, options: { horizonHours?: 
         continue
       }
 
-      const move = movementFor(db, row.selection_id)
+      const move = await movementFor(transaction, row.selection_id)
 
-      const res = insert.run(
-        row.selection_id,
-        capturedAt,
-        (startMs - now) / 3_600_000,
-        row.best_price,
-        row.prob_consensus,
-        row.prob_sharp,
-        row.edge_pct,
-        row.overround_pct,
-        row.book_count,
-        move.priceStdDev,
-        move.openPrice,
-        move.moveFromOpenPct,
-        move.velocityPctPerHour,
-        move.steamScore,
-        0,
-        move.directionChanges,
-        row.sport_slug,
-        row.market_type,
-        row.side,
-        capturedAt,
-        capturedAt,
-      )
+      const exists = await transaction.query<{ id: number }>(
+        'SELECT id FROM feature_snapshots WHERE selection_id = ? AND captured_at = ?',
+      ).get(row.selection_id, capturedAt)
+      await transaction.insertOrIgnore('feature_snapshots', {
+        selection_id: row.selection_id,
+        captured_at: capturedAt,
+        hours_to_start: (startMs - now) / 3_600_000,
+        best_price: row.best_price,
+        fair_prob: row.prob_consensus,
+        sharp_prob: row.prob_sharp,
+        edge_pct: row.edge_pct,
+        overround_pct: row.overround_pct,
+        book_count: row.book_count,
+        price_std_dev: move.priceStdDev,
+        open_price: move.openPrice,
+        move_from_open_pct: move.moveFromOpenPct,
+        velocity_pct_per_hour: move.velocityPctPerHour,
+        steam_score: move.steamScore,
+        reverse_line_move: 0,
+        direction_changes: move.directionChanges,
+        sport_slug: row.sport_slug,
+        market_type: row.market_type,
+        side: row.side,
+        extra: '',
+        label: -1,
+        closing_fair_prob: 0,
+        clv_pct: 0,
+        labelled_at: '',
+        created_at: capturedAt,
+        updated_at: capturedAt,
+      })
 
-      if (Number(res.changes) > 0)
+      if (!exists)
         captured++
       else
         skipped++
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch {
-      // The original error is the one worth surfacing.
-    }
-    throw err
-  }
+  })
 
   return { captured, skipped }
 }

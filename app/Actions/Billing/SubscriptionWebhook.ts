@@ -1,10 +1,9 @@
 import type Stripe from 'stripe'
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import process from 'node:process'
 import { log } from '@stacksjs/logging'
 import { constructEventAsync } from '@stacksjs/payments/billable/webhook'
 import { response } from '@stacksjs/router'
-import { databasePath } from '../../Services/trading/run'
 
 /**
  * POST /api/billing/webhook — Stripe's view of a subscription, applied.
@@ -69,14 +68,14 @@ export default {
       return response.error('Invalid signature.', 400)
     }
 
-    const db = new Database(databasePath())
+    const db = new Database()
 
     try {
       switch (event.type) {
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
         case 'customer.subscription.deleted':
-          applySubscription(db, event.data.object as Stripe.Subscription, event.type)
+          await applySubscription(db, event.data.object as Stripe.Subscription, event.type)
           break
 
         default:
@@ -108,8 +107,8 @@ export default {
  * schema, which is what makes a retried or out-of-order event converge
  * on the same row rather than adding a second one.
  */
-function applySubscription(db: Database, subscription: Stripe.Subscription, eventType: string): void {
-  const userId = resolveUserId(db, subscription)
+async function applySubscription(db: Database, subscription: Stripe.Subscription, eventType: string): Promise<void> {
+  const userId = await resolveUserId(db, subscription)
   if (!userId) {
     // A subscription we cannot attribute is worth surfacing loudly — it
     // means a customer paid and got nothing, which no retry will fix.
@@ -142,33 +141,19 @@ function applySubscription(db: Database, subscription: Stripe.Subscription, even
     ? new Date(subscription.trial_end * 1000).toISOString()
     : null
 
-  db.prepare(`
-    INSERT INTO subscriptions (
-      type, plan, provider_id, provider_status, provider_type, provider_price_id,
-      unit_price, quantity, trial_ends_at, ends_at, last_used_at, user_id
-    ) VALUES ('default', ?, ?, ?, 'stripe', ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (provider_id) DO UPDATE SET
-      plan = excluded.plan,
-      provider_status = excluded.provider_status,
-      provider_price_id = excluded.provider_price_id,
-      unit_price = excluded.unit_price,
-      quantity = excluded.quantity,
-      trial_ends_at = excluded.trial_ends_at,
-      ends_at = excluded.ends_at,
-      last_used_at = excluded.last_used_at,
-      user_id = excluded.user_id
-  `).run(
-    planKey,
-    subscription.id,
-    status,
-    priceId,
-    (item?.price?.unit_amount ?? 0) / 100,
-    item?.quantity ?? 1,
-    trialEndsAt,
-    endsAt,
-    new Date().toISOString(),
-    userId,
-  )
+  await db.updateOrInsert('subscriptions', { provider_id: subscription.id }, {
+    type: 'default',
+    plan: planKey,
+    provider_status: status,
+    provider_type: 'stripe',
+    provider_price_id: priceId,
+    unit_price: (item?.price?.unit_amount ?? 0) / 100,
+    quantity: item?.quantity ?? 1,
+    trial_ends_at: trialEndsAt,
+    ends_at: endsAt,
+    last_used_at: new Date().toISOString(),
+    user_id: userId,
+  })
 
   log.info(`[billing] subscription ${subscription.id} for user ${userId} is now ${status} on ${planKey}`)
 }
@@ -181,7 +166,7 @@ function applySubscription(db: Database, subscription: Stripe.Subscription, even
  * for subscriptions created outside our own checkout — through the
  * Stripe dashboard, say — which would otherwise be unattributable.
  */
-function resolveUserId(db: Database, subscription: Stripe.Subscription): number | null {
+async function resolveUserId(db: Database, subscription: Stripe.Subscription): Promise<number | null> {
   const fromMetadata = Number(subscription.metadata?.user_id ?? 0)
   if (fromMetadata > 0)
     return fromMetadata
@@ -193,8 +178,8 @@ function resolveUserId(db: Database, subscription: Stripe.Subscription): number 
   if (!customerId)
     return null
 
-  const row = db.prepare('SELECT id FROM users WHERE stripe_id = ?')
-    .get(customerId) as { id: number } | null
+  const row = await db.prepare<{ id: number }>('SELECT id FROM users WHERE stripe_id = ?')
+    .get(customerId)
 
   return row?.id ?? null
 }

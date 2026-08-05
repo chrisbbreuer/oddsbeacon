@@ -1,7 +1,6 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { response } from '@stacksjs/router'
 import { resolveEntitlements } from '../../Services/billing/entitlements'
-import { databasePath } from '../../Services/trading/run'
 
 /**
  * POST /api/trading/strategies — create or update a strategy.
@@ -30,10 +29,10 @@ export default {
     if (!userId)
       return response.error('Sign in to manage strategies.', 401)
 
-    const db = new Database(databasePath())
+    const db = new Database()
 
     try {
-      const entitlements = resolveEntitlements(db, userId)
+      const entitlements = await resolveEntitlements(db, userId)
 
       if (entitlements.tier === 'none')
         return response.error('An active subscription is required to create a strategy.', 402)
@@ -49,10 +48,10 @@ export default {
       }
 
       if (!id && entitlements.maxStrategies !== null) {
-        const existing = db.prepare('SELECT COUNT(*) AS n FROM trading_strategies WHERE user_id = ?')
-          .get(userId) as { n: number }
+        const existing = await db.prepare<{ n: number }>('SELECT COUNT(*) AS n FROM trading_strategies WHERE user_id = ?')
+          .get(userId)
 
-        if (existing.n >= entitlements.maxStrategies) {
+        if (Number(existing?.n ?? 0) >= entitlements.maxStrategies) {
           return response.error(
             `The ${entitlements.tier} plan includes ${entitlements.maxStrategies} strategy${entitlements.maxStrategies === 1 ? '' : 'ies'}. Upgrade for more.`,
             402,
@@ -89,13 +88,13 @@ export default {
       const now = new Date().toISOString()
 
       if (id) {
-        const owned = db.prepare('SELECT id FROM trading_strategies WHERE id = ? AND user_id = ?')
-          .get(id, userId) as { id: number } | null
+        const owned = await db.prepare<{ id: number }>('SELECT id FROM trading_strategies WHERE id = ? AND user_id = ?')
+          .get(id, userId)
 
         if (!owned)
           return response.error('Strategy not found.', 404)
 
-        db.prepare(`
+        await db.prepare(`
           UPDATE trading_strategies SET
             name = ?, venue = ?, categories = ?, bankroll = ?, max_stake = ?,
             min_edge = ?, min_confidence = ?, max_open_positions = ?, daily_loss_limit = ?,
@@ -110,7 +109,7 @@ export default {
         return { id, ...fields }
       }
 
-      const insert = db.prepare(`
+      const insert = await db.prepare(`
         INSERT INTO trading_strategies (
           user_id, name, venue, categories, bankroll, max_stake, min_edge, min_confidence,
           max_open_positions, daily_loss_limit, auto_execute, status, halted_reason,

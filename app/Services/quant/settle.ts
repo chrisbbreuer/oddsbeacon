@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { devig } from '../../Support/devig'
 import { nowIso } from '../../Support/keys'
 
@@ -41,7 +41,7 @@ export interface SettleResult {
  * raw price, because CLV measured against a raw closing price silently
  * credits the model with the book's margin.
  */
-export function captureClosingLines(db: Database): number {
+export async function captureClosingLines(db: Database): Promise<number> {
   const now = Date.now()
   const upper = new Date(now + CLOSING_WINDOW_MINUTES * 60_000).toISOString()
   // A generous lower bound catches events whose kickoff passed while the
@@ -49,42 +49,34 @@ export function captureClosingLines(db: Database): number {
   // no way to reconstruct it later — so a slightly late capture beats none.
   const lower = new Date(now - 6 * 3_600_000).toISOString()
 
-  const events = db.query(`
+  const events = await db.query<{ id: number, commence_at: string }>(`
     SELECT id, commence_at FROM market_events
     WHERE closing_captured_at = ''
       AND commence_at BETWEEN ? AND ?
       AND status IN ('scheduled', 'live')
-  `).all(lower, upper) as Array<{ id: number, commence_at: string }>
+  `).all(lower, upper)
 
   if (events.length === 0)
     return 0
 
-  const insert = db.prepare(`
-    INSERT INTO closing_lines
-      (selection_id, bookmaker_id, price, implied_prob, fair_prob, point, captured_at, seconds_before_start, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (selection_id, bookmaker_id) DO NOTHING
-  `)
-
   let captured = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
     for (const event of events) {
-      const quotes = db.query(`
+      const quotes = await transaction.query<{
+        selection_id: number
+        bookmaker_id: number
+        price: number
+        point: number | null
+        market_id: number
+      }>(`
         SELECT o.selection_id, o.bookmaker_id, o.price, o.point, s.market_id
         FROM odds o
         JOIN selections s ON s.id = o.selection_id
         JOIN markets m ON m.id = s.market_id
         WHERE m.market_event_id = ? AND o.available = 1 AND o.price > 1
         ORDER BY s.market_id, o.bookmaker_id, s.position
-      `).all(event.id) as Array<{
-        selection_id: number
-        bookmaker_id: number
-        price: number
-        point: number | null
-        market_id: number
-      }>
+      `).all(event.id)
 
       // De-vig per (market, book) — the same grouping the fair-price pass
       // uses, and for the same reason: margin belongs to a book's view of a
@@ -104,34 +96,29 @@ export function captureClosingLines(db: Database): number {
       for (const group of grouped.values()) {
         const fair = group.length >= 2 ? devig(group.map(q => q.price)).shin : null
         for (const [index, q] of group.entries()) {
-          insert.run(
-            q.selection_id,
-            q.bookmaker_id,
-            q.price,
-            q.price > 0 ? 1 / q.price : 0,
-            fair?.[index] ?? 0,
-            q.point,
-            capturedAt,
-            secondsBefore,
-            capturedAt,
-            capturedAt,
-          )
-          captured++
+          const exists = await transaction.query<{ id: number }>(
+            'SELECT id FROM closing_lines WHERE selection_id = ? AND bookmaker_id = ?',
+          ).get(q.selection_id, q.bookmaker_id)
+          await transaction.insertOrIgnore('closing_lines', {
+            selection_id: q.selection_id,
+            bookmaker_id: q.bookmaker_id,
+            price: q.price,
+            implied_prob: q.price > 0 ? 1 / q.price : 0,
+            fair_prob: fair?.[index] ?? 0,
+            point: q.point,
+            captured_at: capturedAt,
+            seconds_before_start: secondsBefore,
+            created_at: capturedAt,
+            updated_at: capturedAt,
+          })
+          if (!exists) captured++
         }
       }
 
-      db.prepare('UPDATE market_events SET closing_captured_at = ?, updated_at = ? WHERE id = ?')
+      await transaction.prepare('UPDATE market_events SET closing_captured_at = ?, updated_at = ? WHERE id = ?')
         .run(capturedAt, capturedAt, event.id)
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch { /* original error is the useful one */ }
-    throw err
-  }
+  })
 
   return captured
 }
@@ -147,39 +134,38 @@ export function captureClosingLines(db: Database): number {
  * loss, and scoring it as one would understate performance on every
  * market that lands flush.
  */
-export function gradeSelections(db: Database): { events: number, selections: number } {
-  const events = db.query(`
-    SELECT r.market_event_id AS event_id, r.home_score, r.away_score, r.winner_side, r.completed
-    FROM event_results r
-    WHERE r.graded_at = ''
-  `).all() as Array<{
+export async function gradeSelections(db: Database): Promise<{ events: number, selections: number }> {
+  const events = await db.query<{
     event_id: number
     home_score: number
     away_score: number
     winner_side: string
     completed: number
-  }>
+  }>(`
+    SELECT r.market_event_id AS event_id, r.home_score, r.away_score, r.winner_side, r.completed
+    FROM event_results r
+    WHERE r.graded_at = ''
+  `).all()
 
   if (events.length === 0)
     return { events: 0, selections: 0 }
 
-  const update = db.prepare('UPDATE selections SET outcome = ?, graded_at = ?, updated_at = ? WHERE id = ?')
   let graded = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
+    const update = transaction.prepare('UPDATE selections SET outcome = ?, graded_at = ?, updated_at = ? WHERE id = ?')
     for (const event of events) {
-      const selections = db.query(`
-        SELECT s.id, s.side, s.point, m.market_type
-        FROM selections s
-        JOIN markets m ON m.id = s.market_id
-        WHERE m.market_event_id = ?
-      `).all(event.event_id) as Array<{
+      const selections = await transaction.query<{
         id: number
         side: string
         point: number | null
         market_type: string
-      }>
+      }>(`
+        SELECT s.id, s.side, s.point, m.market_type
+        FROM selections s
+        JOIN markets m ON m.id = s.market_id
+        WHERE m.market_event_id = ?
+      `).all(event.event_id)
 
       for (const selection of selections) {
         // An abandoned or cancelled game voids rather than settles: every
@@ -191,22 +177,14 @@ export function gradeSelections(db: Database): { events: number, selections: num
         if (outcome === null)
           continue
 
-        update.run(outcome, nowIso(), nowIso(), selection.id)
+        await update.run(outcome, nowIso(), nowIso(), selection.id)
         graded++
       }
 
-      db.prepare('UPDATE event_results SET graded_at = ?, updated_at = ? WHERE market_event_id = ?')
+      await transaction.prepare('UPDATE event_results SET graded_at = ?, updated_at = ? WHERE market_event_id = ?')
         .run(nowIso(), nowIso(), event.event_id)
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch { /* original error is the useful one */ }
-    throw err
-  }
+  })
 
   return { events: events.length, selections: graded }
 }
@@ -261,34 +239,31 @@ function gradeOne(
  * recomputing features after the fact would leak the outcome into them and
  * produce a model that backtests beautifully and fails live.
  */
-export function labelSnapshots(db: Database): number {
-  const pending = db.query(`
+export async function labelSnapshots(db: Database): Promise<number> {
+  const pending = await db.query<{ id: number, selection_id: number, best_price: number, outcome: number }>(`
     SELECT fs.id, fs.selection_id, fs.best_price, s.outcome
     FROM feature_snapshots fs
     JOIN selections s ON s.id = fs.selection_id
     WHERE fs.label = -1 AND s.outcome != -1
-  `).all() as Array<{ id: number, selection_id: number, best_price: number, outcome: number }>
+  `).all()
 
   if (pending.length === 0)
     return 0
 
-  const closing = db.prepare(`
-    SELECT MAX(price) AS best_close, AVG(fair_prob) AS fair_close
-    FROM closing_lines WHERE selection_id = ?
-  `)
-
-  const update = db.prepare(`
-    UPDATE feature_snapshots
-    SET label = ?, closing_fair_prob = ?, clv_pct = ?, labelled_at = ?, updated_at = ?
-    WHERE id = ?
-  `)
-
   let labelled = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
+    const closing = transaction.prepare<{ best_close: number | null, fair_close: number | null }>(`
+      SELECT MAX(price) AS best_close, AVG(fair_prob) AS fair_close
+      FROM closing_lines WHERE selection_id = ?
+    `)
+    const update = transaction.prepare(`
+      UPDATE feature_snapshots
+      SET label = ?, closing_fair_prob = ?, clv_pct = ?, labelled_at = ?, updated_at = ?
+      WHERE id = ?
+    `)
     for (const row of pending) {
-      const close = closing.get(row.selection_id) as { best_close: number | null, fair_close: number | null } | null
+      const close = await closing.get(row.selection_id)
 
       // CLV: how the price we saw compares to the price the market closed
       // at. Positive means we had the better side of the line — the
@@ -298,27 +273,19 @@ export function labelSnapshots(db: Database): number {
         ? (row.best_price / close.best_close - 1) * 100
         : 0
 
-      update.run(row.outcome, close?.fair_close ?? 0, clv, nowIso(), nowIso(), row.id)
+      await update.run(row.outcome, close?.fair_close ?? 0, clv, nowIso(), nowIso(), row.id)
       labelled++
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch { /* original error is the useful one */ }
-    throw err
-  }
+  })
 
   return labelled
 }
 
 /** Run all three settlement passes in order. */
-export function settle(db: Database): SettleResult {
-  const closingCaptured = captureClosingLines(db)
-  const { events, selections } = gradeSelections(db)
-  const snapshotsLabelled = labelSnapshots(db)
+export async function settle(db: Database): Promise<SettleResult> {
+  const closingCaptured = await captureClosingLines(db)
+  const { events, selections } = await gradeSelections(db)
+  const snapshotsLabelled = await labelSnapshots(db)
 
   return {
     closingCaptured,

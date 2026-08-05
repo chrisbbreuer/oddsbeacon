@@ -1,5 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { Database } from '../../Support/db'
 import { Action } from '@stacksjs/actions'
 import { response } from '@stacksjs/router'
 import { socialProvider } from '../../Support/auth'
@@ -88,19 +87,19 @@ export default new Action({
     const displayName = String(
       profile?.name || profile?.nickname || nameFromCallbackBody(request) || email.split('@')[0],
     ).slice(0, 60)
-    const db = new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite')
+    const db = new Database()
 
     try {
-      const existing = db.prepare('SELECT id FROM users WHERE lower(email) = ?').get(email) as { id: number } | null
+      const existing = await db.prepare<{ id: number }>('SELECT id FROM users WHERE lower(email) = ?').get(email)
       const now = new Date().toISOString()
 
       if (!existing) {
         // No password is set. This account can only be reached through the
         // provider until the user chooses one, which is the correct state
         // rather than a placeholder hash somebody could guess.
-        db.prepare(
+        await db.prepare(
           `INSERT INTO users (name, email, password, created_at, updated_at)
-           VALUES (?, ?, '', ?, ?)`,
+          VALUES (?, ?, '', ?, ?)`,
         ).run(displayName, email, now, now)
       }
 

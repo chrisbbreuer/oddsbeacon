@@ -1,10 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
-
-function dbPath(): string {
-  const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  return p.startsWith('/') ? p : `${process.cwd()}/${p}`
-}
+import { Database } from '../../Support/db'
 
 interface RequestLike {
   all?: () => Record<string, unknown>
@@ -36,19 +30,20 @@ export default {
     if (!userId && !token)
       return { error: 'A user session or token is required' }
 
-    const db = new Database(dbPath())
+    const db = new Database()
     try {
       const parlay = legs.reduce((acc, l) => acc * (Number(l.price) || 1), 1)
       const now = new Date().toISOString()
-      const { lastInsertRowid } = db
-        .prepare('INSERT INTO bet_sheets (user_id, token, name, leg_count, parlay_decimal, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(userId, token || null, name, legs.length, parlay, now)
-      const sheetId = Number(lastInsertRowid)
-
-      const insertItem = db.prepare('INSERT INTO bet_sheet_items (bet_sheet_id, selection_id, pick, game, league, price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      for (const l of legs) {
-        insertItem.run(sheetId, Number(l.id) || null, String(l.pick ?? ''), String(l.game ?? ''), String(l.league ?? ''), Number(l.price) || 0, now)
-      }
+      const sheetId = await db.transaction(async (transaction) => {
+        const { lastInsertRowid } = await transaction
+          .prepare('INSERT INTO bet_sheets (user_id, token, name, leg_count, parlay_decimal, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+          .run(userId, token || null, name, legs.length, parlay, now)
+        const id = Number(lastInsertRowid)
+        const insertItem = transaction.prepare('INSERT INTO bet_sheet_items (bet_sheet_id, selection_id, pick, game, league, price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        for (const l of legs)
+          await insertItem.run(id, Number(l.id) || null, String(l.pick ?? ''), String(l.game ?? ''), String(l.league ?? ''), Number(l.price) || 0, now)
+        return id
+      })
 
       return { id: sheetId, name, legCount: legs.length, parlay: Number(parlay.toFixed(2)) }
     }

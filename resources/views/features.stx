@@ -17,8 +17,8 @@ const navActive = 'features'
 const pageTitle = 'PredictHQ features: your accounts, your people, your AI'
 const pageDescription = 'One place for every venue you trade, the people trading them with you, and an AI that shows its work before it acts.'
 
-const intel = loadIntelSummary()
-const { summary } = loadBoard()
+const intel = await loadIntelSummary()
+const { summary } = await loadBoard()
 
 /**
  * A count is only worth printing once there is something to count.

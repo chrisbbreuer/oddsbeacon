@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from './db'
 import process from 'node:process'
 import { openRead } from './db'
 
@@ -41,14 +41,14 @@ export interface TrackRecord {
 /** Odds older than this and the board is reporting the past as the present. */
 const STALE_AFTER_SECONDS = 15 * 60
 
-export function loadFeedState(db: Database = openRead()): FeedState {
-  const run = db.query(`
+export async function loadFeedState(db: Database = openRead()): Promise<FeedState> {
+  const run = await db.query<{ provider: string, status: string, finished_at: string | null, error: string | null }>(`
     SELECT provider, status, finished_at, error
     FROM ingest_runs
     WHERE kind = 'odds'
     ORDER BY id DESC
     LIMIT 1
-  `).get() as { provider: string, status: string, finished_at: string | null, error: string | null } | null
+  `).get()
 
   if (!run) {
     return { live: false, provider: 'none', lastRunAt: null, ageSeconds: null, stale: true, error: null }
@@ -69,30 +69,30 @@ export function loadFeedState(db: Database = openRead()): FeedState {
   }
 }
 
-export function loadTrackRecord(db: Database = openRead()): TrackRecord {
-  const overall = db.query(`
+export async function loadTrackRecord(db: Database = openRead()): Promise<TrackRecord> {
+  const overall = await db.query<Record<string, any>>(`
     SELECT sample_size, brier_score, log_loss, avg_clv_pct, computed_at
     FROM calibration_buckets
     WHERE scope = 'overall'
     ORDER BY id DESC
     LIMIT 1
-  `).get() as Record<string, any> | null
+  `).get()
 
   // What has been predicted but cannot be scored yet, so an empty record
   // reads as "too early" rather than "nothing here".
   // commence_at, not starts_at: the latter exists on the table but is
   // never populated by the ESPN ingest, so keying off it reports "no
   // upcoming games" on a board full of them.
-  const pending = db.query(`
+  const pending = await db.query<{ events: number, next: string | null }>(`
     SELECT COUNT(DISTINCT m.market_event_id) AS events,
-           MIN(e.commence_at) AS next
+          MIN(e.commence_at) AS next
     FROM fair_prices fp
     JOIN selections s ON s.id = fp.selection_id
     JOIN markets m ON m.id = s.market_id
     JOIN market_events e ON e.id = m.market_event_id
     LEFT JOIN event_results r ON r.market_event_id = e.id AND r.completed = 1
     WHERE r.id IS NULL
-  `).get() as { events: number, next: string | null }
+  `).get()
 
   return {
     sampleSize: Number(overall?.sample_size ?? 0),
@@ -121,15 +121,15 @@ export interface FundamentalsCoverage {
  * volume: a thousand injury rows across two leagues still leaves every
  * other fixture priced on book quotes alone, and the page should say so.
  */
-export function loadFundamentalsCoverage(db: Database = openRead()): FundamentalsCoverage {
-  const row = db.query(`
+export async function loadFundamentalsCoverage(db: Database = openRead()): Promise<FundamentalsCoverage> {
+  const row = await db.query<Record<string, any>>(`
     SELECT
       (SELECT COUNT(DISTINCT sports_team_id) FROM team_standings) AS teamsWithStanding,
       (SELECT COUNT(*) FROM sports_teams) AS teamsTotal,
       (SELECT COUNT(DISTINCT sports_team_id) FROM team_injuries) AS injuriesTracked,
       (SELECT COUNT(DISTINCT sports_team_id) FROM club_valuations) AS clubsValued,
       (SELECT MAX(captured_at) FROM team_standings) AS lastCapturedAt
-  `).get() as Record<string, any>
+  `).get()
 
   return {
     teamsWithStanding: Number(row?.teamsWithStanding ?? 0),
@@ -160,13 +160,13 @@ export interface ProviderRun {
   error: string | null
 }
 
-export function loadProviderRuns(db: Database = openRead()): ProviderRun[] {
-  const rows = db.query(`
+export async function loadProviderRuns(db: Database = openRead()): Promise<ProviderRun[]> {
+  const rows = await db.query<Record<string, any>>(`
     SELECT provider, kind, status, finished_at, rows_written, summary, error
     FROM ingest_runs
     WHERE id IN (SELECT MAX(id) FROM ingest_runs GROUP BY provider, kind)
     ORDER BY kind, provider
-  `).all() as Array<Record<string, any>>
+  `).all()
 
   return rows.map(row => ({
     provider: String(row.provider),

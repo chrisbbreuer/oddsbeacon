@@ -1,5 +1,4 @@
-import { Database } from 'bun:sqlite'
-import { databasePath } from '../../Services/trading/run'
+import { Database } from '../../Support/db'
 
 interface DecisionRow {
   id: number
@@ -49,13 +48,13 @@ export default {
     const status = request?.get?.('status') ?? ''
     const limit = Math.min(200, Number(request?.get?.('limit') ?? 50) || 50)
 
-    const db = new Database(databasePath(), { readonly: true })
+    const db = new Database()
 
     try {
       const where = status ? 'WHERE d.status = ?' : ''
       const params: unknown[] = status ? [status, limit] : [limit]
 
-      const decisions = db.prepare(`
+      const decisions = await db.prepare<DecisionRow>(`
         SELECT
           d.id, d.trading_strategy_id, s.name AS strategy_name, d.venue,
           m.question, m.category, d.side, d.market_price, d.fair_value, d.edge,
@@ -67,18 +66,18 @@ export default {
         ${where}
         ORDER BY d.updated_at DESC, d.id DESC
         LIMIT ?
-      `).all(...params) as DecisionRow[]
+      `).all(...params)
 
       if (decisions.length === 0)
         return { count: 0, decisions: [] }
 
       const placeholders = decisions.map(() => '?').join(', ')
-      const evidence = db.prepare(`
+      const evidence = await db.prepare<EvidenceRow>(`
         SELECT trade_decision_id, kind, summary, value, contribution, sample_size, window_hours
         FROM decision_evidence
         WHERE trade_decision_id IN (${placeholders})
         ORDER BY ABS(contribution) DESC
-      `).all(...decisions.map(d => d.id)) as EvidenceRow[]
+      `).all(...decisions.map(d => d.id))
 
       const byDecision = new Map<number, EvidenceRow[]>()
       for (const row of evidence) {

@@ -1,7 +1,6 @@
 import type { Candidate } from './evidence'
 import type { Strategy } from './execute'
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { Database } from '../../Support/db'
 import { log } from '@stacksjs/logging'
 import { resolveEntitlements } from '../billing/entitlements'
 import { judgeCandidates } from './decide'
@@ -34,19 +33,15 @@ export interface RunSummary {
   decidedBy: string
 }
 
-export function databasePath(): string {
-  return process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite'
-}
-
 /** Every strategy the loop should consider this pass. */
-export function activeStrategies(db: Database): Strategy[] {
-  return db.prepare(`
+export async function activeStrategies(db: Database): Promise<Strategy[]> {
+  return await db.prepare<Strategy>(`
     SELECT id, user_id, venue, bankroll, max_stake, min_edge, min_confidence,
-           max_open_positions, daily_loss_limit, auto_execute, status
+          max_open_positions, daily_loss_limit, auto_execute, status
     FROM trading_strategies
     WHERE status = 'active'
     ORDER BY id
-  `).all() as Strategy[]
+  `).all()
 }
 
 export async function runStrategy(db: Database, strategy: Strategy): Promise<RunSummary> {
@@ -62,9 +57,9 @@ export async function runStrategy(db: Database, strategy: Strategy): Promise<Run
     decidedBy: 'rules',
   }
 
-  const categories = readCategories(db, strategy.id)
+  const categories = await readCategories(db, strategy.id)
 
-  const candidates = buildCandidates(db, {
+  const candidates = await buildCandidates(db, {
     venues: strategy.venue === 'both' ? [] : [strategy.venue],
     categories,
     minEdge: strategy.min_edge,
@@ -73,14 +68,14 @@ export async function runStrategy(db: Database, strategy: Strategy): Promise<Run
   summary.candidates = candidates.length
 
   if (candidates.length === 0) {
-    touch(db, strategy.id, now)
+    await touch(db, strategy.id, now)
     return summary
   }
 
   // Model judgement is a paid tier feature. Without it the deterministic
   // scores decide alone — which is a complete procedure, not a degraded
   // one, so the loop still runs end to end on every plan.
-  const entitlements = resolveEntitlements(db, strategy.user_id)
+  const entitlements = await resolveEntitlements(db, strategy.user_id)
   const judgements = entitlements.canUseDeepResearch
     ? await judgeCandidates(candidates)
     : candidates.map(c => ({
@@ -128,7 +123,7 @@ export async function runStrategy(db: Database, strategy: Strategy): Promise<Run
           ? 'sized below one contract'
           : ''
 
-    const decisionId = upsertDecision(db, strategy.id, candidate, {
+    const decisionId = await upsertDecision(db, strategy.id, candidate, {
       side: candidate.side,
       limitPrice,
       size,
@@ -154,7 +149,7 @@ export async function runStrategy(db: Database, strategy: Strategy): Promise<Run
     summary.skipped += outcomes.filter(o => !o.placed).length
   }
 
-  touch(db, strategy.id, now)
+  await touch(db, strategy.id, now)
   return summary
 }
 
@@ -162,7 +157,7 @@ export async function runStrategy(db: Database, strategy: Strategy): Promise<Run
 export async function runAllStrategies(db: Database): Promise<RunSummary[]> {
   const summaries: RunSummary[] = []
 
-  for (const strategy of activeStrategies(db)) {
+  for (const strategy of await activeStrategies(db)) {
     try {
       summaries.push(await runStrategy(db, strategy))
     }
@@ -197,17 +192,18 @@ interface DecisionWrite {
  * left alone — that one already has money behind it, and overwriting it
  * would lose the record the order points at.
  */
-function upsertDecision(
+async function upsertDecision(
   db: Database,
   strategyId: number,
   candidate: Candidate,
   write: DecisionWrite,
   now: string,
-): number {
-  const existing = db.prepare(`
+): Promise<number> {
+  return await db.transaction(async (transaction) => {
+  const existing = await transaction.prepare<{ id: number, status: string }>(`
     SELECT id, status FROM trade_decisions
     WHERE trading_strategy_id = ? AND prediction_market_id = ?
-  `).get(strategyId, candidate.predictionMarketId) as { id: number, status: string } | null
+  `).get(strategyId, candidate.predictionMarketId)
 
   if (existing && (existing.status === 'executed' || existing.status === 'failed'))
     return existing.id
@@ -215,7 +211,7 @@ function upsertDecision(
   let decisionId: number
 
   if (existing) {
-    db.prepare(`
+    await transaction.prepare(`
       UPDATE trade_decisions SET
         venue = ?, side = ?, market_price = ?, fair_value = ?, edge = ?, confidence = ?,
         limit_price = ?, size = ?, notional = ?, rationale = ?, decided_by = ?,
@@ -229,7 +225,7 @@ function upsertDecision(
     decisionId = existing.id
   }
   else {
-    const insert = db.prepare(`
+    const insert = await transaction.prepare(`
       INSERT INTO trade_decisions (
         trading_strategy_id, prediction_market_id, venue, side, market_price, fair_value,
         edge, confidence, limit_price, size, notional, rationale, decided_by,
@@ -247,9 +243,9 @@ function upsertDecision(
   // Evidence describes one moment. Replacing it wholesale keeps the rows
   // consistent with the decision they sit next to, instead of mixing
   // this pass's numbers with the last one's.
-  db.prepare('DELETE FROM decision_evidence WHERE trade_decision_id = ?').run(decisionId)
+  await transaction.prepare('DELETE FROM decision_evidence WHERE trade_decision_id = ?').run(decisionId)
 
-  const insertEvidence = db.prepare(`
+  const insertEvidence = transaction.prepare(`
     INSERT INTO decision_evidence (
       trade_decision_id, kind, summary, value, contribution, sample_size, window_hours,
       created_at, updated_at
@@ -257,19 +253,20 @@ function upsertDecision(
   `)
 
   for (const item of candidate.evidence) {
-    insertEvidence.run(
+    await insertEvidence.run(
       decisionId, item.kind, item.summary, item.value, item.contribution,
       item.sampleSize, item.windowHours, now, now,
     )
   }
 
   return decisionId
+  })
 }
 
 /** The strategy's category allowlist, as lowercase names. */
-function readCategories(db: Database, strategyId: number): string[] {
-  const row = db.prepare('SELECT categories FROM trading_strategies WHERE id = ?')
-    .get(strategyId) as { categories: string | null } | null
+async function readCategories(db: Database, strategyId: number): Promise<string[]> {
+  const row = await db.prepare<{ categories: string | null }>('SELECT categories FROM trading_strategies WHERE id = ?')
+    .get(strategyId)
 
   return (row?.categories ?? '')
     .split(',')
@@ -277,7 +274,7 @@ function readCategories(db: Database, strategyId: number): string[] {
     .filter(Boolean)
 }
 
-function touch(db: Database, strategyId: number, now: string): void {
-  db.prepare('UPDATE trading_strategies SET last_run_at = ?, updated_at = ? WHERE id = ?')
+async function touch(db: Database, strategyId: number, now: string): Promise<void> {
+  await db.prepare('UPDATE trading_strategies SET last_run_at = ?, updated_at = ? WHERE id = ?')
     .run(now, now, strategyId)
 }

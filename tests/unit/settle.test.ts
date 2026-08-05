@@ -79,18 +79,18 @@ function outcomes(db: ReturnType<typeof freshDb>): number[] {
 }
 
 describe('gradeSelections — moneyline', () => {
-  it('settles the winner and the loser', () => {
+  it('settles the winner and the loser', async () => {
     const db = freshDb()
     seedEvent(db, { home: 110, away: 100, winner: 'home' }, [
       { type: 'h2h', line: null, sides: [{ side: 'home', point: null }, { side: 'away', point: null }] },
     ])
 
-    expect(gradeSelections(db).selections).toBe(2)
+    expect((await gradeSelections(db)).selections).toBe(2)
     expect(outcomes(db)).toEqual([1, 0])
     db.close()
   })
 
-  it('settles a draw to the draw selection', () => {
+  it('settles a draw to the draw selection', async () => {
     const db = freshDb()
     seedEvent(db, { home: 1, away: 1, winner: 'draw' }, [
       { type: 'h2h', line: null, sides: [
@@ -100,26 +100,26 @@ describe('gradeSelections — moneyline', () => {
       ] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([0, 1, 0])
     db.close()
   })
 })
 
 describe('gradeSelections — spreads', () => {
-  it('applies the handicap to the side that carries it', () => {
+  it('applies the handicap to the side that carries it', async () => {
     // Home wins by 10. Home -4.5 covers; away +4.5 does not.
     const db = freshDb()
     seedEvent(db, { home: 110, away: 100, winner: 'home' }, [
       { type: 'spreads', line: -4.5, sides: [{ side: 'home', point: -4.5 }, { side: 'away', point: 4.5 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([1, 0])
     db.close()
   })
 
-  it('settles a favourite that wins but fails to cover', () => {
+  it('settles a favourite that wins but fails to cover', async () => {
     // Home wins by 3 as a 6.5-point favourite: the bet loses despite the
     // team winning, which is the case a naive winner-based grade gets wrong.
     const db = freshDb()
@@ -127,50 +127,50 @@ describe('gradeSelections — spreads', () => {
       { type: 'spreads', line: -6.5, sides: [{ side: 'home', point: -6.5 }, { side: 'away', point: 6.5 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([0, 1])
     db.close()
   })
 
-  it('pushes when the margin lands exactly on the line', () => {
+  it('pushes when the margin lands exactly on the line', async () => {
     // Home wins by 7 at -7. Stake returned: neither a win nor a loss.
     const db = freshDb()
     seedEvent(db, { home: 107, away: 100, winner: 'home' }, [
       { type: 'spreads', line: -7, sides: [{ side: 'home', point: -7 }, { side: 'away', point: 7 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([2, 2])
     db.close()
   })
 })
 
 describe('gradeSelections — totals', () => {
-  it('settles over and under against the combined score', () => {
+  it('settles over and under against the combined score', async () => {
     const db = freshDb()
     seedEvent(db, { home: 110, away: 105, winner: 'home' }, [
       { type: 'totals', line: 210.5, sides: [{ side: 'over', point: 210.5 }, { side: 'under', point: 210.5 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([1, 0])
     db.close()
   })
 
-  it('pushes on an exact total', () => {
+  it('pushes on an exact total', async () => {
     const db = freshDb()
     seedEvent(db, { home: 110, away: 105, winner: 'home' }, [
       { type: 'totals', line: 215, sides: [{ side: 'over', point: 215 }, { side: 'under', point: 215 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([2, 2])
     db.close()
   })
 })
 
 describe('gradeSelections — voided games', () => {
-  it('pushes every market when the game did not complete', () => {
+  it('pushes every market when the game did not complete', async () => {
     // An abandoned game determined no outcome, so nothing may be graded a
     // loss — the stake goes back regardless of the score at the time.
     const db = freshDb()
@@ -180,21 +180,21 @@ describe('gradeSelections — voided games', () => {
       { type: 'totals', line: 80.5, sides: [{ side: 'over', point: 80.5 }] },
     ])
 
-    gradeSelections(db)
+    await gradeSelections(db)
     expect(outcomes(db)).toEqual([2, 2, 2])
     db.close()
   })
 })
 
 describe('gradeSelections — idempotency', () => {
-  it('does not regrade an event it has already settled', () => {
+  it('does not regrade an event it has already settled', async () => {
     const db = freshDb()
     seedEvent(db, { home: 110, away: 100, winner: 'home' }, [
       { type: 'h2h', line: null, sides: [{ side: 'home', point: null }, { side: 'away', point: null }] },
     ])
 
-    expect(gradeSelections(db).selections).toBe(2)
-    expect(gradeSelections(db).selections).toBe(0)
+    expect((await gradeSelections(db)).selections).toBe(2)
+    expect((await gradeSelections(db)).selections).toBe(0)
     expect(outcomes(db)).toEqual([1, 0])
     db.close()
   })

@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { impliedProbability, nowIso, toAmericanNumber } from '../../Support/keys'
 
 /**
@@ -42,35 +42,10 @@ export interface PriceWriteResult {
  * retried or overlapping pass idempotent rather than letting it write a
  * second identical observation that would read as a movement of zero.
  */
-export function writePrices(db: Database, writes: PriceWrite[]): PriceWriteResult {
+export async function writePrices(db: Database, writes: PriceWrite[]): Promise<PriceWriteResult> {
   const now = nowIso()
 
-  const upsert = db.prepare(`
-    INSERT INTO odds
-      (selection_id, bookmaker_id, price, american, implied_prob, point, limit_amount, available, observed_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (selection_id, bookmaker_id) DO UPDATE SET
-      price = excluded.price,
-      american = excluded.american,
-      implied_prob = excluded.implied_prob,
-      point = excluded.point,
-      limit_amount = excluded.limit_amount,
-      available = excluded.available,
-      observed_at = excluded.observed_at,
-      updated_at = excluded.updated_at
-  `)
-
-  // `IS NOT` rather than `!=`: SQLite's `!=` yields NULL when either side
-  // is NULL, so a moneyline (point IS NULL) would never register as
-  // changed and its history would stay empty forever.
   const previous = db.prepare('SELECT price, point FROM odds WHERE selection_id = ? AND bookmaker_id = ?')
-
-  const snapshot = db.prepare(`
-    INSERT INTO odds_snapshots
-      (selection_id, bookmaker_id, price, implied_prob, point, captured_at, is_opening, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (selection_id, bookmaker_id, captured_at) DO NOTHING
-  `)
 
   let written = 0
   let changed = 0
@@ -80,40 +55,40 @@ export function writePrices(db: Database, writes: PriceWrite[]): PriceWriteResul
     if (!Number.isFinite(w.price) || w.price <= 1)
       continue
 
-    const prior = previous.get(w.selectionId, w.bookmakerId) as { price: number, point: number | null } | null
+    const prior = await previous.get(w.selectionId, w.bookmakerId) as { price: number, point: number | null } | null
     const point = w.point ?? null
     const implied = impliedProbability(w.price)
 
-    upsert.run(
-      w.selectionId,
-      w.bookmakerId,
-      w.price,
-      toAmericanNumber(w.price),
-      implied,
+    await db.updateOrInsert('odds', { selection_id: w.selectionId, bookmaker_id: w.bookmakerId }, {
+      price: w.price,
+      american: toAmericanNumber(w.price),
+      implied_prob: implied,
       point,
-      w.limitAmount ?? 0,
-      w.available === false ? 0 : 1,
-      w.observedAt || now,
-      now,
-      now,
-    )
+      limit_amount: w.limitAmount ?? 0,
+      available: w.available === false ? 0 : 1,
+      observed_at: w.observedAt || now,
+      updated_at: now,
+    })
     written++
 
     const moved = prior === null || prior.price !== w.price || (prior.point ?? null) !== point
     if (moved) {
       changed++
-      const res = snapshot.run(
-        w.selectionId,
-        w.bookmakerId,
-        w.price,
-        implied,
+      const exists = await db.query<{ id: number }>(
+        'SELECT id FROM odds_snapshots WHERE selection_id = ? AND bookmaker_id = ? AND captured_at = ?',
+      ).get(w.selectionId, w.bookmakerId, now)
+      await db.insertOrIgnore('odds_snapshots', {
+        selection_id: w.selectionId,
+        bookmaker_id: w.bookmakerId,
+        price: w.price,
+        implied_prob: implied,
         point,
-        now,
-        prior === null ? 1 : 0,
-        now,
-        now,
-      )
-      if (Number(res.changes) > 0)
+        captured_at: now,
+        is_opening: prior === null ? 1 : 0,
+        created_at: now,
+        updated_at: now,
+      })
+      if (!exists)
         snapshots++
     }
   }
@@ -128,10 +103,10 @@ export function writePrices(db: Database, writes: PriceWrite[]): PriceWriteResul
  * that changes how it identifies a book keeps matching — the failure mode
  * this replaces silently dropped that book's prices entirely.
  */
-export function loadBookmakerIndex(db: Database): Map<string, number> {
-  const rows = db
-    .query('SELECT id, name, slug, provider_key FROM bookmakers WHERE active = 1')
-    .all() as Array<{ id: number, name: string, slug: string, provider_key: string }>
+export async function loadBookmakerIndex(db: Database): Promise<Map<string, number>> {
+  const rows = await db
+    .query<{ id: number, name: string, slug: string, provider_key: string }>('SELECT id, name, slug, provider_key FROM bookmakers WHERE active = 1')
+    .all()
 
   const index = new Map<string, number>()
   for (const row of rows) {

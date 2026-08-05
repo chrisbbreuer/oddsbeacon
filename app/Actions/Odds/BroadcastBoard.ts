@@ -19,7 +19,7 @@ export default {
     // client on every tick, so it carries upcoming events without price
     // history — a subscriber that wants sparklines fetches the board once
     // over REST and keeps it in sync from these deltas.
-    const board = loadBoard({ status: 'scheduled', limit: 100, historyPoints: 0 })
+    const board = await loadBoard({ status: 'scheduled', limit: 100, historyPoints: 0 })
     const payload = { at: new Date().toISOString(), summary: board.summary, events: board.events }
 
     try {

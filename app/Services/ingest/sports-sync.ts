@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import Sport from '../../Models/Sport'
 
 /**
@@ -40,35 +40,31 @@ export interface SportsSyncResult {
   updated: number
 }
 
-export function syncSports(db: Database): SportsSyncResult {
+export async function syncSports(db: Database): Promise<SportsSyncResult> {
   const fixtures = sportFixtures()
   if (fixtures.length === 0)
     return { created: 0, updated: 0 }
 
   const now = new Date().toISOString()
   const existing = new Set(
-    (db.query('SELECT slug FROM sports').all() as Array<{ slug: string }>).map(r => r.slug),
+    (await db.query<{ slug: string }>('SELECT slug FROM sports').all()).map(r => r.slug),
   )
-
-  const insert = db.prepare(`
-    INSERT INTO sports (slug, title, grouping, espn_path, odds_api_key, tier, position, active, non_sporting, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
-
-  // Everything except `active`, deliberately. A league switched off by
-  // hand is an operational decision and a sync should not undo it.
-  const update = db.prepare(`
-    UPDATE sports SET
-      title = ?, grouping = ?, espn_path = ?, odds_api_key = ?,
-      tier = ?, position = ?, non_sporting = ?, updated_at = ?
-    WHERE slug = ?
-  `)
 
   let created = 0
   let updated = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
+    const insert = transaction.prepare(`
+      INSERT INTO sports (slug, title, grouping, espn_path, odds_api_key, tier, position, active, non_sporting, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
+    const update = transaction.prepare(`
+      UPDATE sports SET
+        title = ?, grouping = ?, espn_path = ?, odds_api_key = ?,
+        tier = ?, position = ?, non_sporting = ?, updated_at = ?
+      WHERE slug = ?
+    `)
+
     for (const fixture of fixtures) {
       const title = fixture.title
       const grouping = fixture.grouping
@@ -79,24 +75,16 @@ export function syncSports(db: Database): SportsSyncResult {
       const nonSporting = fixture.nonSporting ? 1 : 0
 
       if (existing.has(fixture.slug)) {
-        update.run(title, grouping, espnPath, oddsApiKey, tier, position, nonSporting, now, fixture.slug)
+        await update.run(title, grouping, espnPath, oddsApiKey, tier, position, nonSporting, now, fixture.slug)
         updated++
       }
       else {
         const active = fixture.active === false ? 0 : 1
-        insert.run(fixture.slug, title, grouping, espnPath, oddsApiKey, tier, position, active, nonSporting, now, now)
+        await insert.run(fixture.slug, title, grouping, espnPath, oddsApiKey, tier, position, active, nonSporting, now, now)
         created++
       }
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch { /* the original error is the useful one */ }
-    throw err
-  }
+  })
 
   return { created, updated }
 }

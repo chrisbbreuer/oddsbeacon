@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { loadSports, resolveExistingTeam } from './resolve'
 
 /**
@@ -209,7 +209,7 @@ export function seriesTickerOf(ticker: unknown): string {
  * fixtures, and treating one as a fixture would attach a mismatch read to
  * a market where it means nothing.
  */
-export function resolveFixture(db: Database, market: { ticker?: string, title?: string }): ResolvedFixture | null {
+export async function resolveFixture(db: Database, market: { ticker?: string, title?: string }): Promise<ResolvedFixture | null> {
   const seriesTicker = seriesTickerOf(market.ticker)
   const series = GAME_SERIES[seriesTicker]
   if (!series)
@@ -219,7 +219,7 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
   if (!parsed)
     return null
 
-  const sports = loadSports(db)
+  const sports = await loadSports(db)
   const fallback = sports.find(s => s.slug === series.sportSlug)
   if (!fallback)
     return null
@@ -236,12 +236,12 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
    * So look across every league of the same kind first and only fall
    * back to creating a row when the club is genuinely unknown to us.
    */
-  const findExisting = (name: string): number | null => {
+  const findExisting = async (name: string): Promise<number | null> => {
     for (const candidate of sports) {
       if (candidate.grouping !== fallback.grouping)
         continue
 
-      const existing = resolveExistingTeam(db, candidate.id, name)
+      const existing = await resolveExistingTeam(db, candidate.id, name)
       if (existing !== null)
         return existing
     }
@@ -254,8 +254,8 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
   // a fixture we cannot read into one we read confidently and wrongly.
   // Crawley arriving as 'Crawley' against ESPN's 'Crawley Town' did
   // exactly that, landing a fourth-division club in the Premier League.
-  const homeTeamId = findExisting(parsed.home)
-  const awayTeamId = findExisting(parsed.away)
+  const homeTeamId = await findExisting(parsed.home)
+  const awayTeamId = await findExisting(parsed.away)
 
   // Link to our own fixture row so schedule history is reachable. Matched
   // on the two clubs rather than on names, and left null when we hold no
@@ -265,11 +265,11 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
   let commenceAt: string | null = null
 
   if (homeTeamId !== null && awayTeamId !== null) {
-    const event = db.query(`
+    const event = await db.query<{ id: number, commence_at: string }>(`
       SELECT id, commence_at FROM market_events
       WHERE home_sports_team_id = ? AND away_sports_team_id = ? AND commence_at != ''
       ORDER BY commence_at DESC LIMIT 1
-    `).get(homeTeamId, awayTeamId) as { id: number, commence_at: string } | null
+    `).get(homeTeamId, awayTeamId)
 
     if (event) {
       marketEventId = event.id

@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import type { Candidate } from './evidence'
 import type { TradingClient } from './venue'
 import { randomUUID } from 'node:crypto'
@@ -121,63 +121,63 @@ export async function executeStrategy(
   if (decisionIds.length === 0)
     return outcomes
 
-  const halted = haltReason(db, strategy)
+  const halted = await haltReason(db, strategy)
   if (halted) {
     // Halting is sticky: record it on the strategy so it survives the
     // process, and so the user sees why on the next page load.
-    db.prepare(`UPDATE trading_strategies SET status = 'halted', halted_reason = ?, updated_at = ? WHERE id = ?`)
+    await db.prepare(`UPDATE trading_strategies SET status = 'halted', halted_reason = ?, updated_at = ? WHERE id = ?`)
       .run(halted, new Date().toISOString(), strategy.id)
 
-    return decisionIds.map(id => skip(db, id, halted))
+    return await Promise.all(decisionIds.map(id => skip(db, id, halted)))
   }
 
-  const entitlements = resolveEntitlements(db, strategy.user_id)
+  const entitlements = await resolveEntitlements(db, strategy.user_id)
   if (!entitlements.canAutoExecute)
-    return decisionIds.map(id => skip(db, id, `plan ${entitlements.tier} does not include automated execution`))
+    return await Promise.all(decisionIds.map(id => skip(db, id, `plan ${entitlements.tier} does not include automated execution`)))
 
   if (!strategy.auto_execute)
-    return decisionIds.map(id => skip(db, id, 'strategy is set to manual approval'))
+    return await Promise.all(decisionIds.map(id => skip(db, id, 'strategy is set to manual approval')))
 
   const placeholders = decisionIds.map(() => '?').join(', ')
-  const decisions = db.prepare(`
+  const decisions = await db.prepare<DecisionRow>(`
     SELECT id, prediction_market_id, venue, side, limit_price, size, notional, confidence, edge
     FROM trade_decisions
     WHERE id IN (${placeholders})
     ORDER BY confidence DESC, edge DESC
-  `).all(...decisionIds) as DecisionRow[]
+  `).all(...decisionIds)
 
   // Cache one client per venue: constructing a Polymarket client derives
   // an account from the private key, which is not free per order.
   const clients = new Map<string, { client: TradingClient, account: AccountRow }>()
 
   for (const decision of decisions) {
-    const openPositions = countOpenPositions(db, strategy.id)
+    const openPositions = await countOpenPositions(db, strategy.id)
     if (openPositions >= strategy.max_open_positions) {
-      outcomes.push(skip(db, decision.id, `at the ${strategy.max_open_positions}-position cap`))
+      outcomes.push(await skip(db, decision.id, `at the ${strategy.max_open_positions}-position cap`))
       continue
     }
 
-    const committed = committedNotional(db, strategy.id)
+    const committed = await committedNotional(db, strategy.id)
     if (committed + decision.notional > strategy.bankroll) {
-      outcomes.push(skip(db, decision.id, `would commit $${round(committed + decision.notional)} against a $${round(strategy.bankroll)} bankroll`))
+      outcomes.push(await skip(db, decision.id, `would commit $${round(committed + decision.notional)} against a $${round(strategy.bankroll)} bankroll`))
       continue
     }
 
     let resolved = clients.get(decision.venue)
     if (!resolved) {
-      const account = db.prepare(`
+      const account = await db.prepare<AccountRow>(`
         SELECT id, credentials, status, balance
         FROM exchange_accounts
         WHERE user_id = ? AND venue = ?
-      `).get(strategy.user_id, decision.venue) as AccountRow | null
+      `).get(strategy.user_id, decision.venue)
 
       if (!account) {
-        outcomes.push(skip(db, decision.id, `no ${decision.venue} account connected`))
+        outcomes.push(await skip(db, decision.id, `no ${decision.venue} account connected`))
         continue
       }
 
       if (account.status !== 'active') {
-        outcomes.push(skip(db, decision.id, `${decision.venue} account is ${account.status}`))
+        outcomes.push(await skip(db, decision.id, `${decision.venue} account is ${account.status}`))
         continue
       }
 
@@ -186,7 +186,7 @@ export async function executeStrategy(
         clients.set(decision.venue, resolved)
       }
       catch (error) {
-        outcomes.push(skip(db, decision.id, error instanceof Error ? error.message : String(error)))
+        outcomes.push(await skip(db, decision.id, error instanceof Error ? error.message : String(error)))
         continue
       }
     }
@@ -214,13 +214,13 @@ async function placeOne(
   const now = new Date().toISOString()
   const clientOrderId = randomUUID()
 
-  const market = db.prepare('SELECT external_id FROM prediction_markets WHERE id = ?')
-    .get(decision.prediction_market_id) as { external_id: string } | null
+  const market = await db.prepare<{ external_id: string }>('SELECT external_id FROM prediction_markets WHERE id = ?')
+    .get(decision.prediction_market_id)
 
   if (!market)
-    return skip(db, decision.id, 'market no longer in our database')
+    return await skip(db, decision.id, 'market no longer in our database')
 
-  const insert = db.prepare(`
+  const insert = await db.prepare(`
     INSERT INTO exchange_orders (
       trade_decision_id, exchange_account_id, venue, client_order_id, external_order_id,
       market_external_id, side, limit_price, size, filled_size, avg_fill_price,
@@ -251,13 +251,13 @@ async function placeOne(
       clientOrderId,
     })
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE exchange_orders
       SET external_order_id = ?, status = ?, filled_size = ?, avg_fill_price = ?, updated_at = ?
       WHERE id = ?
     `).run(result.externalOrderId, result.status, result.filledSize, result.avgFillPrice, new Date().toISOString(), orderId)
 
-    db.prepare(`UPDATE trade_decisions SET status = 'executed', status_reason = '', updated_at = ? WHERE id = ?`)
+    await db.prepare(`UPDATE trade_decisions SET status = 'executed', status_reason = '', updated_at = ? WHERE id = ?`)
       .run(new Date().toISOString(), decision.id)
 
     return { decisionId: decision.id, placed: true, reason: result.status }
@@ -265,17 +265,17 @@ async function placeOne(
   catch (error) {
     const message = error instanceof Error ? error.message : String(error)
 
-    db.prepare(`UPDATE exchange_orders SET status = 'failed', error = ?, updated_at = ? WHERE id = ?`)
+    await db.prepare(`UPDATE exchange_orders SET status = 'failed', error = ?, updated_at = ? WHERE id = ?`)
       .run(message.slice(0, 500), new Date().toISOString(), orderId)
 
-    db.prepare(`UPDATE trade_decisions SET status = 'failed', status_reason = ?, updated_at = ? WHERE id = ?`)
+    await db.prepare(`UPDATE trade_decisions SET status = 'failed', status_reason = ?, updated_at = ? WHERE id = ?`)
       .run(message.slice(0, 300), new Date().toISOString(), decision.id)
 
     // Credentials the venue no longer accepts will fail every subsequent
     // order too. Mark the account so the next pass stops before the
     // network instead of burning a round trip per decision.
     if (error instanceof VenueError && isAuthFailure(error.status)) {
-      db.prepare(`UPDATE exchange_accounts SET status = 'revoked', last_error = ?, updated_at = ? WHERE id = ?`)
+      await db.prepare(`UPDATE exchange_accounts SET status = 'revoked', last_error = ?, updated_at = ? WHERE id = ?`)
         .run(message.slice(0, 300), new Date().toISOString(), account.id)
       log.warn(`[trading] ${decision.venue} rejected our credentials; account ${account.id} marked revoked`)
     }
@@ -292,7 +292,7 @@ async function placeOne(
  * unrealized swing halts a strategy for a price move that has not cost
  * anything yet.
  */
-function haltReason(db: Database, strategy: Strategy): string {
+async function haltReason(db: Database, strategy: Strategy): Promise<string> {
   if (strategy.status === 'halted')
     return 'strategy is halted'
   if (strategy.status !== 'active')
@@ -301,48 +301,48 @@ function haltReason(db: Database, strategy: Strategy): string {
   if (strategy.daily_loss_limit > 0) {
     const startOfDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`
 
-    const row = db.prepare(`
+    const row = await db.prepare<{ spent: number }>(`
       SELECT COALESCE(SUM(o.filled_size * o.avg_fill_price), 0) AS spent
       FROM exchange_orders o
       JOIN trade_decisions d ON d.id = o.trade_decision_id
       WHERE d.trading_strategy_id = ?
         AND o.status IN ('filled', 'partial')
         AND o.placed_at >= ?
-    `).get(strategy.id, startOfDay) as { spent: number }
+    `).get(strategy.id, startOfDay)
 
-    if (row.spent >= strategy.daily_loss_limit)
-      return `daily loss limit reached ($${round(row.spent)} of $${round(strategy.daily_loss_limit)} at risk today)`
+    if (Number(row?.spent ?? 0) >= strategy.daily_loss_limit)
+      return `daily loss limit reached ($${round(Number(row?.spent ?? 0))} of $${round(strategy.daily_loss_limit)} at risk today)`
   }
 
   return ''
 }
 
 /** Orders still live or filled and unsettled, for the position cap. */
-function countOpenPositions(db: Database, strategyId: number): number {
-  const row = db.prepare(`
+async function countOpenPositions(db: Database, strategyId: number): Promise<number> {
+  const row = await db.prepare<{ n: number }>(`
     SELECT COUNT(*) AS n
     FROM exchange_orders o
     JOIN trade_decisions d ON d.id = o.trade_decision_id
     WHERE d.trading_strategy_id = ? AND o.status IN ('pending', 'open', 'partial', 'filled')
-  `).get(strategyId) as { n: number }
+  `).get(strategyId)
 
-  return row.n
+  return Number(row?.n ?? 0)
 }
 
 /** Notional already committed, against which the bankroll is checked. */
-function committedNotional(db: Database, strategyId: number): number {
-  const row = db.prepare(`
+async function committedNotional(db: Database, strategyId: number): Promise<number> {
+  const row = await db.prepare<{ total: number }>(`
     SELECT COALESCE(SUM(o.limit_price * o.size), 0) AS total
     FROM exchange_orders o
     JOIN trade_decisions d ON d.id = o.trade_decision_id
     WHERE d.trading_strategy_id = ? AND o.status IN ('pending', 'open', 'partial', 'filled')
-  `).get(strategyId) as { total: number }
+  `).get(strategyId)
 
-  return row.total
+  return Number(row?.total ?? 0)
 }
 
-function skip(db: Database, decisionId: number, reason: string): ExecutionOutcome {
-  db.prepare(`UPDATE trade_decisions SET status = 'skipped', status_reason = ?, updated_at = ? WHERE id = ?`)
+async function skip(db: Database, decisionId: number, reason: string): Promise<ExecutionOutcome> {
+  await db.prepare(`UPDATE trade_decisions SET status = 'skipped', status_reason = ?, updated_at = ? WHERE id = ?`)
     .run(reason.slice(0, 300), new Date().toISOString(), decisionId)
 
   return { decisionId, placed: false, reason }

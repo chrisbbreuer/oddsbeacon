@@ -17,11 +17,11 @@ const navActive = 'pipeline'
 const pageTitle = 'PredictHQ: pipeline health'
 const pageDescription = 'Where the prices come from, when they last updated, and how the model has scored against settled results.'
 
-const feed = loadFeedState()
-const runs = loadProviderRuns()
-const record = loadTrackRecord()
-const coverage = loadFundamentalsCoverage()
-const signals = scoreSignals()
+const feed = await loadFeedState()
+const runs = await loadProviderRuns()
+const record = await loadTrackRecord()
+const coverage = await loadFundamentalsCoverage()
+const signals = await scoreSignals()
 const coveragePct = coverage.teamsTotal > 0
   ? Math.round((coverage.teamsWithStanding / coverage.teamsTotal) * 100)
   : 0
@@ -171,7 +171,7 @@ const beatsCoinFlip = record.sampleSize > 0 && record.brierScore < COIN_FLIP_BRI
             <div class="p-4 rounded-2xl card">
               <div class="font-black text-2xl num {{ coverage.clubsValued ? '' : 'muted' }}">{{ coverage.clubsValued.toLocaleString() }}</div>
               <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Clubs valued</div>
-              <div class="mt-1 text-xs faint">{{ coverage.clubsValued ? 'Squad value and tier.' : 'Needs TRANSFERMARKT_API_KEY.' }}</div>
+              <div class="mt-1 text-xs faint">{{ coverage.clubsValued ? 'Squad value and tier from retained Transfermarkt DOM snapshots.' : 'Transfermarkt DOM backfill has not completed yet.' }}</div>
             </div>
             <div class="p-4 rounded-2xl card">
               <div class="font-black text-2xl num">{{ relativeAge(coverage.lastCapturedAt) }}</div>

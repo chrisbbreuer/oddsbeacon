@@ -31,7 +31,7 @@ export default {
     if (invalid)
       return invalid
 
-    const board = loadBoard({ sport, category, status, marketType, from, to, limit, offset, historyPoints })
+    const board = await loadBoard({ sport, category, status, marketType, from, to, limit, offset, historyPoints })
 
     return ok(
       {
@@ -46,7 +46,7 @@ export default {
         request,
         cacheSeconds: 20,
         pagination: paginate(board.total, limit, offset),
-        meta: { freshness: freshness() },
+        meta: { freshness: await freshness() },
       },
     )
   },

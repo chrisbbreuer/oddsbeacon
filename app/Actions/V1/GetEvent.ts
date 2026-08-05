@@ -27,7 +27,7 @@ export default {
 
     // One event, so a wide history window is affordable here in a way it
     // is not on the board.
-    const board = loadBoard({ limit: 200, historyPoints: 60 })
+    const board = await loadBoard({ limit: 200, historyPoints: 60 })
     const event = board.events.find(e => e.id === id)
 
     if (!event)
@@ -38,7 +38,7 @@ export default {
         event,
         bookmakers: board.bookmakers.filter(b => event.bookmakerIds.includes(b.id)),
       },
-      { request, cacheSeconds: 20, meta: { freshness: freshness() } },
+      { request, cacheSeconds: 20, meta: { freshness: await freshness() } },
     )
   },
 }

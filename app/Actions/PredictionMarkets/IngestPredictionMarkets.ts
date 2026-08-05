@@ -1,13 +1,7 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { Database } from '../../Support/db'
 import { runAnalytics } from '../../Services/prediction-markets/analytics'
 import { KalshiProvider } from '../../Services/prediction-markets/kalshi'
 import { PolymarketProvider } from '../../Services/prediction-markets/polymarket'
-
-function dbPath(): string {
-  const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  return p.startsWith('/') ? p : `${process.cwd()}/${p}`
-}
 
 /** Fills pulled from each venue's tape per run. */
 const TRADES_PER_VENUE = 500
@@ -36,7 +30,7 @@ export default {
       trades: await p.fetchTrades(TRADES_PER_VENUE),
     })))
 
-    const db = new Database(dbPath())
+    const db = new Database()
     let tradesInserted = 0
     let marketsUpserted = 0
     let tradersUpserted = 0
@@ -47,9 +41,9 @@ export default {
       const marketIdsByVenue = new Map<string, Set<string>>()
       for (const { provider, trades } of tapes) {
         const ids = new Set(trades.map(t => t.marketExternalId))
-        const pending = db.query(
+        const pending = await db.query<{ external_id: string }>(
           'SELECT external_id FROM prediction_markets WHERE venue = ? AND status != \'settled\' ORDER BY updated_at ASC LIMIT ?',
-        ).all(provider.name, MARKET_REFRESH_CAP) as Array<{ external_id: string }>
+        ).all(provider.name, MARKET_REFRESH_CAP)
         for (const row of pending)
           ids.add(row.external_id)
         marketIdsByVenue.set(provider.name, ids)
@@ -59,70 +53,56 @@ export default {
         provider.fetchMarketsByIds([...marketIdsByVenue.get(provider.name) ?? []].slice(0, MARKET_REFRESH_CAP)),
       ))).flat()
 
-      const upsertMarket = db.prepare(`
-        INSERT INTO prediction_markets (venue, external_id, question, outcome_label, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(venue, external_id) DO UPDATE SET
-          question = excluded.question,
-          outcome_label = excluded.outcome_label,
-          status = excluded.status,
-          result = excluded.result,
-          volume = excluded.volume,
-          liquidity = excluded.liquidity,
-          last_price = excluded.last_price,
-          ends_at = excluded.ends_at,
-          updated_at = excluded.updated_at
-      `)
-      const upsertTrader = db.prepare(`
-        INSERT INTO market_traders (venue, external_id, alias, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(venue, external_id) DO UPDATE SET
-          alias = CASE WHEN excluded.alias != '' THEN excluded.alias ELSE market_traders.alias END,
-          updated_at = excluded.updated_at
-      `)
-      const insertTrade = db.prepare(`
-        INSERT OR IGNORE INTO market_trades (prediction_market_id, market_trader_id, venue, external_id, side, price, size, notional, is_winner, traded_at, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, -1, ?, ?, ?)
-      `)
-      const marketId = db.prepare('SELECT id FROM prediction_markets WHERE venue = ? AND external_id = ?')
-      const traderId = db.prepare('SELECT id FROM market_traders WHERE venue = ? AND external_id = ?')
-
-      db.run('BEGIN')
-      for (const m of markets) {
-        upsertMarket.run(m.venue, m.externalId, m.question, m.outcomeLabel ?? '', m.category, m.status, m.result, m.volume, m.liquidity, m.lastPrice, m.endsAt, now, now)
-        marketsUpserted++
-      }
-
-      for (const { trades } of tapes) {
-        for (const t of trades) {
-          const market = marketId.get(t.venue, t.marketExternalId) as { id: number } | null
-          if (!market)
-            continue // metadata fetch missed it; the fill lands on a later run
-
-          let tid: number | null = null
-          if (t.trader) {
-            const res = upsertTrader.run(t.venue, t.trader.externalId, t.trader.alias, now, now)
-            if (Number(res.changes) > 0)
-              tradersUpserted++
-            tid = (traderId.get(t.venue, t.trader.externalId) as { id: number }).id
-          }
-
-          const res = insertTrade.run(market.id, tid, t.venue, t.externalId, t.side, t.price, t.size, t.notional, t.tradedAt, now, now)
-          tradesInserted += Number(res.changes)
+      await db.transaction(async (transaction) => {
+        for (const m of markets) {
+          await transaction.updateOrInsert('prediction_markets', { venue: m.venue, external_id: m.externalId }, {
+            question: m.question, outcome_label: m.outcomeLabel ?? '', category: m.category, status: m.status,
+            result: m.result, volume: m.volume, liquidity: m.liquidity, last_price: m.lastPrice,
+            ends_at: m.endsAt, updated_at: now,
+          })
+          marketsUpserted++
         }
-      }
-      db.run('COMMIT')
+
+        const marketId = transaction.prepare<{ id: number }>('SELECT id FROM prediction_markets WHERE venue = ? AND external_id = ?')
+        const traderId = transaction.prepare<{ id: number, alias: string }>('SELECT id, alias FROM market_traders WHERE venue = ? AND external_id = ?')
+
+        for (const { trades } of tapes) {
+          for (const t of trades) {
+            const market = await marketId.get(t.venue, t.marketExternalId)
+            if (!market)
+              continue
+
+            let tid: number | null = null
+            if (t.trader) {
+              const existingTrader = await traderId.get(t.venue, t.trader.externalId)
+              await transaction.updateOrInsert('market_traders', { venue: t.venue, external_id: t.trader.externalId }, {
+                alias: t.trader.alias || existingTrader?.alias || '', updated_at: now,
+              })
+              if (!existingTrader) tradersUpserted++
+              tid = (await traderId.get(t.venue, t.trader.externalId))?.id ?? null
+            }
+
+            const existingTrade = await transaction.query<{ id: number }>(
+              'SELECT id FROM market_trades WHERE venue = ? AND external_id = ?',
+            ).get(t.venue, t.externalId)
+            await transaction.insertOrIgnore('market_trades', {
+              prediction_market_id: market.id, market_trader_id: tid, venue: t.venue, external_id: t.externalId,
+              side: t.side, price: t.price, size: t.size, notional: t.notional, is_winner: -1,
+              traded_at: t.tradedAt, created_at: now, updated_at: now,
+            })
+            if (!existingTrade) tradesInserted++
+          }
+        }
+      })
     }
     catch (err) {
-      try { db.run('ROLLBACK') }
-      catch { /* ignore */ }
       db.close()
       throw err
     }
 
     let analytics
     try {
-      analytics = runAnalytics(db)
+      analytics = await runAnalytics(db)
     }
     finally {
       db.close()

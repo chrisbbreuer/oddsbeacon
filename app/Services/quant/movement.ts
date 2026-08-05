@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 
 /**
  * Line movement features.
@@ -50,15 +50,15 @@ interface SnapshotRow {
  * all books for steam — a single book moving is that book repricing, while
  * many books moving together is the market repricing.
  */
-export function movementFor(db: Database, selectionId: number, windowHours = WINDOW_HOURS): MovementFeatures {
+export async function movementFor(db: Database, selectionId: number, windowHours = WINDOW_HOURS): Promise<MovementFeatures> {
   const cutoff = new Date(Date.now() - windowHours * 3_600_000).toISOString()
 
-  const history = db.query(`
+  const history = await db.query<SnapshotRow>(`
     SELECT bookmaker_id, price, captured_at
     FROM odds_snapshots
     WHERE selection_id = ?
     ORDER BY captured_at ASC, id ASC
-  `).all(selectionId) as SnapshotRow[]
+  `).all(selectionId)
 
   if (history.length === 0) {
     return {
@@ -199,8 +199,8 @@ export interface MoveRow {
  * call regardless of how many had actually moved, and silently missed
  * moves once the tape outgrew that slab.
  */
-export function recentMoves(db: Database, limit = 40): MoveRow[] {
-  const rows = db.query(`
+export async function recentMoves(db: Database, limit = 40): Promise<MoveRow[]> {
+  const rows = await db.query<Record<string, any>>(`
     WITH ranked AS (
       SELECT
         os.selection_id, os.bookmaker_id, os.price, os.captured_at,
@@ -220,8 +220,8 @@ export function recentMoves(db: Database, limit = 40): MoveRow[] {
       FROM ranked latest
       JOIN ranked prev
         ON prev.selection_id = latest.selection_id
-       AND prev.bookmaker_id = latest.bookmaker_id
-       AND prev.rn = 2
+      AND prev.bookmaker_id = latest.bookmaker_id
+      AND prev.rn = 2
       WHERE latest.rn = 1 AND latest.price != prev.price
     )
     SELECT
@@ -237,7 +237,7 @@ export function recentMoves(db: Database, limit = 40): MoveRow[] {
     JOIN bookmakers b ON b.id = p.bookmaker_id
     ORDER BY p.at DESC
     LIMIT ?
-  `).all(limit) as Array<Record<string, any>>
+  `).all(limit)
 
   return rows.map(r => ({
     selectionId: r.selection_id,

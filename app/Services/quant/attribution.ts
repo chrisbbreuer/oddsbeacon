@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 
 /**
  * Which signals actually beat the close.
@@ -41,8 +41,14 @@ export interface SignalScore {
  * comparison is between the price we saw and the price at the close, from
  * the perspective of the side the decision took.
  */
-export function scoreSignals(db: Database): SignalScore[] {
-  const rows = db.query(`
+export async function scoreSignals(db: Database = new Database()): Promise<SignalScore[]> {
+  const rows = await db.query<{
+    kind: string
+    contribution: number
+    entryPrice: number
+    side: string
+    closePrice: number
+  }>(`
     SELECT
       e.kind AS kind,
       e.contribution AS contribution,
@@ -55,13 +61,7 @@ export function scoreSignals(db: Database): SignalScore[] {
     WHERE m.status != 'open'
       AND m.last_price > 0
       AND d.market_price > 0
-  `).all() as Array<{
-    kind: string
-    contribution: number
-    entryPrice: number
-    side: string
-    closePrice: number
-  }>
+  `).all()
 
   const byKind = new Map<string, { samples: number, hits: number, clv: number, contribution: number }>()
 

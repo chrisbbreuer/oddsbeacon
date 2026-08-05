@@ -12,7 +12,7 @@ const navActive = 'features'
 const pageTitle = 'Odds comparison across books and prediction markets'
 const pageDescription = 'Sportsbook prices and prediction-market probabilities on one row, with the best available price on each outcome ringed and cross-book arbitrage surfaced.'
 
-const { events, summary } = loadBoard()
+const { events, summary } = await loadBoard()
 
 const arb = events.find(e => e.hold && e.hold.isArbitrage) ?? null
 const arbView = arb

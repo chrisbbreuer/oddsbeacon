@@ -21,9 +21,8 @@
  */
 
 import type { Binding } from '../Services/ingest/resolve'
-import { Database } from 'bun:sqlite'
+import { Database } from './db'
 import { recentMoves } from '../Services/quant/movement'
-import { resolveDbPath } from './db'
 import { impliedProbability, toAmericanNumber } from './keys'
 
 export type BookmakerKind = 'sportsbook' | 'prediction'
@@ -217,7 +216,6 @@ export interface BoardOptions {
   offset?: number
   /** Points of history per selection. 0 skips the query entirely. */
   historyPoints?: number
-  dbPath?: string
 }
 
 /**
@@ -260,16 +258,16 @@ interface QuoteRow {
  * markets, selections with their fair prices, and every quote. History is
  * one more, and only when asked for. Nothing runs per row.
  */
-export function loadBoard(options: BoardOptions = {}): Board {
+export async function loadBoard(options: BoardOptions = {}): Promise<Board> {
   const limit = Math.min(200, Math.max(1, options.limit ?? 50))
   const offset = Math.max(0, options.offset ?? 0)
   const historyPoints = options.historyPoints ?? 30
 
-  const db = new Database(options.dbPath ?? resolveDbPath(), { readonly: true })
+  const db = new Database()
   try {
-    const bookmakers = (db
-      .query('SELECT id, name, slug, kind, accent, short, sharp FROM bookmakers WHERE active = 1 ORDER BY id ASC')
-      .all() as Array<Record<string, any>>)
+    const bookmakers = (await db
+      .query<{ id: number, name: string, slug: string, kind: string, accent: string, short: string, sharp: number }>('SELECT id, name, slug, kind, accent, short, sharp FROM bookmakers WHERE active = 1 ORDER BY id ASC')
+      .all())
       .map(b => ({
         id: b.id,
         name: b.name,
@@ -316,16 +314,16 @@ export function loadBoard(options: BoardOptions = {}): Board {
 
     const clause = where.join(' AND ')
 
-    const total = (db.query(`
+    const total = (await db.query<{ n: number }>(`
       SELECT COUNT(*) AS n FROM market_events e
       JOIN sports sp ON sp.id = e.sport_id
       WHERE ${clause}
-    `).get(...params) as { n: number }).n
+    `).get(...params))?.n ?? 0
 
-    const eventRows = db.query(`
+    const eventRows = await db.query<Record<string, any>>(`
       SELECT e.id, e.title, e.category, e.league, e.commence_at, e.status, e.status_detail,
-             e.venue, sp.slug AS sport,
-             home.name AS home_name, away.name AS away_name
+            e.venue, sp.slug AS sport,
+            home.name AS home_name, away.name AS away_name
       FROM market_events e
       JOIN sports sp ON sp.id = e.sport_id
       LEFT JOIN sports_teams home ON home.id = e.home_sports_team_id
@@ -333,14 +331,14 @@ export function loadBoard(options: BoardOptions = {}): Board {
       WHERE ${clause}
       ORDER BY e.commence_at ASC, e.id ASC
       LIMIT ? OFFSET ?
-    `).all(...params, limit, offset) as Array<Record<string, any>>
+    `).all(...params, limit, offset)
 
     if (eventRows.length === 0) {
       return {
         bookmakers,
         events: [],
         summary: emptySummary(bookmakers),
-        categories: loadCategories(db),
+        categories: await loadCategories(db),
         total,
       }
     }
@@ -349,30 +347,30 @@ export function loadBoard(options: BoardOptions = {}): Board {
     const idList = eventIds.join(',')
     const typeFilter = options.marketType ? `AND m.market_type = '${options.marketType.replace(/[^a-z0-9_]/gi, '')}'` : ''
 
-    const marketRows = db.query(`
+    const marketRows = await db.query<Record<string, any>>(`
       SELECT id, market_event_id, market_type, label, line, period, complete
       FROM markets m
       WHERE m.market_event_id IN (${idList}) ${typeFilter}
       ORDER BY m.position ASC, m.id ASC
-    `).all() as Array<Record<string, any>>
+    `).all()
 
-    const selectionRows = db.query(`
+    const selectionRows = await db.query<Record<string, any>>(`
       SELECT s.id, s.market_id, s.label, s.side, s.point, s.position,
-             f.prob_consensus, f.prob_sharp, f.edge_pct, f.kelly_fraction, f.book_count
+            f.prob_consensus, f.prob_sharp, f.edge_pct, f.kelly_fraction, f.book_count
       FROM selections s
       JOIN markets m ON m.id = s.market_id
       LEFT JOIN fair_prices f ON f.selection_id = s.id
       WHERE m.market_event_id IN (${idList}) ${typeFilter}
       ORDER BY s.position ASC, s.id ASC
-    `).all() as Array<Record<string, any>>
+    `).all()
 
-    const quoteRows = db.query(`
+    const quoteRows = await db.query<QuoteRow>(`
       SELECT o.selection_id, o.bookmaker_id, o.price, o.point, o.updated_at
       FROM odds o
       JOIN selections s ON s.id = o.selection_id
       JOIN markets m ON m.id = s.market_id
       WHERE m.market_event_id IN (${idList}) AND o.available = 1 ${typeFilter}
-    `).all() as QuoteRow[]
+    `).all()
 
     const quotesBySelection = new Map<number, QuoteRow[]>()
     for (const row of quoteRows) {
@@ -385,12 +383,12 @@ export function loadBoard(options: BoardOptions = {}): Board {
     // replacing the per-selection query that made this endpoint O(n).
     const historyBySelection = new Map<number, number[]>()
     if (historyPoints > 0) {
-      const historyRows = db.query(`
+      const historyRows = await db.query<{ selection_id: number, price: number }>(`
         WITH ranked AS (
           SELECT os.selection_id, os.price, os.captured_at,
-                 ROW_NUMBER() OVER (
-                   PARTITION BY os.selection_id ORDER BY os.captured_at DESC, os.id DESC
-                 ) AS rn
+                ROW_NUMBER() OVER (
+                  PARTITION BY os.selection_id ORDER BY os.captured_at DESC, os.id DESC
+                ) AS rn
           FROM odds_snapshots os
           JOIN selections s ON s.id = os.selection_id
           JOIN markets m ON m.id = s.market_id
@@ -398,7 +396,7 @@ export function loadBoard(options: BoardOptions = {}): Board {
         )
         SELECT selection_id, price FROM ranked WHERE rn <= ?
         ORDER BY selection_id ASC, captured_at ASC
-      `).all(historyPoints) as Array<{ selection_id: number, price: number }>
+      `).all(historyPoints)
 
       for (const row of historyRows) {
         const list = historyBySelection.get(row.selection_id) ?? []
@@ -581,7 +579,7 @@ export function loadBoard(options: BoardOptions = {}): Board {
         avgEdgePct: edgeCount ? edgeSum / edgeCount : 0,
         avgTrueEdgePct: trueEdgeCount ? trueEdgeSum / trueEdgeCount : 0,
       },
-      categories: loadCategories(db),
+      categories: await loadCategories(db),
       total,
     }
   }
@@ -627,8 +625,8 @@ function formatStart(commenceAt: string, status: string): string {
   return `${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/New_York' })} · ${time}`
 }
 
-function loadCategories(db: Database): string[] {
-  return (db
+async function loadCategories(db: Database): Promise<string[]> {
+  return (await db
     .query(`SELECT DISTINCT category FROM market_events WHERE category != '' ORDER BY category`)
     .all() as Array<{ category: string }>)
     .map(r => r.category)
@@ -674,10 +672,10 @@ export interface LineMove {
  * so it both did far more work than needed and silently missed moves once
  * the tape grew past that slab.
  */
-export function loadRecentMoves(limit = 40, dbPath: string = resolveDbPath()): LineMove[] {
-  const db = new Database(dbPath, { readonly: true })
+export async function loadRecentMoves(limit = 40): Promise<LineMove[]> {
+  const db = new Database()
   try {
-    return recentMoves(db, limit).map(m => ({
+    return (await recentMoves(db, limit)).map(m => ({
       selectionId: m.selectionId,
       marketEventId: m.marketEventId,
       pick: m.pick,

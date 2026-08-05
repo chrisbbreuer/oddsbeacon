@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { loadSports, resolveTeam } from '../ingest/resolve'
 import { fetchWithRetry, IngestRunTracker } from '../ingest/run'
 import { injurySeverity } from './severity'
@@ -63,25 +63,10 @@ function collectGroups(node: any, out: Array<{ name: string, entries: any[] }> =
 
 export async function ingestEspnFundamentals(db: Database): Promise<FundamentalsResult> {
   const tracker = new IngestRunTracker(db, 'espn', 'fundamentals')
-  tracker.start()
+  await tracker.start()
 
-  const sports = loadSports(db).filter(s => s.espn_path && !s.non_sporting)
+  const sports = (await loadSports(db)).filter(s => s.espn_path && !s.non_sporting)
   const capturedAt = nowIso()
-
-  const insertStanding = db.prepare(`
-    INSERT INTO team_standings
-      (sports_team_id, wins, losses, ties, games_played, win_percent, points_for,
-       points_against, point_differential, playoff_seed, group_name, source, captured_at,
-       created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'espn', ?, ?, ?)
-  `)
-
-  const insertInjury = db.prepare(`
-    INSERT INTO team_injuries
-      (sports_team_id, athlete_name, status, injury_type, severity, source, captured_at,
-       created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'espn', ?, ?, ?)
-  `)
 
   let standingsWritten = 0
   let injuriesWritten = 0
@@ -112,7 +97,7 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
 
           // resolveTeam creates on a miss, which is what is wanted here:
           // this feed is the authority on who competes in its league.
-          resolveTeam(db, sport.id, name, {
+          await resolveTeam(db, sport.id, name, {
             espnId: String(team?.id ?? ''),
             abbreviation: String(team?.abbreviation ?? ''),
             shortName: String(team?.shortDisplayName ?? ''),
@@ -136,14 +121,13 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
     else {
       try {
         const groups = collectGroups(await standingsRes.json())
-        db.run('BEGIN')
-        try {
+        await db.transaction(async (transaction) => {
           for (const group of groups) {
             for (const entry of group.entries) {
               tracker.rowsRead++
               const name = String(entry?.team?.displayName ?? '').trim()
               const teamId = name
-                ? resolveTeam(db, sport.id, name, { espnId: String(entry?.team?.id ?? '') })
+                ? await resolveTeam(transaction, sport.id, name, { espnId: String(entry?.team?.id ?? '') })
                 : null
 
               if (!teamId) {
@@ -159,7 +143,13 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
               // sports that draw and sports that cannot are comparable.
               const percent = played > 0 ? (wins + ties / 2) / played : 0
 
-              insertStanding.run(
+              await transaction.prepare(`
+                INSERT INTO team_standings
+                  (sports_team_id, wins, losses, ties, games_played, win_percent, points_for,
+                  points_against, point_differential, playoff_seed, group_name, source, captured_at,
+                  created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'espn', ?, ?, ?)
+              `).run(
                 teamId,
                 wins,
                 losses,
@@ -180,15 +170,7 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
               touched = true
             }
           }
-          db.run('COMMIT')
-        }
-        catch (err) {
-          try {
-            db.run('ROLLBACK')
-          }
-          catch { /* the original error is the useful one */ }
-          throw err
-        }
+        })
       }
       catch (err) {
         tracker.fail(`${sport.slug}: standings ${(err as Error).message}`)
@@ -202,11 +184,10 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
     if (injuriesRes) {
       try {
         const payload = await injuriesRes.json() as any
-        db.run('BEGIN')
-        try {
+        await db.transaction(async (transaction) => {
           for (const teamBlock of payload?.injuries ?? []) {
             const name = String(teamBlock?.displayName ?? '').trim()
-            const teamId = name ? resolveTeam(db, sport.id, name) : null
+            const teamId = name ? await resolveTeam(transaction, sport.id, name) : null
 
             if (!teamId) {
               if (name)
@@ -221,7 +202,12 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
                 continue
 
               const status = String(item?.status ?? '')
-              insertInjury.run(
+              await transaction.prepare(`
+                INSERT INTO team_injuries
+                  (sports_team_id, athlete_name, status, injury_type, severity, source, captured_at,
+                  created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'espn', ?, ?, ?)
+              `).run(
                 teamId,
                 athlete.slice(0, 120),
                 status.slice(0, 60),
@@ -236,15 +222,7 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
               touched = true
             }
           }
-          db.run('COMMIT')
-        }
-        catch (err) {
-          try {
-            db.run('ROLLBACK')
-          }
-          catch { /* the original error is the useful one */ }
-          throw err
-        }
+        })
       }
       catch (err) {
         tracker.fail(`${sport.slug}: injuries ${(err as Error).message}`)
@@ -255,7 +233,7 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
       leagues++
   }
 
-  const { status, errors } = tracker.finish(
+  const { status, errors } = await tracker.finish(
     `${leagues} leagues · ${standingsWritten} standings · ${injuriesWritten} injuries`,
   )
 

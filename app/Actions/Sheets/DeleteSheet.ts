@@ -1,10 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
-
-function dbPath(): string {
-  const p = process.env.DB_DATABASE_PATH || 'database/stacks.sqlite'
-  return p.startsWith('/') ? p : `${process.cwd()}/${p}`
-}
+import { Database } from '../../Support/db'
 
 interface RequestLike {
   get?: (key: string) => unknown
@@ -31,16 +25,18 @@ export default {
     if (!id)
       return { error: 'Missing sheet id' }
 
-    const db = new Database(dbPath())
+    const db = new Database()
     try {
-      const owned = db
+      const owned = await db
         .query('SELECT id FROM bet_sheets WHERE id = ?1 AND (token = ?2 OR (user_id IS NOT NULL AND user_id = ?3))')
         .get(id, token || null, userId)
       if (!owned)
         return { error: 'Sheet not found', id }
 
-      db.run('DELETE FROM bet_sheet_items WHERE bet_sheet_id = ?1', [id])
-      db.run('DELETE FROM bet_sheets WHERE id = ?1', [id])
+      await db.transaction(async (transaction) => {
+        await transaction.run('DELETE FROM bet_sheet_items WHERE bet_sheet_id = ?1', [id])
+        await transaction.run('DELETE FROM bet_sheets WHERE id = ?1', [id])
+      })
       return { deleted: id }
     }
     finally {

@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { nowIso } from '../../Support/keys'
 
 /**
@@ -34,8 +34,8 @@ export class IngestRunTracker {
   ) {}
 
   /** Open the row. Safe to skip calling — `finish` tolerates a missing id. */
-  start(): void {
-    const res = this.db
+  async start(): Promise<void> {
+    const res = await this.db
       .prepare(`INSERT INTO ingest_runs (provider, kind, status, started_at, created_at) VALUES (?, ?, 'running', ?, ?)`)
       .run(this.provider, this.kind, nowIso(), nowIso())
     this.id = Number(res.lastInsertRowid)
@@ -67,13 +67,13 @@ export class IngestRunTracker {
   }
 
   /** Close the row with a computed status and a human summary. */
-  finish(summary = ''): { status: string, rowsWritten: number, errors: string[] } {
+  async finish(summary = ''): Promise<{ status: string, rowsWritten: number, errors: string[] }> {
     const status = this.errors.length === 0
       ? 'success'
       : (this.rowsWritten > 0 ? 'partial' : 'failed')
 
     if (this.id !== null) {
-      this.db.prepare(`
+      await this.db.prepare(`
         UPDATE ingest_runs SET
           status = ?, finished_at = ?, duration_ms = ?,
           request_count = ?, rows_read = ?, rows_written = ?, unmatched_count = ?,

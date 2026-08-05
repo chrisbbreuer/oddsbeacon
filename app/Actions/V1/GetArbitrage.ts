@@ -25,7 +25,7 @@ export default {
     if (invalid)
       return invalid
 
-    const board = loadBoard({ sport, status: 'scheduled', limit: 200, historyPoints: 0 })
+    const board = await loadBoard({ sport, status: 'scheduled', limit: 200, historyPoints: 0 })
 
     const opportunities = []
     for (const event of board.events) {
@@ -60,7 +60,7 @@ export default {
       // Arbitrage windows close in seconds. A cached one is a lie, so this
       // endpoint is the one place that opts out of caching entirely.
       cacheSeconds: 0,
-      meta: { freshness: freshness(), count: opportunities.length },
+      meta: { freshness: await freshness(), count: opportunities.length },
     })
   },
 }

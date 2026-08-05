@@ -1,6 +1,5 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { buildCandidates } from '../../Services/trading/evidence'
-import { databasePath } from '../../Services/trading/run'
 
 /**
  * GET /api/trading/candidates — what the model would look at right now.
@@ -20,10 +19,10 @@ export default {
     const minEdge = Number(request?.get?.('minEdge') ?? 0.03) || 0.03
     const limit = Math.min(100, Number(request?.get?.('limit') ?? 25) || 25)
 
-    const db = new Database(databasePath(), { readonly: true })
+    const db = new Database()
 
     try {
-      const candidates = buildCandidates(db, {
+      const candidates = await buildCandidates(db, {
         venues: venue ? [venue] : [],
         categories: category ? [category] : [],
         minEdge,

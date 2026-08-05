@@ -60,5 +60,51 @@ export function schemaFor(path: string, tables: string[]): Database {
   for (const file of migrationsFor(tables))
     db.exec(readFileSync(file, 'utf-8'))
 
+  // Application queries are asynchronous in production because Vitess is
+  // reached over the MySQL protocol. Keep schema setup and assertions on the
+  // real SQLite handle, while exposing the same transaction/upsert surface
+  // the application uses. Awaiting SQLite's synchronous statement results is
+  // valid and keeps these tests focused on query behaviour rather than mocks.
+  Object.assign(db, {
+    async transaction<T>(fn: (transaction: Database) => Promise<T> | T): Promise<T> {
+      db.exec('BEGIN')
+      try {
+        const result = await fn(db)
+        db.exec('COMMIT')
+        return result
+      }
+      catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+    },
+    async updateOrInsert(table: string, match: Record<string, unknown>, values: Record<string, unknown>): Promise<void> {
+      const matchColumns = Object.keys(match)
+      const existing = db.query(
+        `SELECT 1 FROM ${table} WHERE ${matchColumns.map(column => `${column} = ?`).join(' AND ')} LIMIT 1`,
+      ).get(...Object.values(match))
+
+      if (existing) {
+        const valueColumns = Object.keys(values)
+        db.query(
+          `UPDATE ${table} SET ${valueColumns.map(column => `${column} = ?`).join(', ')} WHERE ${matchColumns.map(column => `${column} = ?`).join(' AND ')}`,
+        ).run(...Object.values(values), ...Object.values(match))
+        return
+      }
+
+      const insert = { ...match, ...values }
+      const columns = Object.keys(insert)
+      db.query(
+        `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      ).run(...Object.values(insert))
+    },
+    async insertOrIgnore(table: string, values: Record<string, unknown>): Promise<void> {
+      const columns = Object.keys(values)
+      db.query(
+        `INSERT OR IGNORE INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+      ).run(...Object.values(values))
+    },
+  })
+
   return db
 }

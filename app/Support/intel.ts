@@ -1,5 +1,4 @@
-import { Database } from 'bun:sqlite'
-import process from 'node:process'
+import { Database } from './db'
 import { buildCandidates } from '../Services/trading/evidence'
 
 /**
@@ -55,29 +54,29 @@ const EVIDENCE_LABELS: Record<string, string> = {
 }
 
 function open(): Database {
-  return new Database(process.env.DB_DATABASE_PATH ?? 'database/stacks.sqlite', { readonly: true })
+  return new Database()
 }
 
-export function loadIntelSummary(): IntelSummary {
+export async function loadIntelSummary(): Promise<IntelSummary> {
   const db = open()
 
   try {
     const since = new Date(Date.now() - 24 * 3600_000).toISOString()
 
-    const markets = db.query('SELECT COUNT(*) AS c FROM prediction_markets').get() as { c: number }
-    const trades = db.query('SELECT COUNT(*) AS c FROM market_trades').get() as { c: number }
-    const traders = db.query('SELECT COUNT(*) AS c FROM market_traders').get() as { c: number }
-    const whales = db.query('SELECT COUNT(*) AS c FROM market_traders WHERE is_whale = 1').get() as { c: number }
-    const venues = db.query('SELECT COUNT(DISTINCT venue) AS c FROM prediction_markets').get() as { c: number }
-    const recent = db.query('SELECT COUNT(*) AS c FROM market_trades WHERE traded_at >= ?').get(since) as { c: number }
+    const markets = await db.query<{ c: number }>('SELECT COUNT(*) AS c FROM prediction_markets').get()
+    const trades = await db.query<{ c: number }>('SELECT COUNT(*) AS c FROM market_trades').get()
+    const traders = await db.query<{ c: number }>('SELECT COUNT(*) AS c FROM market_traders').get()
+    const whales = await db.query<{ c: number }>('SELECT COUNT(*) AS c FROM market_traders WHERE is_whale = 1').get()
+    const venues = await db.query<{ c: number }>('SELECT COUNT(DISTINCT venue) AS c FROM prediction_markets').get()
+    const recent = await db.query<{ c: number }>('SELECT COUNT(*) AS c FROM market_trades WHERE traded_at >= ?').get(since)
 
     return {
-      marketCount: markets.c,
-      tradeCount: trades.c,
-      traderCount: traders.c,
-      whaleCount: whales.c,
-      venueCount: venues.c,
-      recentFills: recent.c,
+      marketCount: Number(markets?.c ?? 0),
+      tradeCount: Number(trades?.c ?? 0),
+      traderCount: Number(traders?.c ?? 0),
+      whaleCount: Number(whales?.c ?? 0),
+      venueCount: Number(venues?.c ?? 0),
+      recentFills: Number(recent?.c ?? 0),
     }
   }
   finally {
@@ -92,11 +91,11 @@ export function loadIntelSummary(): IntelSummary {
  * page renders as an honest empty state rather than falling back to an
  * invented example.
  */
-export function loadTopCandidate(): IntelCandidate | null {
+export async function loadTopCandidate(): Promise<IntelCandidate | null> {
   const db = open()
 
   try {
-    const [candidate] = buildCandidates(db, { minEdge: 0.02, limit: 1 })
+    const [candidate] = await buildCandidates(db, { minEdge: 0.02, limit: 1 })
     if (!candidate)
       return null
 

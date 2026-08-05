@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import process from 'node:process'
 
 /**
@@ -57,12 +57,12 @@ interface SubscriptionRow {
   ends_at: string | null
 }
 
-export function entitlementsFor(db: Database, userId: number): Entitlements {
-  const rows = db.prepare(`
+export async function entitlementsFor(db: Database, userId: number): Promise<Entitlements> {
+  const rows = await db.prepare<SubscriptionRow>(`
     SELECT plan, provider_price_id, provider_status, ends_at
     FROM subscriptions
     WHERE user_id = ?
-  `).all(userId) as SubscriptionRow[]
+  `).all(userId)
 
   const now = Date.now()
   let best: Entitlements = NONE
@@ -133,6 +133,6 @@ export function developmentOverride(): Entitlements | null {
 }
 
 /** Entitlements with the development override applied, if one is set. */
-export function resolveEntitlements(db: Database, userId: number): Entitlements {
-  return developmentOverride() ?? entitlementsFor(db, userId)
+export async function resolveEntitlements(db: Database, userId: number): Promise<Entitlements> {
+  return developmentOverride() ?? await entitlementsFor(db, userId)
 }

@@ -1,9 +1,8 @@
 import type { VenueCredentials } from '../../Services/trading/credentials'
-import { Database } from 'bun:sqlite'
+import { Database } from '../../Support/db'
 import { response } from '@stacksjs/router'
 import { assertUsable, CredentialError, maskIdentifier, sealCredentials } from '../../Services/trading/credentials'
 import { clientFor } from '../../Services/trading/execute'
-import { databasePath } from '../../Services/trading/run'
 
 /**
  * POST /api/trading/accounts — connect a venue account.
@@ -71,24 +70,19 @@ export default {
       )
     }
 
-    const db = new Database(databasePath())
+    const db = new Database()
 
     try {
-      db.prepare(`
-        INSERT INTO exchange_accounts (
-          user_id, venue, label, credentials, masked_identifier, status,
-          balance, last_error, last_synced_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, 'active', ?, '', ?, ?, ?)
-        ON CONFLICT (user_id, venue) DO UPDATE SET
-          label = excluded.label,
-          credentials = excluded.credentials,
-          masked_identifier = excluded.masked_identifier,
-          status = 'active',
-          balance = excluded.balance,
-          last_error = '',
-          last_synced_at = excluded.last_synced_at,
-          updated_at = excluded.updated_at
-      `).run(userId, venue, label, sealed, masked, balance, now, now, now)
+      await db.updateOrInsert('exchange_accounts', { user_id: userId, venue }, {
+        label,
+        credentials: sealed,
+        masked_identifier: masked,
+        status: 'active',
+        balance,
+        last_error: '',
+        last_synced_at: now,
+        updated_at: now,
+      })
 
       return {
         venue,

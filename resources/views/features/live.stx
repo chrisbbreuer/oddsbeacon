@@ -12,7 +12,7 @@ const navActive = 'features'
 const pageTitle = 'Live line moves, streamed as they land'
 const pageDescription = 'Every price change broadcast over WebSocket the moment ingestion sees it, so a line moving against you is visible before the next page load.'
 
-const moves = loadRecentMoves(8).map(m => ({
+const moves = (await loadRecentMoves(8)).map(m => ({
   pick: m.pick,
   game: m.game,
   book: m.book,

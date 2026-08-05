@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import process from 'node:process'
 import { nowIso } from '../../Support/keys'
 
@@ -86,8 +86,8 @@ export function aiEnabled(): boolean {
  * fair value has nothing to explain. The filter asks for a real edge and
  * enough books to believe the fair value in the first place.
  */
-export function loadCandidates(db: Database, limit = MAX_CANDIDATES_PER_RUN): Candidate[] {
-  return db.query(`
+export async function loadCandidates(db: Database, limit = MAX_CANDIDATES_PER_RUN): Promise<Candidate[]> {
+  return (await db.query<any>(`
     SELECT
       f.selection_id, f.best_price, f.prob_consensus, f.prob_sharp, f.edge_pct,
       f.overround_pct, f.book_count, f.sharp_book_count, f.method_spread,
@@ -104,7 +104,7 @@ export function loadCandidates(db: Database, limit = MAX_CANDIDATES_PER_RUN): Ca
       AND f.book_count >= 3
     ORDER BY f.edge_pct DESC
     LIMIT ?
-  `).all(nowIso(), limit).map((r: any) => ({
+  `).all(nowIso(), limit)).map((r: any) => ({
     selectionId: r.selection_id,
     marketEventId: r.market_event_id,
     eventTitle: r.event_title,
@@ -192,7 +192,7 @@ export async function generateInsights(
   const apiKey = process.env.ANTHROPIC_API_KEY
   const model = options.model ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL
 
-  const candidates = loadCandidates(db, options.limit ?? MAX_CANDIDATES_PER_RUN)
+  const candidates = await loadCandidates(db, options.limit ?? MAX_CANDIDATES_PER_RUN)
   const result: InsightResult = {
     requested: candidates.length,
     generated: 0,
@@ -213,15 +213,15 @@ export async function generateInsights(
   const insert = db.prepare(`
     INSERT INTO ai_insights
       (kind, selection_id, market_event_id, feature_hash, stance, stated_prob, confidence,
-       summary, rationale, caveats, model, prompt_tokens, completion_tokens, cost_usd,
-       latency_ms, outcome, brier_score, graded_at, created_at, updated_at)
+      summary, rationale, caveats, model, prompt_tokens, completion_tokens, cost_usd,
+      latency_ms, outcome, brier_score, graded_at, created_at, updated_at)
     VALUES ('candidate_review', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, -1, 0, '', ?, ?)
   `)
 
   for (const candidate of candidates) {
     const hash = featureHash(candidate)
 
-    if (existing.get(hash, candidate.selectionId)) {
+    if (await existing.get(hash, candidate.selectionId)) {
       result.cached++
       continue
     }
@@ -278,7 +278,7 @@ export async function generateInsights(
       continue
     }
 
-    insert.run(
+    await insert.run(
       candidate.selectionId,
       candidate.marketEventId,
       hash,
@@ -367,40 +367,28 @@ function parseAnswer(text: string): ModelAnswer | null {
  * would reward silence or punish restraint. Both are worse than an honest
  * gap in the record.
  */
-export function gradeInsights(db: Database): number {
-  const pending = db.query(`
+export async function gradeInsights(db: Database): Promise<number> {
+  const pending = await db.query<{ id: number, stance: string, stated_prob: number, outcome: number }>(`
     SELECT a.id, a.stance, a.stated_prob, s.outcome
     FROM ai_insights a
     JOIN selections s ON s.id = a.selection_id
     WHERE a.outcome = -1 AND s.outcome IN (0, 1) AND a.stance != 'pass'
-  `).all() as Array<{ id: number, stance: string, stated_prob: number, outcome: number }>
+  `).all()
 
   if (pending.length === 0)
     return 0
 
-  const update = db.prepare('UPDATE ai_insights SET outcome = ?, brier_score = ?, graded_at = ?, updated_at = ? WHERE id = ?')
-
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
+    const update = transaction.prepare('UPDATE ai_insights SET outcome = ?, brier_score = ?, graded_at = ?, updated_at = ? WHERE id = ?')
     for (const row of pending) {
       // A 'lay' is a call that the side loses, so the model's stated
       // probability refers to the opposite result.
       const predictedHit = row.stance === 'back' ? 1 : 0
       const correct = row.outcome === predictedHit ? 1 : 0
       const prob = row.stance === 'back' ? row.stated_prob : 1 - row.stated_prob
-      update.run(correct, (prob - row.outcome) ** 2, nowIso(), nowIso(), row.id)
+      await update.run(correct, (prob - row.outcome) ** 2, nowIso(), nowIso(), row.id)
     }
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch {
-      // The original error is the one worth surfacing.
-    }
-    throw err
-  }
+  })
 
   return pending.length
 }

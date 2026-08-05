@@ -10,6 +10,6 @@ export default {
   description: 'Money-flow network of top traders and the markets they buy.',
 
   async handle() {
-    return loadGraph()
+    return await loadGraph()
   },
 }

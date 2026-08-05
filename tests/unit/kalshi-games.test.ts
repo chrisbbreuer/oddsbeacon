@@ -208,43 +208,43 @@ describe('resolveExistingTeam', () => {
     )
   }
 
-  it('matches a shortened club name to its full row', () => {
+  it('matches a shortened club name to its full row', async () => {
     const database = db()
     addTeam(database, 10, 'Crawley Town')
 
     // The case that sent a fourth-division club into the Premier League.
-    expect(resolveExistingTeam(database, 1, 'Crawley')).toBe(10)
+    expect(await resolveExistingTeam(database, 1, 'Crawley')).toBe(10)
   })
 
-  it('matches in the other direction too', () => {
+  it('matches in the other direction too', async () => {
     const database = db()
     addTeam(database, 11, 'Watford')
 
-    expect(resolveExistingTeam(database, 1, 'Watford FC')).toBe(11)
+    expect(await resolveExistingTeam(database, 1, 'Watford FC')).toBe(11)
   })
 
-  it('refuses an ambiguous containment rather than picking one', () => {
+  it('refuses an ambiguous containment rather than picking one', async () => {
     const database = db()
     addTeam(database, 12, 'Manchester United')
     addTeam(database, 13, 'Newcastle United')
 
     // 'United' is inside both. Guessing would attach a fixture to the
     // wrong club silently, so it declines.
-    expect(resolveExistingTeam(database, 1, 'United')).toBeNull()
+    expect(await resolveExistingTeam(database, 1, 'United')).toBeNull()
   })
 
-  it('returns null for a club it has never seen', () => {
+  it('returns null for a club it has never seen', async () => {
     const database = db()
     addTeam(database, 14, 'Crawley Town')
 
-    expect(resolveExistingTeam(database, 1, 'Real Madrid')).toBeNull()
+    expect(await resolveExistingTeam(database, 1, 'Real Madrid')).toBeNull()
   })
 
-  it('never creates a row', () => {
+  it('never creates a row', async () => {
     const database = db()
     addTeam(database, 15, 'Barnet')
 
-    resolveExistingTeam(database, 1, 'Some Unknown FC')
+    await resolveExistingTeam(database, 1, 'Some Unknown FC')
 
     // Inventing a club stamps it with whichever league was being scanned,
     // and a fabricated tier is worse than no tier.

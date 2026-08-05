@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { devig, expectedValuePct, kellyFraction } from '../../Support/devig'
 import { nowIso } from '../../Support/keys'
 
@@ -58,23 +58,23 @@ export interface FairPriceResult {
  * stale numbers on others, which reads as a signal rather than as an
  * incomplete pass.
  */
-export function computeFairPrices(db: Database, options: { marketIds?: number[] } = {}): FairPriceResult {
+export async function computeFairPrices(db: Database, options: { marketIds?: number[] } = {}): Promise<FairPriceResult> {
   const filter = options.marketIds?.length
     ? `AND m.id IN (${options.marketIds.map(() => '?').join(',')})`
     : ''
   const params = options.marketIds?.length ? options.marketIds : []
 
-  const rows = db.query(`
+  const rows = await db.query<QuoteRow>(`
     SELECT o.selection_id, o.bookmaker_id, o.price,
-           s.market_id, s.side,
-           b.sharp, b.consensus_weight
+          s.market_id, s.side,
+          b.sharp, b.consensus_weight
     FROM odds o
     JOIN selections s ON s.id = o.selection_id
     JOIN markets m ON m.id = s.market_id
     JOIN bookmakers b ON b.id = o.bookmaker_id
     WHERE o.available = 1 AND o.price > 1 AND m.complete = 1 ${filter}
     ORDER BY s.market_id ASC, s.position ASC, s.id ASC
-  `).all(...params) as QuoteRow[]
+  `).all(...params)
 
   // Group into market → book → the quotes that book offers on it. A book's
   // prices must be de-vigged together, as a set, because the margin is a
@@ -91,37 +91,11 @@ export function computeFairPrices(db: Database, options: { marketIds?: number[] 
     books.set(row.bookmaker_id, quotes)
   }
 
-  const upsert = db.prepare(`
-    INSERT INTO fair_prices
-      (selection_id, prob_consensus, prob_sharp, prob_multiplicative, prob_power, prob_shin,
-       method_spread, fair_price, best_price, best_bookmaker_id, edge_pct, kelly_fraction,
-       overround_pct, book_count, sharp_book_count, computed_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (selection_id) DO UPDATE SET
-      prob_consensus = excluded.prob_consensus,
-      prob_sharp = excluded.prob_sharp,
-      prob_multiplicative = excluded.prob_multiplicative,
-      prob_power = excluded.prob_power,
-      prob_shin = excluded.prob_shin,
-      method_spread = excluded.method_spread,
-      fair_price = excluded.fair_price,
-      best_price = excluded.best_price,
-      best_bookmaker_id = excluded.best_bookmaker_id,
-      edge_pct = excluded.edge_pct,
-      kelly_fraction = excluded.kelly_fraction,
-      overround_pct = excluded.overround_pct,
-      book_count = excluded.book_count,
-      sharp_book_count = excluded.sharp_book_count,
-      computed_at = excluded.computed_at,
-      updated_at = excluded.updated_at
-  `)
-
   const now = nowIso()
   let selectionsWritten = 0
   let positiveEdge = 0
 
-  db.run('BEGIN')
-  try {
+  await db.transaction(async (transaction) => {
     for (const [, books] of byMarket) {
       // Accumulators keyed by selection, across every book on this market.
       const weighted = new Map<number, { consensus: number, sharp: number, mult: number, power: number, shin: number }>()
@@ -194,41 +168,29 @@ export function computeFairPrices(db: Database, options: { marketIds?: number[] 
         if (edge > 0)
           positiveEdge++
 
-        upsert.run(
-          selectionId,
-          consensus,
-          sharpProb,
-          clampProb(acc.mult / (weights.total || 1)),
-          clampProb(acc.power / (weights.total || 1)),
-          clampProb(acc.shin / (weights.total || 1)),
-          spread.get(selectionId) ?? 0,
-          consensus > 0 ? 1 / consensus : 0,
-          bestPrice,
-          bestQuote?.bookmakerId ?? null,
-          edge,
-          kellyFraction(bestPrice, consensus, KELLY_FRACTION),
-          (avgOverround - 1) * 100,
-          bookCount,
-          sharpBookCount,
-          now,
-          now,
-          now,
-        )
+        await transaction.updateOrInsert('fair_prices', { selection_id: selectionId }, {
+          prob_consensus: consensus,
+          prob_sharp: sharpProb,
+          prob_multiplicative: clampProb(acc.mult / (weights.total || 1)),
+          prob_power: clampProb(acc.power / (weights.total || 1)),
+          prob_shin: clampProb(acc.shin / (weights.total || 1)),
+          method_spread: spread.get(selectionId) ?? 0,
+          fair_price: consensus > 0 ? 1 / consensus : 0,
+          best_price: bestPrice,
+          best_bookmaker_id: bestQuote?.bookmakerId ?? null,
+          edge_pct: edge,
+          kelly_fraction: kellyFraction(bestPrice, consensus, KELLY_FRACTION),
+          overround_pct: (avgOverround - 1) * 100,
+          book_count: bookCount,
+          sharp_book_count: sharpBookCount,
+          computed_at: now,
+          updated_at: now,
+        })
         selectionsWritten++
       }
     }
 
-    db.run('COMMIT')
-  }
-  catch (err) {
-    try {
-      db.run('ROLLBACK')
-    }
-    catch {
-      // Connection gone; the original error is the one worth surfacing.
-    }
-    throw err
-  }
+  })
 
   return {
     markets: byMarket.size,

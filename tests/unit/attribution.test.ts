@@ -58,88 +58,88 @@ function record(
 }
 
 describe('scoreSignals', () => {
-  it('credits a signal that pointed the way the market then moved', () => {
+  it('credits a signal that pointed the way the market then moved', async () => {
     const db = freshDb()
     // Argued for yes at 40c; it closed at 55c.
     record(db, { kind: 'flow_imbalance', contribution: 0.03, entryPrice: 0.40, closePrice: 0.55 })
 
-    const [score] = scoreSignals(db)
+    const [score] = await scoreSignals(db)
 
     expect(score!.kind).toBe('flow_imbalance')
     expect(score!.hitRate).toBe(1)
     expect(score!.avgClvPoints).toBeCloseTo(15, 5)
   })
 
-  it('marks a signal wrong when the market moved against it', () => {
+  it('marks a signal wrong when the market moved against it', async () => {
     const db = freshDb()
     // Argued for yes at 60c; it closed at 45c.
     record(db, { kind: 'smart_money', contribution: 0.03, entryPrice: 0.60, closePrice: 0.45 })
 
-    const [score] = scoreSignals(db)
+    const [score] = await scoreSignals(db)
 
     expect(score!.hitRate).toBe(0)
     expect(score!.avgClvPoints).toBeCloseTo(-15, 5)
   })
 
-  it('credits a signal that argued against a side that then drifted out', () => {
+  it('credits a signal that argued against a side that then drifted out', async () => {
     const db = freshDb()
     // Argued against yes at 60c; it closed at 45c. The signal was right.
     record(db, { kind: 'reverse_line_move', contribution: -0.03, entryPrice: 0.60, closePrice: 0.45 })
 
-    const [score] = scoreSignals(db)
+    const [score] = await scoreSignals(db)
 
     expect(score!.hitRate).toBe(1)
     expect(score!.avgClvPoints).toBeCloseTo(15, 5)
   })
 
-  it('reads a no-side decision from that side', () => {
+  it('reads a no-side decision from that side', async () => {
     const db = freshDb()
     // Took no at 40c (yes quoted 60c); yes closed at 45c, so no closed at
     // 55c and the position gained.
     record(db, { kind: 'flow_imbalance', contribution: 0.03, entryPrice: 0.40, closePrice: 0.45, side: 'no' })
 
-    const [score] = scoreSignals(db)
+    const [score] = await scoreSignals(db)
 
     expect(score!.avgClvPoints).toBeCloseTo(15, 5)
   })
 
-  it('ignores a signal that declined to speak', () => {
+  it('ignores a signal that declined to speak', async () => {
     const db = freshDb()
     record(db, { kind: 'squad_mismatch', contribution: 0, entryPrice: 0.40, closePrice: 0.55 })
 
     // A zero contribution is the signal having no view. Counting it would
     // dilute every rate with cases it never argued.
-    expect(scoreSignals(db)).toEqual([])
+    expect(await scoreSignals(db)).toEqual([])
   })
 
-  it('ignores markets that have not closed', () => {
+  it('ignores markets that have not closed', async () => {
     const db = freshDb()
     record(db, { kind: 'flow_imbalance', contribution: 0.03, entryPrice: 0.40, closePrice: 0.55, status: 'open' })
 
-    expect(scoreSignals(db)).toEqual([])
+    expect(await scoreSignals(db)).toEqual([])
   })
 
-  it('separates the signals rather than pooling them', () => {
+  it('separates the signals rather than pooling them', async () => {
     const db = freshDb()
     record(db, { kind: 'good', contribution: 0.03, entryPrice: 0.40, closePrice: 0.55 })
     record(db, { kind: 'good', contribution: 0.03, entryPrice: 0.40, closePrice: 0.50 })
     record(db, { kind: 'bad', contribution: 0.03, entryPrice: 0.60, closePrice: 0.40 })
 
-    const byKind = Object.fromEntries(scoreSignals(db).map(s => [s.kind, s]))
+    const byKind = Object.fromEntries((await scoreSignals(db)).map(s => [s.kind, s]))
 
     expect(byKind.good!.hitRate).toBe(1)
     expect(byKind.bad!.hitRate).toBe(0)
     expect(byKind.good!.samples).toBe(2)
   })
 
-  it('ranks by evidence, not by hit rate', () => {
+  it('ranks by evidence, not by hit rate', async () => {
     const db = freshDb()
     // A perfect record over one decision must not outrank a longer one.
     record(db, { kind: 'lucky', contribution: 0.03, entryPrice: 0.40, closePrice: 0.55 })
     for (let i = 0; i < 3; i++)
       record(db, { kind: 'tested', contribution: 0.03, entryPrice: 0.40, closePrice: i === 0 ? 0.35 : 0.50 })
 
-    expect(scoreSignals(db)[0]!.kind).toBe('tested')
+    expect((await scoreSignals(db))[0]!.kind).toBe('tested')
   })
 })
 

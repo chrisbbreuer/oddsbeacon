@@ -49,7 +49,7 @@ export default {
     const db = openRead()
 
     try {
-      const total = (db.query(`
+      const total = (await db.query<{ n: number }>(`
         SELECT COUNT(*) AS n
         FROM fair_prices f
         JOIN selections s ON s.id = f.selection_id
@@ -57,9 +57,9 @@ export default {
         JOIN market_events e ON e.id = m.market_event_id
         JOIN sports sp ON sp.id = e.sport_id
         WHERE ${clause}
-      `).get(...args) as { n: number }).n
+      `).get(...args))?.n ?? 0
 
-      const rows = db.query(`
+      const rows = await db.query<Record<string, any>>(`
         SELECT
           f.selection_id, f.best_price, f.prob_consensus, f.prob_sharp, f.edge_pct,
           f.kelly_fraction, f.book_count, f.sharp_book_count, f.method_spread, f.overround_pct,
@@ -77,7 +77,7 @@ export default {
         WHERE ${clause}
         ORDER BY f.edge_pct DESC
         LIMIT ? OFFSET ?
-      `).all(...args, limit, offset) as Array<Record<string, any>>
+      `).all(...args, limit, offset)
 
       const edges = rows.map(r => ({
         selectionId: r.selection_id,
@@ -107,7 +107,7 @@ export default {
         request,
         cacheSeconds: 20,
         pagination: paginate(total, limit, offset),
-        meta: { freshness: freshness(), minEdge, minBooks },
+        meta: { freshness: await freshness(), minEdge, minBooks },
       })
     }
     finally {

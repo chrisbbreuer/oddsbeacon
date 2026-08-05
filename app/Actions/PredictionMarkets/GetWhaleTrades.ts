@@ -9,7 +9,7 @@ export default {
   description: 'Largest recent prediction-market fills across venues.',
 
   async handle() {
-    const trades = loadBigTrades()
+    const trades = await loadBigTrades()
     return { count: trades.length, trades }
   },
 }

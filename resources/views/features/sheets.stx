@@ -12,7 +12,7 @@ const navActive = 'features'
 const pageTitle = 'Bet sheets: stack picks and track the parlay live'
 const pageDescription = 'Add the best price on any outcome to a sheet, watch the combined odds and payout update against live prices, and save sheets to come back to.'
 
-const { events } = loadBoard()
+const { events } = await loadBoard()
 
 // Three legs off the current board. A parlay example built from prices
 // that are actually quoted is checkable; an invented one is decoration.

@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import type { SportRow } from './resolve'
 import { nowIso, toIso } from '../../Support/keys'
 import { loadSports, resolveEvent, resolveTeam } from './resolve'
@@ -100,9 +100,9 @@ export async function ingestEspn(
   const daysBack = options.daysBack ?? 1
 
   const tracker = new IngestRunTracker(db, 'espn', 'schedule')
-  tracker.start()
+  await tracker.start()
 
-  const sports = loadSports(db).filter(s => s.espn_path && !s.non_sporting)
+  const sports = (await loadSports(db)).filter(s => s.espn_path && !s.non_sporting)
 
   let eventsSeen = 0
   let eventsCreated = 0
@@ -132,7 +132,7 @@ export async function ingestEspn(
       tracker.rowsRead += events.length
 
       for (const event of events) {
-        const outcome = ingestOneEvent(db, sport, event)
+        const outcome = await ingestOneEvent(db, sport, event)
         if (outcome === null) {
           tracker.unmatchedCount++
           continue
@@ -148,7 +148,7 @@ export async function ingestEspn(
   }
 
   const summary = `${sports.length} leagues · ${eventsSeen} events (${eventsCreated} new) · ${resultsWritten} results`
-  const { status, errors } = tracker.finish(summary)
+  const { status, errors } = await tracker.finish(summary)
 
   return {
     provider: 'espn',
@@ -168,11 +168,11 @@ export async function ingestEspn(
  * Returns null for anything unusable rather than throwing, so one odd row
  * cannot cost the rest of the league.
  */
-function ingestOneEvent(
+async function ingestOneEvent(
   db: Database,
   sport: SportRow,
   event: any,
-): { created: boolean, resultWritten: boolean } | null {
+): Promise<{ created: boolean, resultWritten: boolean } | null> {
   const externalId = String(event?.id ?? '')
   if (!externalId)
     return null
@@ -193,14 +193,14 @@ function ingestOneEvent(
   if (!homeName || !awayName)
     return null
 
-  const homeTeamId = resolveTeam(db, sport.id, homeName, {
+  const homeTeamId = await resolveTeam(db, sport.id, homeName, {
     shortName: homeRaw.team?.shortDisplayName,
     abbreviation: homeRaw.team?.abbreviation,
     logo: homeRaw.team?.logo ?? homeRaw.team?.logos?.[0]?.href,
     espnId: homeRaw.team?.id,
     record: homeRaw.records?.find(r => r?.type === 'total')?.summary ?? homeRaw.records?.[0]?.summary,
   })
-  const awayTeamId = resolveTeam(db, sport.id, awayName, {
+  const awayTeamId = await resolveTeam(db, sport.id, awayName, {
     shortName: awayRaw.team?.shortDisplayName,
     abbreviation: awayRaw.team?.abbreviation,
     logo: awayRaw.team?.logo ?? awayRaw.team?.logos?.[0]?.href,
@@ -217,7 +217,7 @@ function ingestOneEvent(
   const detail = String(type?.shortDetail ?? type?.description ?? '')
   const status = mapStatus(String(type?.state ?? 'pre'), detail)
 
-  const { eventId, created } = resolveEvent(db, {
+  const { eventId, created } = await resolveEvent(db, {
     sportId: sport.id,
     provider: 'espn',
     externalId,
@@ -233,7 +233,7 @@ function ingestOneEvent(
     broadcast: competition?.broadcasts?.[0]?.names?.[0] ?? '',
   })
 
-  db.prepare('UPDATE market_events SET status = ?, status_detail = ?, last_seen_at = ?, updated_at = ? WHERE id = ?')
+  await db.prepare('UPDATE market_events SET status = ?, status_detail = ?, last_seen_at = ?, updated_at = ? WHERE id = ?')
     .run(status, status === 'live' ? String(statusBlock?.displayClock ?? detail) : detail, nowIso(), nowIso(), eventId)
 
   let resultWritten = false
@@ -241,7 +241,7 @@ function ingestOneEvent(
     const homeScore = num(homeRaw.score)
     const awayScore = num(awayRaw.score)
     if (homeScore !== null && awayScore !== null) {
-      writeResult(db, eventId, homeScore, awayScore, competition)
+      await writeResult(db, eventId, homeScore, awayScore, competition)
       resultWritten = true
     }
   }
@@ -260,13 +260,13 @@ function ingestOneEvent(
  * the markets against it are separate passes, so a correction here
  * re-opens grading automatically.
  */
-function writeResult(
+async function writeResult(
   db: Database,
   eventId: number,
   homeScore: number,
   awayScore: number,
   competition: any,
-): void {
+): Promise<void> {
   const winnerSide = homeScore > awayScore ? 'home' : (awayScore > homeScore ? 'away' : 'draw')
 
   const periodScores = JSON.stringify({
@@ -274,22 +274,18 @@ function writeResult(
     away: (competition?.competitors ?? []).find((c: any) => c?.homeAway === 'away')?.linescores?.map((l: any) => num(l?.value) ?? 0) ?? [],
   })
 
-  db.prepare(`
-    INSERT INTO event_results
-      (market_event_id, home_score, away_score, winner_side, period_scores, completed, source, settled_at, graded_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, 1, 'espn', ?, '', ?, ?)
-    ON CONFLICT (market_event_id) DO UPDATE SET
-      home_score = excluded.home_score,
-      away_score = excluded.away_score,
-      winner_side = excluded.winner_side,
-      period_scores = excluded.period_scores,
-      settled_at = excluded.settled_at,
-      graded_at = CASE
-        WHEN event_results.home_score != excluded.home_score
-          OR event_results.away_score != excluded.away_score
-        THEN ''
-        ELSE event_results.graded_at
-      END,
-      updated_at = excluded.updated_at
-  `).run(eventId, homeScore, awayScore, winnerSide, periodScores, nowIso(), nowIso(), nowIso())
+  const previous = await db.query<{ home_score: number, away_score: number, graded_at: string }>(
+    'SELECT home_score, away_score, graded_at FROM event_results WHERE market_event_id = ?',
+  ).get(eventId)
+  await db.updateOrInsert('event_results', { market_event_id: eventId }, {
+    home_score: homeScore,
+    away_score: awayScore,
+    winner_side: winnerSide,
+    period_scores: periodScores,
+    completed: 1,
+    source: 'espn',
+    settled_at: nowIso(),
+    graded_at: previous && previous.home_score === homeScore && previous.away_score === awayScore ? previous.graded_at : '',
+    updated_at: nowIso(),
+  })
 }

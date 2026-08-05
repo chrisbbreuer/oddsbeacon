@@ -14,19 +14,19 @@ import { loadIntelSummary, loadTopCandidate } from '../../app/Support/intel'
 import { loadBoard } from '../../app/Support/odds'
 import { loadFeedState } from '../../app/Support/pipeline'
 
-const { bookmakers, events, summary } = loadBoard()
+const { bookmakers, events, summary } = await loadBoard()
 
 // Whether the prices below are real. Every number on this page is a
 // property of the simulator when they are not, and a page that sells
 // traceable data is the last place that should go unsaid.
-const feed = loadFeedState()
+const feed = await loadFeedState()
 
 // The evidence section renders a real candidate off the ingested tape.
 // Both can be empty on a cold database, and the template handles that
 // rather than substituting an invented example: a fabricated demo on a
 // page whose whole claim is traceability would undercut the claim.
-const intel = loadIntelSummary()
-const candidate = loadTopCandidate()
+const intel = await loadIntelSummary()
+const candidate = await loadTopCandidate()
 
 const appName = 'PredictHQ'
 

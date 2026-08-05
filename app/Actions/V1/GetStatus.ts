@@ -16,17 +16,17 @@ export default {
   async handle() {
     const db = openRead()
     try {
-      const runs = db.query(`
+      const runs = await db.query<Record<string, any>>(`
         SELECT provider, kind, status, started_at, finished_at, duration_ms,
-               rows_read, rows_written, unmatched_count, quota_remaining, error, summary
+              rows_read, rows_written, unmatched_count, quota_remaining, error, summary
         FROM ingest_runs r
         WHERE r.id IN (
           SELECT MAX(id) FROM ingest_runs GROUP BY provider, kind
         )
         ORDER BY provider, kind
-      `).all() as Array<Record<string, any>>
+      `).all()
 
-      const counts = db.query(`
+      const counts = await db.query<Record<string, number>>(`
         SELECT
           (SELECT COUNT(*) FROM sports WHERE active = 1) AS sports,
           (SELECT COUNT(*) FROM bookmakers WHERE active = 1) AS bookmakers,
@@ -43,7 +43,7 @@ export default {
           (SELECT COUNT(*) FROM feature_snapshots) AS featureSnapshots,
           (SELECT COUNT(*) FROM feature_snapshots WHERE label != -1) AS labelledSnapshots,
           (SELECT COUNT(*) FROM ai_insights) AS aiInsights
-      `).get() as Record<string, number>
+      `).get() ?? {}
 
       const now = Date.now()
       const providers = runs.map(r => ({

@@ -1,4 +1,4 @@
-import type { Database } from 'bun:sqlite'
+import type { Database } from '../../Support/db'
 import { lineKey, nameSimilarity, norm, nowIso } from '../../Support/keys'
 
 /**
@@ -37,15 +37,15 @@ export interface SportRow {
   non_sporting: number
 }
 
-/** What SQLite accepts as a bound parameter. */
+/** What the database drivers accept as a bound parameter. */
 export type Binding = string | number | bigint | boolean | null
 
 /** Active sports, in display order. */
-export function loadSports(db: Database): SportRow[] {
-  return db.query(`
+export async function loadSports(db: Database): Promise<SportRow[]> {
+  return await db.query<SportRow>(`
     SELECT id, slug, title, grouping, espn_path, odds_api_key, non_sporting
     FROM sports WHERE active = 1 ORDER BY position ASC, id ASC
-  `).all() as SportRow[]
+  `).all()
 }
 
 /**
@@ -73,19 +73,19 @@ export function loadSports(db: Database): SportRow[] {
  * actually plays in. Callers spanning several leagues need to ask before
  * they create.
  */
-export function resolveExistingTeam(db: Database, sportId: number, name: string): number | null {
+export async function resolveExistingTeam(db: Database, sportId: number, name: string): Promise<number | null> {
   const key = norm(name.trim())
   if (!key)
     return null
 
-  const exact = db
+  const exact = await db
     .query('SELECT id FROM sports_teams WHERE sport_id = ? AND search_key = ?')
     .get(sportId, key) as { id: number } | null
 
   if (exact)
     return exact.id
 
-  const candidates = db
+  const candidates = await db
     .query('SELECT id, name, aliases FROM sports_teams WHERE sport_id = ?')
     .all(sportId) as Array<{ id: number, name: string, aliases: string }>
 
@@ -138,12 +138,12 @@ export function resolveExistingTeam(db: Database, sportId: number, name: string)
   return best && best.score >= 0.7 ? best.id : null
 }
 
-export function resolveTeam(
+export async function resolveTeam(
   db: Database,
   sportId: number,
   name: string,
   extra: { abbreviation?: string, shortName?: string, logo?: string, espnId?: string, record?: string } = {},
-): number | null {
+): Promise<number | null> {
   const clean = name.trim()
   if (!clean)
     return null
@@ -152,16 +152,16 @@ export function resolveTeam(
   if (!key)
     return null
 
-  const exact = db
+  const exact = await db
     .query('SELECT id FROM sports_teams WHERE sport_id = ? AND search_key = ?')
     .get(sportId, key) as { id: number } | null
 
   if (exact) {
-    refreshTeam(db, exact.id, extra)
+    await refreshTeam(db, exact.id, extra)
     return exact.id
   }
 
-  const candidates = db
+  const candidates = await db
     .query('SELECT id, name, search_key, aliases FROM sports_teams WHERE sport_id = ?')
     .all(sportId) as Array<{ id: number, name: string, search_key: string, aliases: string }>
 
@@ -169,7 +169,7 @@ export function resolveTeam(
   for (const row of candidates) {
     const aliases = row.aliases ? row.aliases.split('\n').filter(Boolean) : []
     if (aliases.includes(key)) {
-      refreshTeam(db, row.id, extra)
+      await refreshTeam(db, row.id, extra)
       return row.id
     }
   }
@@ -186,13 +186,13 @@ export function resolveTeam(
     const aliases = best.aliases ? best.aliases.split('\n').filter(Boolean) : []
     if (!aliases.includes(key))
       aliases.push(key)
-    db.prepare('UPDATE sports_teams SET aliases = ?, updated_at = ? WHERE id = ?')
+    await db.prepare('UPDATE sports_teams SET aliases = ?, updated_at = ? WHERE id = ?')
       .run(aliases.join('\n'), nowIso(), best.id)
-    refreshTeam(db, best.id, extra)
+    await refreshTeam(db, best.id, extra)
     return best.id
   }
 
-  const res = db.prepare(`
+  const res = await db.prepare(`
     INSERT INTO sports_teams (sport_id, name, search_key, short_name, abbreviation, logo, espn_id, record, aliases, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?)
   `).run(
@@ -211,11 +211,11 @@ export function resolveTeam(
 }
 
 /** Fill in fields that arrive later (logos, records) without clobbering. */
-function refreshTeam(
+async function refreshTeam(
   db: Database,
   id: number,
   extra: { abbreviation?: string, shortName?: string, logo?: string, espnId?: string, record?: string },
-): void {
+): Promise<void> {
   const sets: string[] = []
   const params: Binding[] = []
 
@@ -239,7 +239,7 @@ function refreshTeam(
 
   sets.push('updated_at = ?')
   params.push(nowIso(), id)
-  db.prepare(`UPDATE sports_teams SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+  await db.prepare(`UPDATE sports_teams SET ${sets.join(', ')} WHERE id = ?`).run(...params)
 }
 
 export interface EventIdentity {
@@ -275,14 +275,14 @@ export interface EventIdentity {
  * Merging two different games is silent and corrupts every number
  * downstream.
  */
-export function resolveEvent(db: Database, identity: EventIdentity): { eventId: number, created: boolean } {
-  const existingLink = db
+export async function resolveEvent(db: Database, identity: EventIdentity): Promise<{ eventId: number, created: boolean }> {
+  const existingLink = await db
     .query('SELECT market_event_id FROM event_sources WHERE provider = ? AND external_id = ?')
     .get(identity.provider, identity.externalId) as { market_event_id: number } | null
 
   if (existingLink) {
-    touchEventSource(db, identity.provider, identity.externalId)
-    updateEvent(db, existingLink.market_event_id, identity)
+    await touchEventSource(db, identity.provider, identity.externalId)
+    await updateEvent(db, existingLink.market_event_id, identity)
     return { eventId: existingLink.market_event_id, created: false }
   }
 
@@ -310,25 +310,26 @@ export function resolveEvent(db: Database, identity: EventIdentity): { eventId: 
       // authoritative within that provider. Without this guard the time
       // window is the only thing standing between a series and a merge,
       // and it is not enough on its own.
-      const match = db.query(`
-        SELECT e.id FROM market_events e
+      const matches = await db.query<{ id: number, commence_at: string }>(`
+        SELECT e.id, e.commence_at FROM market_events e
         WHERE e.sport_id = ? AND e.home_sports_team_id = ? AND e.away_sports_team_id = ?
           AND e.commence_at BETWEEN ? AND ?
           AND NOT EXISTS (
             SELECT 1 FROM event_sources es
             WHERE es.market_event_id = e.id AND es.provider = ?
           )
-        ORDER BY ABS(strftime('%s', e.commence_at) - strftime('%s', ?)) ASC
-        LIMIT 1
-      `).get(
+        ORDER BY e.commence_at ASC
+      `).all(
         identity.sportId,
         identity.homeTeamId,
         identity.awayTeamId,
         lower,
         upper,
         identity.provider,
-        identity.commenceAt,
-      ) as { id: number } | null
+      )
+      const match = matches.sort((left, right) =>
+        Math.abs(new Date(left.commence_at).getTime() - target) - Math.abs(new Date(right.commence_at).getTime() - target),
+      )[0]
 
       if (match) {
         eventId = match.id
@@ -340,11 +341,11 @@ export function resolveEvent(db: Database, identity: EventIdentity): { eventId: 
 
   let created = false
   if (eventId === null) {
-    const res = db.prepare(`
+    const res = await db.prepare(`
       INSERT INTO market_events
         (sport_id, title, category, league, commence_at, status,
-         home_sports_team_id, away_sports_team_id, venue, broadcast,
-         status_detail, last_seen_at, closing_captured_at, created_at, updated_at)
+        home_sports_team_id, away_sports_team_id, venue, broadcast,
+        status_detail, last_seen_at, closing_captured_at, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?, '', ?, '', ?, ?)
     `).run(
       identity.sportId,
@@ -364,34 +365,23 @@ export function resolveEvent(db: Database, identity: EventIdentity): { eventId: 
     created = true
   }
   else {
-    updateEvent(db, eventId, identity)
+    await updateEvent(db, eventId, identity)
   }
 
-  db.prepare(`
-    INSERT INTO event_sources
-      (market_event_id, provider, external_id, matched_by, confidence, external_title, last_seen_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (provider, external_id) DO UPDATE SET
-      market_event_id = excluded.market_event_id,
-      last_seen_at = excluded.last_seen_at,
-      updated_at = excluded.updated_at
-  `).run(
-    eventId,
-    identity.provider,
-    identity.externalId,
-    matchedBy,
+  await db.updateOrInsert('event_sources', { provider: identity.provider, external_id: identity.externalId }, {
+    market_event_id: eventId,
+    matched_by: matchedBy,
     confidence,
-    identity.title.slice(0, 240),
-    nowIso(),
-    nowIso(),
-    nowIso(),
-  )
+    external_title: identity.title.slice(0, 240),
+    last_seen_at: nowIso(),
+    updated_at: nowIso(),
+  })
 
   return { eventId, created }
 }
 
-function touchEventSource(db: Database, provider: string, externalId: string): void {
-  db.prepare('UPDATE event_sources SET last_seen_at = ?, updated_at = ? WHERE provider = ? AND external_id = ?')
+async function touchEventSource(db: Database, provider: string, externalId: string): Promise<void> {
+  await db.prepare('UPDATE event_sources SET last_seen_at = ?, updated_at = ? WHERE provider = ? AND external_id = ?')
     .run(nowIso(), nowIso(), provider, externalId)
 }
 
@@ -402,8 +392,8 @@ function touchEventSource(db: Database, provider: string, externalId: string): v
  * or a team with an empty value, because providers routinely omit fields
  * they sent last time and a naive write would erase good data with nothing.
  */
-function updateEvent(db: Database, eventId: number, identity: EventIdentity): void {
-  db.prepare(`
+async function updateEvent(db: Database, eventId: number, identity: EventIdentity): Promise<void> {
+  await db.prepare(`
     UPDATE market_events SET
       commence_at = CASE WHEN ? != '' THEN ? ELSE commence_at END,
       venue = CASE WHEN ? != '' THEN ? ELSE venue END,
@@ -443,11 +433,11 @@ export interface MarketIdentity {
  * Find or create a market. Idempotent on
  * (event, type, line, period) via the `line_key` unique index.
  */
-export function resolveMarket(db: Database, identity: MarketIdentity): number {
+export async function resolveMarket(db: Database, identity: MarketIdentity): Promise<number> {
   const period = identity.period ?? 'full_game'
   const key = lineKey(identity.line)
 
-  const existing = db.query(`
+  const existing = await db.query(`
     SELECT id FROM markets
     WHERE market_event_id = ? AND market_type = ? AND line_key = ? AND period = ?
   `).get(identity.eventId, identity.marketType, key, period) as { id: number } | null
@@ -455,7 +445,7 @@ export function resolveMarket(db: Database, identity: MarketIdentity): number {
   if (existing)
     return existing.id
 
-  const res = db.prepare(`
+  const res = await db.prepare(`
     INSERT INTO markets
       (market_event_id, market_type, label, line, line_key, period, player_name, complete, status, position, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)
@@ -491,15 +481,15 @@ export interface SelectionIdentity {
  * The label is refreshed on every pass but the identity is the side, not
  * the label — which is the whole correction this module exists to make.
  */
-export function resolveSelection(db: Database, identity: SelectionIdentity): number {
+export async function resolveSelection(db: Database, identity: SelectionIdentity): Promise<number> {
   const key = lineKey(identity.point)
 
-  const existing = db.query(`
+  const existing = await db.query(`
     SELECT id FROM selections WHERE market_id = ? AND side = ? AND point_key = ?
   `).get(identity.marketId, identity.side, key) as { id: number } | null
 
   if (existing) {
-    db.prepare(`
+    await db.prepare(`
       UPDATE selections SET
         label = ?,
         sports_team_id = COALESCE(?, sports_team_id),
@@ -509,7 +499,7 @@ export function resolveSelection(db: Database, identity: SelectionIdentity): num
     return existing.id
   }
 
-  const res = db.prepare(`
+  const res = await db.prepare(`
     INSERT INTO selections
       (market_id, label, side, point, point_key, position, sports_team_id, outcome, graded_at, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, -1, '', ?, ?)

@@ -1,6 +1,5 @@
 import { generateInsights, gradeInsights } from '../../Services/ai/insights'
 import { ingestEspnFundamentals } from '../../Services/fundamentals/espn'
-import { ingestClubValuations } from '../../Services/fundamentals/transfermarkt'
 import { ingestEspn } from '../../Services/ingest/espn'
 import { syncSports } from '../../Services/ingest/sports-sync'
 import { ingestOdds } from '../../Services/ingest/odds'
@@ -39,19 +38,18 @@ export default {
     try {
       // Reference data first: a league added to the model since the last
       // deploy has to exist before anything tries to ingest under it.
-      syncSports(db)
+      await syncSports(db)
       const schedule = await ingestEspn(db)
       // Fundamentals ride with the schedule pass: both read team-level
       // facts, and standings are only meaningful once the fixtures they
       // describe exist. Neither blocks pricing, so a failure here leaves
       // the board working and shows up as a degraded provider instead.
       const fundamentals = await ingestEspnFundamentals(db)
-      const valuations = await ingestClubValuations(db)
       const odds = await ingestOdds(db)
-      const fair = computeFairPrices(db)
-      const snapshots = captureFeatureSnapshots(db)
-      const settlement = settle(db)
-      const calibration = computeCalibration(db)
+      const fair = await computeFairPrices(db)
+      const snapshots = await captureFeatureSnapshots(db)
+      const settlement = await settle(db)
+      const calibration = await computeCalibration(db)
 
       // The AI pass is last and optional. It is the only stage that costs
       // money per run and the only one that can be absent without leaving
@@ -59,13 +57,12 @@ export default {
       const ai = options.skipAi
         ? { requested: 0, generated: 0, cached: 0, skipped: 0, costUsd: 0, errors: ['skipped'] }
         : await generateInsights(db)
-      const aiGraded = gradeInsights(db)
+      const aiGraded = await gradeInsights(db)
 
       return {
         durationMs: Date.now() - startedAt,
         schedule,
         fundamentals,
-        valuations,
         odds,
         fair,
         snapshots,

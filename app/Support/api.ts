@@ -278,15 +278,15 @@ export function paginate(total: number, limit: number, offset: number): Paginati
  * from outside the system, which is how a feed that matched nothing went
  * unnoticed.
  */
-export function freshness(): Record<string, string> {
+export async function freshness(): Promise<Record<string, string>> {
   const db = openRead()
   try {
-    const rows = db.query(`
+    const rows = await db.query<{ provider: string, last_success: string }>(`
       SELECT provider, MAX(finished_at) AS last_success
       FROM ingest_runs
       WHERE status IN ('success', 'partial') AND finished_at != ''
       GROUP BY provider
-    `).all() as Array<{ provider: string, last_success: string }>
+    `).all()
 
     return Object.fromEntries(rows.map(r => [r.provider, r.last_success]))
   }

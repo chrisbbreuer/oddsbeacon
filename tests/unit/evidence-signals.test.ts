@@ -86,9 +86,9 @@ function seedFixture(
   )
 }
 
-function kindsFor(db: ReturnType<typeof freshDb>): Record<string, number> {
+async function kindsFor(db: ReturnType<typeof freshDb>): Promise<Record<string, number>> {
   const out: Record<string, number> = {}
-  for (const candidate of buildCandidates(db, { minEdge: 0 })) {
+  for (const candidate of await buildCandidates(db, { minEdge: 0 })) {
     for (const item of candidate.evidence)
       out[item.kind] = (out[item.kind] ?? 0) + Number(item.contribution !== 0 || true)
   }
@@ -96,7 +96,7 @@ function kindsFor(db: ReturnType<typeof freshDb>): Record<string, number> {
 }
 
 describe('reverse line movement', () => {
-  it('fires when the money bought a side whose price then fell', () => {
+  it('fires when the money bought a side whose price then fell', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXTEST-1-A', 'A vs B Winner?', 'A')
 
@@ -105,10 +105,10 @@ describe('reverse line movement', () => {
     fills(db, id, 'yes', 20, 0.45, 4)
     fills(db, id, 'no', 4, 0.50, 6)
 
-    expect(kindsFor(db).reverse_line_move).toBeGreaterThan(0)
+    expect((await kindsFor(db)).reverse_line_move).toBeGreaterThan(0)
   })
 
-  it('stays quiet when price followed the money, which is the normal case', () => {
+  it('stays quiet when price followed the money, which is the normal case', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXTEST-2-A', 'A vs B Winner?', 'A')
 
@@ -116,10 +116,10 @@ describe('reverse line movement', () => {
     fills(db, id, 'yes', 20, 0.60, 4)
     fills(db, id, 'no', 4, 0.50, 6)
 
-    expect(kindsFor(db).reverse_line_move).toBeUndefined()
+    expect((await kindsFor(db)).reverse_line_move).toBeUndefined()
   })
 
-  it('stays quiet when the flow was balanced, however the price moved', () => {
+  it('stays quiet when the flow was balanced, however the price moved', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXTEST-3-A', 'A vs B Winner?', 'A')
 
@@ -129,10 +129,10 @@ describe('reverse line movement', () => {
     fills(db, id, 'no', 12, 0.45, 4)
 
     // A move with no crowd behind it is just a move.
-    expect(kindsFor(db).reverse_line_move).toBeUndefined()
+    expect((await kindsFor(db)).reverse_line_move).toBeUndefined()
   })
 
-  it('needs both halves of the window to have traded', () => {
+  it('needs both halves of the window to have traded', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXTEST-4-A', 'A vs B Winner?', 'A')
 
@@ -141,12 +141,12 @@ describe('reverse line movement', () => {
     fills(db, id, 'yes', 30, 0.60, 20)
     fills(db, id, 'no', 6, 0.50, 22)
 
-    expect(kindsFor(db).reverse_line_move).toBeUndefined()
+    expect((await kindsFor(db)).reverse_line_move).toBeUndefined()
   })
 })
 
 describe('schedule rest', () => {
-  it('fires when one side is on a back-to-back and the other is rested', () => {
+  it('fires when one side is on a back-to-back and the other is rested', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
     seedFixture(db, { homeName: 'Home', awayName: 'Away', homeTier: 1, awayTier: 1, commenceAt: daysFromNow(1) })
@@ -165,10 +165,10 @@ describe('schedule rest', () => {
     fills(db, id, 'yes', 20, 0.5, 10)
     fills(db, id, 'no', 6, 0.5, 8)
 
-    expect(kindsFor(db).schedule_rest).toBeGreaterThan(0)
+    expect((await kindsFor(db)).schedule_rest).toBeGreaterThan(0)
   })
 
-  it('stays quiet when neither side has any schedule history', () => {
+  it('stays quiet when neither side has any schedule history', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
     seedFixture(db, { homeName: 'Home', awayName: 'Away', homeTier: 1, awayTier: 1, commenceAt: daysFromNow(1) })
@@ -176,17 +176,17 @@ describe('schedule rest', () => {
     fills(db, id, 'yes', 20, 0.5, 10)
     fills(db, id, 'no', 6, 0.5, 8)
 
-    expect(kindsFor(db).schedule_rest).toBeUndefined()
+    expect((await kindsFor(db)).schedule_rest).toBeUndefined()
   })
 
-  it('does not disturb the flow signals that were already there', () => {
+  it('does not disturb the flow signals that were already there', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXTEST-9-A', 'A vs B Winner?', 'A')
 
     fills(db, id, 'yes', 30, 0.5, 10)
     fills(db, id, 'no', 6, 0.5, 8)
 
-    const kinds = kindsFor(db)
+    const kinds = await kindsFor(db)
     expect(kinds.flow_imbalance).toBeGreaterThan(0)
     expect(kinds.liquidity).toBeGreaterThan(0)
   })
@@ -201,7 +201,7 @@ describe('schedule rest', () => {
  * part that was missing, not the arithmetic.
  */
 describe('ladder incoherence', () => {
-  it('fires on the rung priced above a strictly easier one', () => {
+  it('fires on the rung priced above a strictly easier one', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXMLBTOTAL-26AUG042140SDAZ-15', 'SD vs AZ Total Runs?', 'over 15')
     // The easier rung, quoted lower, which cannot be right.
@@ -215,10 +215,10 @@ describe('ladder incoherence', () => {
     fills(db, id, 'yes', 20, 0.55, 10)
     fills(db, id, 'no', 6, 0.55, 8)
 
-    expect(kindsFor(db).ladder_incoherence).toBeGreaterThan(0)
+    expect((await kindsFor(db)).ladder_incoherence).toBeGreaterThan(0)
   })
 
-  it('stays quiet when the ladder is in the right order', () => {
+  it('stays quiet when the ladder is in the right order', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXMLBTOTAL-26AUG042140SDAZ-15', 'SD vs AZ Total Runs?', 'over 15')
     db.run(
@@ -231,10 +231,10 @@ describe('ladder incoherence', () => {
     fills(db, id, 'yes', 20, 0.40, 10)
     fills(db, id, 'no', 6, 0.40, 8)
 
-    expect(kindsFor(db).ladder_incoherence).toBeUndefined()
+    expect((await kindsFor(db)).ladder_incoherence).toBeUndefined()
   })
 
-  it('never fires on a three-way winner market', () => {
+  it('never fires on a three-way winner market', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXEFLCUPGAME-26AUG08WATCRA-WAT', 'Watford vs Crawley Winner?', 'Watford')
     db.run(
@@ -248,7 +248,7 @@ describe('ladder incoherence', () => {
 
     // Alternatives, not rungs. Reading them as a ladder would report
     // every fixture on the board as arbitrage.
-    expect(kindsFor(db).ladder_incoherence).toBeUndefined()
+    expect((await kindsFor(db)).ladder_incoherence).toBeUndefined()
   })
 })
 
@@ -278,7 +278,7 @@ describe('sportsbook steam', () => {
     }
   }
 
-  it('fires when the books shortened a side together', () => {
+  it('fires when the books shortened a side together', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
     // Decimal odds falling: the books made this side more likely.
@@ -287,10 +287,10 @@ describe('sportsbook steam', () => {
     fills(db, id, 'yes', 20, 0.5, 10)
     fills(db, id, 'no', 6, 0.5, 8)
 
-    expect(kindsFor(db).steam).toBeGreaterThan(0)
+    expect((await kindsFor(db)).steam).toBeGreaterThan(0)
   })
 
-  it('stays quiet when the books did not move', () => {
+  it('stays quiet when the books did not move', async () => {
     const db = freshDb()
     const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
     seedSteam(db, [2.00, 2.00, 2.00, 2.00])
@@ -298,6 +298,6 @@ describe('sportsbook steam', () => {
     fills(db, id, 'yes', 20, 0.5, 10)
     fills(db, id, 'no', 6, 0.5, 8)
 
-    expect(kindsFor(db).steam).toBeUndefined()
+    expect((await kindsFor(db)).steam).toBeUndefined()
   })
 })

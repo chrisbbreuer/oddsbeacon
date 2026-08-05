@@ -56,10 +56,10 @@ export default {
     const db = openRead()
 
     try {
-      const total = (db.query(`SELECT COUNT(*) AS n FROM feature_snapshots fs WHERE ${clause}`)
-        .get(...args) as { n: number }).n
+      const total = (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM feature_snapshots fs WHERE ${clause}`)
+        .get(...args))?.n ?? 0
 
-      const rows = db.query(`
+      const rows = await db.query<Record<string, any>>(`
         SELECT
           fs.id, fs.selection_id, fs.captured_at, fs.hours_to_start,
           fs.best_price, fs.fair_prob, fs.sharp_prob, fs.edge_pct, fs.overround_pct,
@@ -71,7 +71,7 @@ export default {
         WHERE ${clause}
         ORDER BY fs.captured_at ASC, fs.id ASC
         LIMIT ? OFFSET ?
-      `).all(...args, limit, offset) as Array<Record<string, any>>
+      `).all(...args, limit, offset)
 
       const data = rows.map(r => ({
         id: r.id,
@@ -108,7 +108,7 @@ export default {
         cacheSeconds: 300,
         pagination: paginate(total, limit, offset),
         meta: {
-          freshness: freshness(),
+          freshness: await freshness(),
           note: 'Split chronologically on capturedAt. A random split leaks rows from the same event across train and test.',
         },
       })
