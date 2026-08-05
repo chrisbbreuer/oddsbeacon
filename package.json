@@ -73,6 +73,7 @@
     "bun-plugin-stx": "^0.2.152",
     "stacks": "^0.70.256",
     "ts-charts": "github:stacksjs/ts-charts",
+    "ts-web-scraper": "^0.1.5",
     "viem": "^2.55.10"
   },
   "devDependencies": {
