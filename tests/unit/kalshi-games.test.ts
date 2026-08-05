@@ -8,6 +8,7 @@ import {
   seriesTickerOf,
 } from '../../app/Services/ingest/kalshi-games'
 import { resolveExistingTeam } from '../../app/Services/ingest/resolve'
+import { sportFixtures } from '../../app/Services/ingest/sports-sync'
 import { schemaFor } from '../support/schema'
 
 /**
@@ -108,10 +109,15 @@ describe('GAME_SERIES', () => {
     expect(GAME_SERIES.KXCOPADELREYGAME).toBeDefined()
   })
 
-  it('maps every series to a sport that exists in config', () => {
-    const known = new Set(['epl', 'laliga', 'seriea', 'bundesliga', 'ucl'])
+  it('maps every series to a league that actually exists', () => {
+    // Read the real list rather than restating it. A hardcoded set drifts
+    // the moment a league is added and then asserts against a world that
+    // has not existed for several commits.
+    const known = new Set(sportFixtures().map(s => s.slug))
+
     for (const [ticker, series] of Object.entries(GAME_SERIES))
-      expect({ ticker, ok: known.has(series.sportSlug) }).toEqual({ ticker, ok: true })
+      expect({ ticker, slug: series.sportSlug, known: known.has(series.sportSlug) })
+        .toEqual({ ticker, slug: series.sportSlug, known: true })
   })
 })
 

@@ -51,6 +51,18 @@ export default defineModel({
         // Top flights Kalshi lists that were missing entirely.
         { slug: 'ligue1', title: 'Ligue 1', grouping: 'Soccer', espnPath: 'soccer/fra.1', oddsApiKey: 'soccer_france_ligue_one', tier: 1, position: 18, active: true, nonSporting: false },
         { slug: 'eredivisie', title: 'Eredivisie', grouping: 'Soccer', espnPath: 'soccer/ned.1', oddsApiKey: 'soccer_netherlands_eredivisie', tier: 1, position: 19, active: true, nonSporting: false },
+        // National teams. Tier is 0 on purpose: a country has no
+        // division, so the tier comparison correctly stays silent and
+        // form carries the read instead. `fifa.friendly` is the roster of
+        // 183 nations that lets a friendly's team names resolve at all;
+        // the qualifiers are where their actual form lives.
+        { slug: 'intl-friendly', title: 'International Friendly', grouping: 'Soccer', espnPath: 'soccer/fifa.friendly', oddsApiKey: '', tier: 0, position: 30, active: true, nonSporting: false },
+        { slug: 'wcq-uefa', title: 'World Cup Qualifying UEFA', grouping: 'Soccer', espnPath: 'soccer/fifa.worldq.uefa', oddsApiKey: '', tier: 0, position: 31, active: true, nonSporting: false },
+        { slug: 'wcq-conmebol', title: 'World Cup Qualifying CONMEBOL', grouping: 'Soccer', espnPath: 'soccer/fifa.worldq.conmebol', oddsApiKey: '', tier: 0, position: 32, active: true, nonSporting: false },
+        { slug: 'wcq-concacaf', title: 'World Cup Qualifying CONCACAF', grouping: 'Soccer', espnPath: 'soccer/fifa.worldq.concacaf', oddsApiKey: '', tier: 0, position: 33, active: true, nonSporting: false },
+        { slug: 'wcq-caf', title: 'World Cup Qualifying CAF', grouping: 'Soccer', espnPath: 'soccer/fifa.worldq.caf', oddsApiKey: '', tier: 0, position: 34, active: true, nonSporting: false },
+        { slug: 'wcq-afc', title: 'World Cup Qualifying AFC', grouping: 'Soccer', espnPath: 'soccer/fifa.worldq.afc', oddsApiKey: '', tier: 0, position: 35, active: true, nonSporting: false },
+        { slug: 'uefa-nations', title: 'UEFA Nations League', grouping: 'Soccer', espnPath: 'soccer/uefa.nations', oddsApiKey: '', tier: 0, position: 36, active: true, nonSporting: false },
         { slug: 'ucl', title: 'Champions League', grouping: 'Soccer', espnPath: 'soccer/uefa.champions', oddsApiKey: 'soccer_uefa_champs_league', position: 11, active: true, nonSporting: false },
         { slug: 'mma', title: 'MMA', grouping: 'Combat', espnPath: 'mma/ufc', oddsApiKey: 'mma_mixed_martial_arts', position: 12, active: true, nonSporting: false },
         // Prediction-venue only: no scoreboard, no home/away side.

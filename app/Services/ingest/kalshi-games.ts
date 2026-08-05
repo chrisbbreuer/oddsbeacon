@@ -30,7 +30,7 @@ export const GAME_SERIES: Record<string, { sportSlug: string, competition: strin
   KXBUNDESLIGAGAME: { sportSlug: 'bundesliga', competition: 'Bundesliga' },
   KXUCLGAME: { sportSlug: 'ucl', competition: 'Champions League' },
   KXUEFAGAME: { sportSlug: 'ucl', competition: 'UEFA' },
-  KXUEFANLGAME: { sportSlug: 'ucl', competition: 'UEFA Nations League' },
+  KXUEFANLGAME: { sportSlug: 'uefa-nations', competition: 'UEFA Nations League' },
   // Cups and friendlies: the mismatch cases, and the reason any of this
   // exists. Mapped to a league only so team names resolve; the tier comes
   // from each club's own valuation row, never from the competition, since
@@ -41,7 +41,7 @@ export const GAME_SERIES: Record<string, { sportSlug: string, competition: strin
   KXEREDIVISIEGAME: { sportSlug: 'epl', competition: 'Eredivisie' },
   KXCZEFLGAME: { sportSlug: 'epl', competition: 'Czech First League' },
   KXLIGUE1GAME: { sportSlug: 'epl', competition: 'Ligue 1' },
-  KXINTLFRIENDLYGAME: { sportSlug: 'ucl', competition: 'International Friendly' },
+  KXINTLFRIENDLYGAME: { sportSlug: 'intl-friendly', competition: 'International Friendly' },
 }
 
 export interface ParsedGame {

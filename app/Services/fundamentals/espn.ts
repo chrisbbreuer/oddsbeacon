@@ -90,6 +90,42 @@ export async function ingestEspnFundamentals(db: Database): Promise<Fundamentals
   for (const sport of sports) {
     let touched = false
 
+    // --- roster ----------------------------------------------------------
+    // Make sure every competitor has a row before anything tries to match
+    // a fixture to one. Standings alone are not enough: a friendly is not
+    // a league and has no table, so the 183 nations that play them would
+    // exist only where a qualifying group happened to mention them, and a
+    // fixture between two of the rest would silently fail to resolve.
+    const teamsRes = await fetchWithRetry(`${SCOREBOARD}/${sport.espn_path}/teams`)
+    tracker.requestCount++
+
+    if (teamsRes) {
+      try {
+        const payload = await teamsRes.json() as any
+        const entries = payload?.sports?.[0]?.leagues?.[0]?.teams ?? []
+
+        for (const entry of entries) {
+          const team = entry?.team
+          const name = String(team?.displayName ?? '').trim()
+          if (!name)
+            continue
+
+          // resolveTeam creates on a miss, which is what is wanted here:
+          // this feed is the authority on who competes in its league.
+          resolveTeam(db, sport.id, name, {
+            espnId: String(team?.id ?? ''),
+            abbreviation: String(team?.abbreviation ?? ''),
+            shortName: String(team?.shortDisplayName ?? ''),
+            logo: String(team?.logos?.[0]?.href ?? ''),
+          })
+          touched = true
+        }
+      }
+      catch (err) {
+        tracker.fail(`${sport.slug}: teams ${(err as Error).message}`)
+      }
+    }
+
     // --- standings -------------------------------------------------------
     const standingsRes = await fetchWithRetry(`${STANDINGS}/${sport.espn_path}/standings`)
     tracker.requestCount++
