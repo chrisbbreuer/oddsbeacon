@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite'
 import { assessMismatch, loadTeamFundamentals } from '../fundamentals/mismatch'
 import { outcomeSideOf, resolveFixture } from '../ingest/kalshi-games'
+import { assessScheduleEdge, loadScheduleContext } from '../quant/schedule'
 
 /**
  * Evidence — the measurable case for or against a side, computed from
@@ -297,6 +298,88 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
     })
   }
 
+  // The fixture this market is about, resolved once. Two signals below
+  // need it, and both need the same answer.
+  const fixture = resolveFixture(db, { ticker: market.external_id, title: market.question })
+
+  // Which of the three outcomes this market is. Null on a draw market or
+  // an unreadable ticker, and both are skipped: a strength read says who
+  // is better, which is not an argument for or against a draw.
+  const outcome = fixture ? outcomeSideOf(market.external_id, fixture, market.outcome_label) : null
+
+  // ---- Reverse line movement ------------------------------------------
+  // The money went one way and the price went the other.
+  //
+  // Normally price follows flow: buyers lift the offer and the quote
+  // rises. When it does not, someone is willing to absorb that flow at a
+  // worse price than the crowd is paying, and historically that someone
+  // is better informed than the crowd. It is the one signal here that
+  // reads a disagreement rather than a majority, which is why a lopsided
+  // flow imbalance and a reverse move mean opposite things.
+  //
+  // `feature_snapshots.reverse_line_move` has been written as a hardcoded
+  // zero since it was added, so this is the first real computation of it.
+  const half = new Date(Date.now() - (WINDOW_HOURS / 2) * 3600_000).toISOString()
+
+  const halves = db.prepare(`
+    SELECT
+      COALESCE(AVG(CASE WHEN traded_at < ? THEN price END), 0) AS earlier,
+      COALESCE(AVG(CASE WHEN traded_at >= ? THEN price END), 0) AS later,
+      COALESCE(SUM(CASE WHEN traded_at >= ? THEN 1 ELSE 0 END), 0) AS recentFills
+    FROM market_trades
+    WHERE prediction_market_id = ? AND traded_at >= ?
+  `).get(half, half, half, market.id, since) as { earlier: number, later: number, recentFills: number }
+
+  // Both halves need real trades, or the "move" is just one half being
+  // empty and averaging to zero.
+  if (halves.earlier > 0 && halves.later > 0 && halves.recentFills >= MIN_FILLS / 2) {
+    // Price move expressed for the leader's side, so the comparison with
+    // its flow share is like for like.
+    const rawMove = halves.later - halves.earlier
+    const move = leader.side === 'yes' ? rawMove : -rawMove
+    const flowLead = (leader.notional / totalNotional) - 0.5
+
+    // Reverse means flow favoured this side while its price fell.
+    if (flowLead > 0.1 && move < -0.005) {
+      evidence.push({
+        kind: 'reverse_line_move',
+        summary: `${pct(leader.notional / totalNotional)} of flow bought ${leader.side} while its price fell ${pct(Math.abs(move))}`,
+        value: round(move, 4),
+        // Against the leader: the side taking the other end of a crowded
+        // trade at a worse price is the side worth respecting.
+        contribution: clampSignal(move * 0.5),
+        sampleSize: halves.recentFills,
+        windowHours: WINDOW_HOURS,
+      })
+    }
+  }
+
+  // ---- Rest and congestion --------------------------------------------
+  // Derived from fixtures already on file, so it costs nothing and it is
+  // the effect books price slowest: the second night of a back-to-back
+  // for the road side is well documented and routinely under-adjusted.
+  if (fixture?.matched && fixture.commenceAt) {
+    const homeSchedule = loadScheduleContext(db, fixture.homeTeamId!, fixture.commenceAt)
+    const awaySchedule = loadScheduleContext(db, fixture.awayTeamId!, fixture.commenceAt)
+    const schedule = assessScheduleEdge(homeSchedule, awaySchedule)
+
+    if (schedule.confidence > 0 && Math.abs(schedule.edge) > 0.01 && (outcome === 'home' || outcome === 'away')) {
+      const towardsOutcome = outcome === 'home' ? schedule.edge : -schedule.edge
+      const favoursLeader = leader.side === 'yes' ? towardsOutcome : -towardsOutcome
+
+      evidence.push({
+        kind: 'schedule_rest',
+        summary: schedule.reasons.join('; '),
+        value: round(schedule.edge, 4),
+        // Smaller than the mismatch cap: rest is a real effect and a
+        // modest one, and it has no settled history here yet either.
+        contribution: clampSignal(favoursLeader * schedule.confidence * 0.04),
+        sampleSize: schedule.reasons.length,
+        windowHours: 0,
+      })
+    }
+  }
+
   // ---- Squad mismatch -------------------------------------------------
   // The only signal here that does not come from a price. Everything
   // above reads the tape: flow, trader records, trend, the other venue's
@@ -307,12 +390,7 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
   // between a second-division side and a fourth-division one needs: the
   // fixture arrives as two names and a price, and nothing else in this
   // file can see that it is lopsided.
-  const fixture = resolveFixture(db, { ticker: market.external_id, title: market.question })
 
-  // Which of the three outcomes this market is. Null on a draw market or
-  // an unreadable ticker, and both are skipped: a strength read says who
-  // is better, which is not an argument for or against a draw.
-  const outcome = fixture ? outcomeSideOf(market.external_id, fixture, market.outcome_label) : null
 
   if (fixture?.matched && (outcome === 'home' || outcome === 'away')) {
     const home = loadTeamFundamentals(db, fixture.homeTeamId!)

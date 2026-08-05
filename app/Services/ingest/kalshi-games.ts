@@ -186,6 +186,10 @@ export interface ResolvedFixture {
   away: string
   homeTeamId: number | null
   awayTeamId: number | null
+  /** Our own fixture row for the same game, when one exists. */
+  marketEventId: number | null
+  /** That fixture's kickoff, which rest and congestion are measured from. */
+  commenceAt: string | null
   /** True when both sides resolved to rows we hold fundamentals for. */
   matched: boolean
 }
@@ -253,6 +257,26 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
   const homeTeamId = findExisting(parsed.home)
   const awayTeamId = findExisting(parsed.away)
 
+  // Link to our own fixture row so schedule history is reachable. Matched
+  // on the two clubs rather than on names, and left null when we hold no
+  // such fixture, which is normal for a market listed before the
+  // scoreboard feed has published the game.
+  let marketEventId: number | null = null
+  let commenceAt: string | null = null
+
+  if (homeTeamId !== null && awayTeamId !== null) {
+    const event = db.query(`
+      SELECT id, commence_at FROM market_events
+      WHERE home_sports_team_id = ? AND away_sports_team_id = ? AND commence_at != ''
+      ORDER BY commence_at DESC LIMIT 1
+    `).get(homeTeamId, awayTeamId) as { id: number, commence_at: string } | null
+
+    if (event) {
+      marketEventId = event.id
+      commenceAt = event.commence_at
+    }
+  }
+
   return {
     seriesTicker,
     competition: series.competition,
@@ -261,6 +285,8 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
     away: parsed.away,
     homeTeamId,
     awayTeamId,
+    marketEventId,
+    commenceAt,
     matched: homeTeamId !== null && awayTeamId !== null,
   }
 }
