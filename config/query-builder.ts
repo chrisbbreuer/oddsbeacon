@@ -11,13 +11,19 @@ const databaseConfig = dialect === 'sqlite'
       username: env.DB_USERNAME || '',
       password: env.DB_PASSWORD || '',
       host: env.DB_HOST || 'localhost',
-      port: env.DB_PORT || 5432,
+      port: env.DB_PORT || (dialect === 'vitess' ? 15306 : dialect === 'mysql' ? 3306 : 5432),
     }
+
+const mysqlCompatible = dialect === 'mysql' || dialect === 'vitess'
 
 export default {
   verbose: true,
   dialect,
+  migrationDir: dialect === 'sqlite' ? 'database/migrations' : `database/migrations/${dialect}`,
   database: databaseConfig,
+  vitess: {
+    sharded: false,
+  },
   timestamps: {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
@@ -48,12 +54,12 @@ export default {
     },
   },
   sql: {
-    randomFunction: 'RANDOM()',
-    sharedLockSyntax: 'FOR SHARE',
-    jsonContainsMode: 'operator',
+    randomFunction: mysqlCompatible ? 'RAND()' : 'RANDOM()',
+    sharedLockSyntax: mysqlCompatible ? 'LOCK IN SHARE MODE' : 'FOR SHARE',
+    jsonContainsMode: mysqlCompatible ? 'function' : 'operator',
   },
   features: {
-    distinctOn: true,
+    distinctOn: dialect === 'postgres',
   },
   debug: {
     captureText: true,

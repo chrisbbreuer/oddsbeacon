@@ -695,20 +695,20 @@ export const tsCloud: TsCloudConfig = {
       port: 3070,
       preStart: [
         'bun install',
-        // The database lives OUTSIDE both release trees. Every deploy creates
-        // a fresh releases/<sha>/ directory, so a database inside one is
-        // discarded on the next deploy and is invisible to the sibling site:
-        // `api` was answering 500 with "no such table" because it had its own
-        // empty file. One path, created before migrate runs.
-        'mkdir -p /var/www/predicthq-shared/database',
-        // Migrate here and only here. `api` reads the same file, so migrating
-        // from both would put two writers on one SQLite file.
+        // The main service owns schema migration. Both processes connect to
+        // the same vtgate keyspace, so the API must never race this step.
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate',
       ],
       env: {
         APP_ENV: 'production',
         NODE_ENV: 'production',
-        DB_DATABASE_PATH: '/var/www/predicthq-shared/database/stacks.sqlite',
+        DB_CONNECTION: 'vitess',
+        DB_HOST: '127.0.0.1',
+        DB_PORT: '15306',
+        DB_DATABASE: 'predicthq',
+        DB_USERNAME: 'predicthq',
+        DB_PASSWORD: env.DB_PASSWORD || '',
+        DB_VITESS_SHARDED: 'false',
         // Where `main` proxies /api. On a shared host the server refuses to
         // guess a port, and rightly so: guessing would forward this app's API
         // traffic to whichever neighbour happened to hold the default. Must
@@ -725,12 +725,18 @@ export const tsCloud: TsCloudConfig = {
       start: 'bun node_modules/@stacksjs/actions/dist/serve/api.js',
       port: 3071,
       preStart: ['bun install'],
-      // Same file as `main`, and no migrate step: one writer, one schema.
+      // Same keyspace as `main`, and no migrate step: one schema owner.
       env: {
         HOST: '127.0.0.1',
         APP_ENV: 'production',
         NODE_ENV: 'production',
-        DB_DATABASE_PATH: '/var/www/predicthq-shared/database/stacks.sqlite',
+        DB_CONNECTION: 'vitess',
+        DB_HOST: '127.0.0.1',
+        DB_PORT: '15306',
+        DB_DATABASE: 'predicthq',
+        DB_USERNAME: 'predicthq',
+        DB_PASSWORD: env.DB_PASSWORD || '',
+        DB_VITESS_SHARDED: 'false',
       },
     },
   },
