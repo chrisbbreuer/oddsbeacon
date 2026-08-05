@@ -27,7 +27,9 @@ export type CommandRegistry = Record<string, string | CommandConfig>
  * },
  */
 export default {
+  'database:import-legacy': 'ImportLegacyDatabase',
   'inspire': 'Inspire',
+  'transfermarkt:backfill': 'TransfermarktBackfill',
 
   // What this deployment can actually do. Run it before cutting over: the
   // app boots fine without an odds feed or a sign-in provider, and a boot
