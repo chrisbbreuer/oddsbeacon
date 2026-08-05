@@ -28,16 +28,29 @@ export default defineModel({
     useSeeder: {
       count: 0,
       fixtures: [
-        { slug: 'nfl', title: 'NFL', grouping: 'Football', espnPath: 'football/nfl', oddsApiKey: 'americanfootball_nfl', position: 1, active: true, nonSporting: false },
-        { slug: 'nba', title: 'NBA', grouping: 'Basketball', espnPath: 'basketball/nba', oddsApiKey: 'basketball_nba', position: 2, active: true, nonSporting: false },
-        { slug: 'mlb', title: 'MLB', grouping: 'Baseball', espnPath: 'baseball/mlb', oddsApiKey: 'baseball_mlb', position: 3, active: true, nonSporting: false },
-        { slug: 'nhl', title: 'NHL', grouping: 'Hockey', espnPath: 'hockey/nhl', oddsApiKey: 'icehockey_nhl', position: 4, active: true, nonSporting: false },
+        { slug: 'nfl', title: 'NFL', grouping: 'Football', espnPath: 'football/nfl', oddsApiKey: 'americanfootball_nfl', tier: 1, position: 1, active: true, nonSporting: false },
+        { slug: 'nba', title: 'NBA', grouping: 'Basketball', espnPath: 'basketball/nba', oddsApiKey: 'basketball_nba', tier: 1, position: 2, active: true, nonSporting: false },
+        { slug: 'mlb', title: 'MLB', grouping: 'Baseball', espnPath: 'baseball/mlb', oddsApiKey: 'baseball_mlb', tier: 1, position: 3, active: true, nonSporting: false },
+        { slug: 'nhl', title: 'NHL', grouping: 'Hockey', espnPath: 'hockey/nhl', oddsApiKey: 'icehockey_nhl', tier: 1, position: 4, active: true, nonSporting: false },
         { slug: 'ncaaf', title: 'NCAA Football', grouping: 'Football', espnPath: 'football/college-football', oddsApiKey: 'americanfootball_ncaaf', position: 5, active: true, nonSporting: false },
         { slug: 'ncaab', title: 'NCAA Basketball', grouping: 'Basketball', espnPath: 'basketball/mens-college-basketball', oddsApiKey: 'basketball_ncaab', position: 6, active: true, nonSporting: false },
-        { slug: 'epl', title: 'Premier League', grouping: 'Soccer', espnPath: 'soccer/eng.1', oddsApiKey: 'soccer_epl', position: 7, active: true, nonSporting: false },
-        { slug: 'laliga', title: 'La Liga', grouping: 'Soccer', espnPath: 'soccer/esp.1', oddsApiKey: 'soccer_spain_la_liga', position: 8, active: true, nonSporting: false },
-        { slug: 'seriea', title: 'Serie A', grouping: 'Soccer', espnPath: 'soccer/ita.1', oddsApiKey: 'soccer_italy_serie_a', position: 9, active: true, nonSporting: false },
-        { slug: 'bundesliga', title: 'Bundesliga', grouping: 'Soccer', espnPath: 'soccer/ger.1', oddsApiKey: 'soccer_germany_bundesliga', position: 10, active: true, nonSporting: false },
+        { slug: 'epl', title: 'Premier League', grouping: 'Soccer', espnPath: 'soccer/eng.1', oddsApiKey: 'soccer_epl', tier: 1, position: 7, active: true, nonSporting: false },
+        { slug: 'laliga', title: 'La Liga', grouping: 'Soccer', espnPath: 'soccer/esp.1', oddsApiKey: 'soccer_spain_la_liga', tier: 1, position: 8, active: true, nonSporting: false },
+        { slug: 'seriea', title: 'Serie A', grouping: 'Soccer', espnPath: 'soccer/ita.1', oddsApiKey: 'soccer_italy_serie_a', tier: 1, position: 9, active: true, nonSporting: false },
+        { slug: 'bundesliga', title: 'Bundesliga', grouping: 'Soccer', espnPath: 'soccer/ger.1', oddsApiKey: 'soccer_germany_bundesliga', tier: 1, position: 10, active: true, nonSporting: false },
+        // The English pyramid. A cup tie pairs sides from different rungs
+        // and only the rung tells you it is a mismatch, so the lower
+        // divisions are not optional extras here — they are the signal.
+        { slug: 'efl-championship', title: 'EFL Championship', grouping: 'Soccer', espnPath: 'soccer/eng.2', oddsApiKey: 'soccer_efl_champ', tier: 2, position: 12, active: true, nonSporting: false },
+        { slug: 'efl-league-one', title: 'EFL League One', grouping: 'Soccer', espnPath: 'soccer/eng.3', oddsApiKey: 'soccer_england_league1', tier: 3, position: 13, active: true, nonSporting: false },
+        { slug: 'efl-league-two', title: 'EFL League Two', grouping: 'Soccer', espnPath: 'soccer/eng.4', oddsApiKey: 'soccer_england_league2', tier: 4, position: 14, active: true, nonSporting: false },
+        // Second tiers elsewhere, for the same reason.
+        { slug: 'laliga2', title: 'LaLiga 2', grouping: 'Soccer', espnPath: 'soccer/esp.2', oddsApiKey: '', tier: 2, position: 15, active: true, nonSporting: false },
+        { slug: 'bundesliga2', title: '2. Bundesliga', grouping: 'Soccer', espnPath: 'soccer/ger.2', oddsApiKey: '', tier: 2, position: 16, active: true, nonSporting: false },
+        { slug: 'serieb', title: 'Serie B', grouping: 'Soccer', espnPath: 'soccer/ita.2', oddsApiKey: '', tier: 2, position: 17, active: true, nonSporting: false },
+        // Top flights Kalshi lists that were missing entirely.
+        { slug: 'ligue1', title: 'Ligue 1', grouping: 'Soccer', espnPath: 'soccer/fra.1', oddsApiKey: 'soccer_france_ligue_one', tier: 1, position: 18, active: true, nonSporting: false },
+        { slug: 'eredivisie', title: 'Eredivisie', grouping: 'Soccer', espnPath: 'soccer/ned.1', oddsApiKey: 'soccer_netherlands_eredivisie', tier: 1, position: 19, active: true, nonSporting: false },
         { slug: 'ucl', title: 'Champions League', grouping: 'Soccer', espnPath: 'soccer/uefa.champions', oddsApiKey: 'soccer_uefa_champs_league', position: 11, active: true, nonSporting: false },
         { slug: 'mma', title: 'MMA', grouping: 'Combat', espnPath: 'mma/ufc', oddsApiKey: 'mma_mixed_martial_arts', position: 12, active: true, nonSporting: false },
         // Prediction-venue only: no scoreboard, no home/away side.
@@ -116,6 +129,25 @@ export default defineModel({
       default: false,
       validation: { rule: schema.boolean() },
       factory: () => false,
+    },
+    /**
+     * Division depth within a country, 1 = top flight. 0 means the
+     * question does not apply: a continental cup, a closed league with no
+     * pyramid beneath it, or a non-sporting market.
+     *
+     * This is the field that answers "is this fixture a mismatch", and it
+     * turns out to be free. A club's tier is simply which league feed it
+     * appears in, so ingesting England's second, third and fourth
+     * divisions supplies it for every side in a cup tie without any
+     * valuation provider. `club_valuations.league_tier` remains as the
+     * override for clubs a paid source knows better.
+     */
+    tier: {
+      type: 'number',
+      fillable: true,
+      default: 0,
+      validation: { rule: schema.number().min(0).max(20) },
+      factory: () => 0,
     },
   },
 

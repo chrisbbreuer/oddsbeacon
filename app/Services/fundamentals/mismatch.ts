@@ -65,6 +65,16 @@ export function loadTeamFundamentals(db: Database, teamId: number): TeamFundamen
     ORDER BY captured_at DESC, id DESC LIMIT 1
   `).get(teamId) as any
 
+  // Tier from the league the club is ingested under. This is free and
+  // covers every side in a cup tie, because a club's division is simply
+  // which feed it appears in. A valuation row overrides it when a paid
+  // source knows the club better, but nothing has to be configured for
+  // the tier gap that decides most mismatches to be visible.
+  const league = db.query(`
+    SELECT sp.tier FROM sports_teams t JOIN sports sp ON sp.id = t.sport_id
+    WHERE t.id = ?
+  `).get(teamId) as any
+
   // Only the most recent capture, so a player listed across many runs is
   // counted once rather than accumulating with every pipeline pass.
   const injuries = db.query(`
@@ -76,14 +86,14 @@ export function loadTeamFundamentals(db: Database, teamId: number): TeamFundamen
 
   return {
     teamId,
-    leagueTier: Number(valuation?.league_tier ?? 0),
+    leagueTier: Number(valuation?.league_tier || league?.tier || 0),
     squadValueEur: Number(valuation?.squad_value_eur ?? 0),
     winPercent: Number(standing?.win_percent ?? 0),
     pointDifferential: Number(standing?.point_differential ?? 0),
     gamesPlayed: Number(standing?.games_played ?? 0),
     injuryBurden: Number(injuries?.burden ?? 0),
     hasStanding: Boolean(standing),
-    hasValuation: Boolean(valuation),
+    hasValuation: Boolean(valuation) || Number(league?.tier ?? 0) > 0,
   }
 }
 

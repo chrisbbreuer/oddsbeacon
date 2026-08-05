@@ -10511,6 +10511,15 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": false
+          },
+          {
+            "name": "tier",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
           }
         ],
         "indexes": [
@@ -13121,7 +13130,7 @@
       }
     ]
   },
-  "hash": "609d1e389bcdff12e4455b7580f156c355b444d1374e7bb16d4218adccf1dcfb",
+  "hash": "2253c704d455db192ad6a1f812e35afe85fa386b3d4c03f61c323e849115f81b",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-05T00:29:26.196Z"
+  "updatedAt": "2026-08-05T00:38:09.397Z"
 }

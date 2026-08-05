@@ -64,6 +64,80 @@ export function loadSports(db: Database): SportRow[] {
  * while a mismatched team silently attributes prices, results, and grades
  * to the wrong club.
  */
+/**
+ * Look a club up without creating one.
+ *
+ * `resolveTeam` inserts on a miss, which is right for a league feed that
+ * is the authority on its own members and wrong for a cup fixture, where
+ * a miss usually means the club is already on file under the division it
+ * actually plays in. Callers spanning several leagues need to ask before
+ * they create.
+ */
+export function resolveExistingTeam(db: Database, sportId: number, name: string): number | null {
+  const key = norm(name.trim())
+  if (!key)
+    return null
+
+  const exact = db
+    .query('SELECT id FROM sports_teams WHERE sport_id = ? AND search_key = ?')
+    .get(sportId, key) as { id: number } | null
+
+  if (exact)
+    return exact.id
+
+  const candidates = db
+    .query('SELECT id, name, aliases FROM sports_teams WHERE sport_id = ?')
+    .all(sportId) as Array<{ id: number, name: string, aliases: string }>
+
+  for (const row of candidates) {
+    const aliases = row.aliases ? row.aliases.split('\n').filter(Boolean) : []
+    if (aliases.includes(key))
+      return row.id
+  }
+
+  // Token containment, and only when exactly one club matches.
+  //
+  // Feeds disagree about how much of a club's name to print: Kalshi says
+  // 'Crawley' where ESPN says 'Crawley Town', 'Wolves' for 'Wolverhampton
+  // Wanderers'. Character similarity scores those below any sane
+  // threshold ('Crawley' against 'Crawley Town' is barely half), so
+  // without this the club reads as unknown.
+  //
+  // Uniqueness is the safeguard. 'United' sits inside Manchester United
+  // and Newcastle United alike, and a containment rule that picked the
+  // first would attach a fixture to the wrong club silently. Ambiguity
+  // returns null and the caller declines instead.
+  const words = (value: string) => value.toLowerCase().split(/[^a-z0-9]+/i).filter(Boolean)
+  const needle = words(name)
+
+  if (needle.length > 0) {
+    const contained = candidates.filter((row) => {
+      const hay = words(row.name)
+      return needle.every(word => hay.includes(word)) || hay.every(word => needle.includes(word))
+    })
+
+    if (contained.length === 1)
+      return contained[0]!.id
+
+    // More than one club contains the name. Stop here rather than falling
+    // through: the fuzzy pass below would happily score 'United' against
+    // 'Manchester United' above threshold and pick it, quietly undoing
+    // the very check this is.
+    if (contained.length > 1)
+      return null
+  }
+
+  // Fuzzy, on the same threshold `resolveTeam` uses.
+  let best: { id: number, score: number } | null = null
+  for (const row of candidates) {
+    const score = nameSimilarity(name.trim(), row.name)
+    if (best === null || score > best.score)
+      best = { id: row.id, score }
+  }
+
+  return best && best.score >= 0.7 ? best.id : null
+}
+
 export function resolveTeam(
   db: Database,
   sportId: number,

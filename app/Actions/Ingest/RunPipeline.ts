@@ -2,6 +2,7 @@ import { generateInsights, gradeInsights } from '../../Services/ai/insights'
 import { ingestEspnFundamentals } from '../../Services/fundamentals/espn'
 import { ingestClubValuations } from '../../Services/fundamentals/transfermarkt'
 import { ingestEspn } from '../../Services/ingest/espn'
+import { syncSports } from '../../Services/ingest/sports-sync'
 import { ingestOdds } from '../../Services/ingest/odds'
 import { computeCalibration } from '../../Services/quant/calibration'
 import { computeFairPrices } from '../../Services/quant/fair'
@@ -36,6 +37,9 @@ export default {
     const startedAt = Date.now()
 
     try {
+      // Reference data first: a league added to the model since the last
+      // deploy has to exist before anything tries to ingest under it.
+      syncSports(db)
       const schedule = await ingestEspn(db)
       // Fundamentals ride with the schedule pass: both read team-level
       // facts, and standings are only meaningful once the fixtures they

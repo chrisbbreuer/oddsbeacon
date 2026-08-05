@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'bun:test'
+import { rmSync } from 'node:fs'
+import { afterEach, describe, expect, it } from 'bun:test'
 import {
   GAME_SERIES,
   parseGameTitle,
@@ -6,6 +7,8 @@ import {
   outcomeSideOf,
   seriesTickerOf,
 } from '../../app/Services/ingest/kalshi-games'
+import { resolveExistingTeam } from '../../app/Services/ingest/resolve'
+import { schemaFor } from '../support/schema'
 
 /**
  * Fixtures below are verbatim from Kalshi's public market catalogue, not
@@ -163,5 +166,82 @@ describe('outcomeSideOf', () => {
     expect(outcomeSideOf('', watfordCrawley)).toBeNull()
     expect(outcomeSideOf(null, watfordCrawley)).toBeNull()
     expect(outcomeSideOf('NOHYPHENS', watfordCrawley)).toBeNull()
+  })
+})
+
+/**
+ * Club-name matching across feeds.
+ *
+ * Kalshi and ESPN disagree about how much of a club's name to print, and
+ * the disagreement lands hardest on exactly the lower-division sides a
+ * cup mismatch is about. These run against the real schema because the
+ * matching is a query, not a pure function.
+ */
+describe('resolveExistingTeam', () => {
+  const paths: string[] = []
+
+  function db() {
+    const path = `tests/temp/resolve-${paths.length}-${Bun.nanoseconds()}.sqlite`
+    paths.push(path)
+    const database = schemaFor(path, ['sports', 'sports_teams'])
+    database.run(`INSERT INTO sports (id, slug, title, grouping, tier, active, position) VALUES (1, 'eng4', 'League Two', 'Soccer', 4, 1, 1)`)
+    return database
+  }
+
+  afterEach(() => {
+    for (const path of paths.splice(0)) {
+      for (const suffix of ['', '-shm', '-wal'])
+        rmSync(`${path}${suffix}`, { force: true })
+    }
+  })
+
+  function addTeam(database: ReturnType<typeof db>, id: number, name: string) {
+    database.run(
+      `INSERT INTO sports_teams (id, sport_id, name, search_key, aliases, created_at, updated_at) VALUES (?, 1, ?, ?, '', '', '')`,
+      [id, name, name.toLowerCase().replace(/[^a-z0-9]/g, '')],
+    )
+  }
+
+  it('matches a shortened club name to its full row', () => {
+    const database = db()
+    addTeam(database, 10, 'Crawley Town')
+
+    // The case that sent a fourth-division club into the Premier League.
+    expect(resolveExistingTeam(database, 1, 'Crawley')).toBe(10)
+  })
+
+  it('matches in the other direction too', () => {
+    const database = db()
+    addTeam(database, 11, 'Watford')
+
+    expect(resolveExistingTeam(database, 1, 'Watford FC')).toBe(11)
+  })
+
+  it('refuses an ambiguous containment rather than picking one', () => {
+    const database = db()
+    addTeam(database, 12, 'Manchester United')
+    addTeam(database, 13, 'Newcastle United')
+
+    // 'United' is inside both. Guessing would attach a fixture to the
+    // wrong club silently, so it declines.
+    expect(resolveExistingTeam(database, 1, 'United')).toBeNull()
+  })
+
+  it('returns null for a club it has never seen', () => {
+    const database = db()
+    addTeam(database, 14, 'Crawley Town')
+
+    expect(resolveExistingTeam(database, 1, 'Real Madrid')).toBeNull()
+  })
+
+  it('never creates a row', () => {
+    const database = db()
+    addTeam(database, 15, 'Barnet')
+
+    resolveExistingTeam(database, 1, 'Some Unknown FC')
+
+    // Inventing a club stamps it with whichever league was being scanned,
+    // and a fabricated tier is worse than no tier.
+    expect((database.query('SELECT COUNT(*) c FROM sports_teams').get() as any).c).toBe(1)
   })
 })

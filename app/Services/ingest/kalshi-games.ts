@@ -1,5 +1,5 @@
 import type { Database } from 'bun:sqlite'
-import { loadSports, resolveTeam } from './resolve'
+import { loadSports, resolveExistingTeam } from './resolve'
 
 /**
  * Reading a Kalshi game market back to the two teams playing.
@@ -61,11 +61,17 @@ export function parseGameTitle(title: unknown): ParsedGame | null {
   if (!text)
     return null
 
-  // Tolerate 'vs', 'vs.' and 'v', and any trailing question ('Winner?',
-  // 'To Advance?'), because the series differ and a title that almost
-  // parses is worse than one that does not: it produces a fixture with a
-  // team called 'Crawley Winner'.
-  const match = text.match(/^(.+?)\s+(?:vs\.?|v)\s+(.+?)(?:\s+(?:winner|to advance|result)\s*\??)?\s*\??$/i)
+  // Two steps rather than one clever expression. Strip the trailing
+  // question first ('Winner?', 'To Advance?'), then split on the
+  // separator, because a single regex doing both needs a lazy capture
+  // whose failure mode is silent: it yields a team called 'Crawley
+  // Winner' and every downstream lookup misses without saying so.
+  const withoutSuffix = text
+    .replace(/\s*\?+\s*$/, '')
+    .replace(/\s+(?:winner|to advance|result)$/i, '')
+    .trim()
+
+  const match = withoutSuffix.match(/^(.+)\s+(?:vs\.?|v)\s+(.+)$/i)
   if (!match)
     return null
 
@@ -209,16 +215,43 @@ export function resolveFixture(db: Database, market: { ticker?: string, title?: 
   if (!parsed)
     return null
 
-  const sport = loadSports(db).find(s => s.slug === series.sportSlug)
-  if (!sport)
+  const sports = loadSports(db)
+  const fallback = sports.find(s => s.slug === series.sportSlug)
+  if (!fallback)
     return null
 
-  // `resolveTeam` creates a row when it sees an unknown club, which is
-  // what makes the fourth-division sides in a cup tie addressable at all:
-  // they never appear in a league feed, so nothing else would ever
-  // introduce them.
-  const homeTeamId = resolveTeam(db, sport.id, parsed.home)
-  const awayTeamId = resolveTeam(db, sport.id, parsed.away)
+  /**
+   * Find the club in whichever division it actually plays in.
+   *
+   * A cup tie is precisely the case where the two sides are NOT in the
+   * same league, so resolving both under one slug is wrong in the one
+   * situation this exists to handle: it created a second Watford and a
+   * second Crawley under the Premier League, both tier 1, and the
+   * mismatch read tier 1 against tier 1 and saw nothing.
+   *
+   * So look across every league of the same kind first and only fall
+   * back to creating a row when the club is genuinely unknown to us.
+   */
+  const findExisting = (name: string): number | null => {
+    for (const candidate of sports) {
+      if (candidate.grouping !== fallback.grouping)
+        continue
+
+      const existing = resolveExistingTeam(db, candidate.id, name)
+      if (existing !== null)
+        return existing
+    }
+    return null
+  }
+
+  // Match only, never create. An unknown club invented under whichever
+  // league the series happens to map to would be stamped with that
+  // league's tier, and a fabricated tier is worse than no tier: it turns
+  // a fixture we cannot read into one we read confidently and wrongly.
+  // Crawley arriving as 'Crawley' against ESPN's 'Crawley Town' did
+  // exactly that, landing a fourth-division club in the Premier League.
+  const homeTeamId = findExisting(parsed.home)
+  const awayTeamId = findExisting(parsed.away)
 
   return {
     seriesTicker,
