@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { assessMismatch, type TeamFundamentals } from '../../app/Services/fundamentals/mismatch'
 import { injurySeverity } from '../../app/Services/fundamentals/severity'
-import { parseMarketValue } from '../../app/Services/fundamentals/transfermarkt'
+import { parseMarketValue, parseTransfermarktClubs } from '../../app/Services/fundamentals/transfermarkt'
 
 /**
  * The mismatch read is the only input in this system that can disagree
@@ -167,5 +167,35 @@ describe('parseMarketValue', () => {
     expect(parseMarketValue('unknown')).toBe(0)
     expect(parseMarketValue('')).toBe(0)
     expect(parseMarketValue(null)).toBe(0)
+  })
+})
+
+describe('parseTransfermarktClubs', () => {
+  it('keeps every club fact attached to its Transfermarkt DOM row', () => {
+    const clubs = parseTransfermarktClubs(`
+      <table class="items">
+        <tbody>
+          <tr><td colspan="7">Clubs - Premier League</td></tr>
+          <tr class="odd">
+            <td class="zentriert"><a href="/brighton/startseite/verein/123"><img alt="Brighton"></a></td>
+            <td class="hauptlink no-border-links"><a title="Brighton &amp; Hove Albion" href="/brighton/startseite/verein/123/saison_id/2026">Brighton &amp; Hove Albion</a></td>
+            <td class="zentriert">33</td><td class="zentriert">26.6</td><td class="zentriert">21</td>
+            <td class="rechts">€16.73m</td><td class="rechts hauptlink"><a href="/brighton/marktwert/verein/123">€552.00m</a></td>
+          </tr>
+          <tr class="even">
+            <td class="zentriert"><a href="/arsenal/startseite/verein/11"><img alt="Arsenal"></a></td>
+            <td class="hauptlink no-border-links"><a title="Arsenal FC" href="/arsenal/startseite/verein/11/saison_id/2026">Arsenal FC</a></td>
+            <td class="zentriert">24</td><td class="zentriert">26.3</td><td class="zentriert">17</td>
+            <td class="rechts">€51.21m</td><td class="rechts hauptlink"><a href="/arsenal/marktwert/verein/11">€1.23bn</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <table class="items"><tbody><tr><td class="hauptlink"><a href="/player/profil/spieler/9">Player</a></td></tr></tbody></table>
+    `)
+
+    expect(clubs).toEqual([
+      { externalId: '123', name: 'Brighton & Hove Albion', squadSize: 33, averageAgeYears: 26.6, marketValueEur: 552_000_000 },
+      { externalId: '11', name: 'Arsenal FC', squadSize: 24, averageAgeYears: 26.3, marketValueEur: 1_230_000_000 },
+    ])
   })
 })
