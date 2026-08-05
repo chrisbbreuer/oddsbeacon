@@ -11,7 +11,7 @@
  * a 6% edge off the board had no way to learn it came from a simulator
  * and that nothing had ever been checked against an outcome.
  */
-import { loadFeedState, loadProviderRuns, loadTrackRecord, LIVE_FEED_ENV, relativeAge } from '../../app/Support/pipeline'
+import { loadFeedState, loadFundamentalsCoverage, loadProviderRuns, loadTrackRecord, LIVE_FEED_ENV, relativeAge } from '../../app/Support/pipeline'
 
 const navActive = 'pipeline'
 const pageTitle = 'PredictHQ: pipeline health'
@@ -20,6 +20,10 @@ const pageDescription = 'Where the prices come from, when they last updated, and
 const feed = loadFeedState()
 const runs = loadProviderRuns()
 const record = loadTrackRecord()
+const coverage = loadFundamentalsCoverage()
+const coveragePct = coverage.teamsTotal > 0
+  ? Math.round((coverage.teamsWithStanding / coverage.teamsTotal) * 100)
+  : 0
 
 function when(timestamp) {
   if (!timestamp)
@@ -138,6 +142,42 @@ const beatsCoinFlip = record.sampleSize > 0 && record.brierScore < COIN_FLIP_BRI
               @endif
             </div>
           @endif
+        </section>
+
+        {{--
+          Coverage, not volume. A thousand injury rows across two leagues
+          still leaves every other fixture priced on book quotes alone,
+          and the honest number is what fraction of teams the model can
+          say anything independent about.
+        --}}
+        <section class="mt-12">
+          <h2 class="display font-black text-2xl tracking-tight">Independent evidence</h2>
+          <p class="mt-2 max-w-2xl leading-relaxed muted">
+            Everything else here is derived from bookmaker prices, so it can only ever agree with them. These are the reads that can disagree.
+          </p>
+
+          <div class="grid gap-3 grid-cols-2 mt-6 sm:grid-cols-4">
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num {{ coveragePct > 0 ? 'pos' : '' }}">{{ coveragePct }}%</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Teams with form</div>
+              <div class="mt-1 text-xs faint">{{ coverage.teamsWithStanding.toLocaleString() }} of {{ coverage.teamsTotal.toLocaleString() }}</div>
+            </div>
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num">{{ coverage.injuriesTracked.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Teams with availability</div>
+              <div class="mt-1 text-xs faint">Who is out, and how badly.</div>
+            </div>
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num {{ coverage.clubsValued ? '' : 'muted' }}">{{ coverage.clubsValued.toLocaleString() }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Clubs valued</div>
+              <div class="mt-1 text-xs faint">{{ coverage.clubsValued ? 'Squad value and tier.' : 'Needs TRANSFERMARKT_API_KEY.' }}</div>
+            </div>
+            <div class="p-4 rounded-2xl card">
+              <div class="font-black text-2xl num">{{ relativeAge(coverage.lastCapturedAt) }}</div>
+              <div class="mt-0.5 font-semibold text-xs tracking-wide uppercase muted">Last captured</div>
+              <div class="mt-1 text-xs faint">Appended, never overwritten.</div>
+            </div>
+          </div>
         </section>
 
         <!-- providers -->

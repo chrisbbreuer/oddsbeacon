@@ -105,6 +105,41 @@ export function loadTrackRecord(db: Database = openRead()): TrackRecord {
   }
 }
 
+export interface FundamentalsCoverage {
+  /** Teams with a standings row, and how many teams exist at all. */
+  teamsWithStanding: number
+  teamsTotal: number
+  injuriesTracked: number
+  clubsValued: number
+  lastCapturedAt: string | null
+}
+
+/**
+ * How much non-market evidence the model actually has.
+ *
+ * Worth its own read because the number that matters is coverage, not
+ * volume: a thousand injury rows across two leagues still leaves every
+ * other fixture priced on book quotes alone, and the page should say so.
+ */
+export function loadFundamentalsCoverage(db: Database = openRead()): FundamentalsCoverage {
+  const row = db.query(`
+    SELECT
+      (SELECT COUNT(DISTINCT sports_team_id) FROM team_standings) AS teamsWithStanding,
+      (SELECT COUNT(*) FROM sports_teams) AS teamsTotal,
+      (SELECT COUNT(DISTINCT sports_team_id) FROM team_injuries) AS injuriesTracked,
+      (SELECT COUNT(DISTINCT sports_team_id) FROM club_valuations) AS clubsValued,
+      (SELECT MAX(captured_at) FROM team_standings) AS lastCapturedAt
+  `).get() as Record<string, any>
+
+  return {
+    teamsWithStanding: Number(row?.teamsWithStanding ?? 0),
+    teamsTotal: Number(row?.teamsTotal ?? 0),
+    injuriesTracked: Number(row?.injuriesTracked ?? 0),
+    clubsValued: Number(row?.clubsValued ?? 0),
+    lastCapturedAt: row?.lastCapturedAt ?? null,
+  }
+}
+
 export interface ProviderRun {
   provider: string
   kind: string

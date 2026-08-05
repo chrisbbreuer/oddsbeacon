@@ -1,4 +1,6 @@
 import { generateInsights, gradeInsights } from '../../Services/ai/insights'
+import { ingestEspnFundamentals } from '../../Services/fundamentals/espn'
+import { ingestClubValuations } from '../../Services/fundamentals/transfermarkt'
 import { ingestEspn } from '../../Services/ingest/espn'
 import { ingestOdds } from '../../Services/ingest/odds'
 import { computeCalibration } from '../../Services/quant/calibration'
@@ -35,6 +37,12 @@ export default {
 
     try {
       const schedule = await ingestEspn(db)
+      // Fundamentals ride with the schedule pass: both read team-level
+      // facts, and standings are only meaningful once the fixtures they
+      // describe exist. Neither blocks pricing, so a failure here leaves
+      // the board working and shows up as a degraded provider instead.
+      const fundamentals = await ingestEspnFundamentals(db)
+      const valuations = await ingestClubValuations(db)
       const odds = await ingestOdds(db)
       const fair = computeFairPrices(db)
       const snapshots = captureFeatureSnapshots(db)
@@ -52,6 +60,8 @@ export default {
       return {
         durationMs: Date.now() - startedAt,
         schedule,
+        fundamentals,
+        valuations,
         odds,
         fair,
         snapshots,
