@@ -1,8 +1,4 @@
-import type { Database } from 'bun:sqlite'
-import process from 'node:process'
-import { fetchHTML, parseHTML } from 'ts-web-scraper'
-import { loadSports, resolveTeam } from '../ingest/resolve'
-import { IngestRunTracker } from '../ingest/run'
+import { parseHTML } from 'ts-web-scraper'
 
 /**
  * Squad valuations from Transfermarkt's public competition pages.
@@ -21,21 +17,8 @@ import { IngestRunTracker } from '../ingest/run'
  * when the table is re-sorted.
  */
 
-const BASE = process.env.TRANSFERMARKT_BASE_URL || 'https://www.transfermarkt.com'
-const USER_AGENT = process.env.TRANSFERMARKT_USER_AGENT
-  || 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
-
-export interface ValuationResult {
-  provider: string
-  status: string
-  clubsWritten: number
-  competitions: number
-  unmatched: number
-  errors: string[]
-}
-
 /** The soccer competitions worth valuing, by our sport slug. */
-interface CompetitionTarget {
+export interface CompetitionTarget {
   sportSlug: string
   /** Transfermarkt's competition id and canonical path slug. */
   externalId: string
@@ -50,17 +33,21 @@ interface CompetitionTarget {
  * most of the work in a mismatch, and inferring it from a name is exactly
  * the kind of guess that quietly mislabels a second division as a first.
  */
-const COMPETITIONS: CompetitionTarget[] = [
+export const TRANSFERMARKT_COMPETITIONS: CompetitionTarget[] = [
   { sportSlug: 'epl', externalId: 'GB1', path: 'premier-league', tier: 1, label: 'Premier League' },
+  { sportSlug: 'efl-championship', externalId: 'GB2', path: 'championship', tier: 2, label: 'EFL Championship' },
+  { sportSlug: 'efl-league-one', externalId: 'GB3', path: 'league-one', tier: 3, label: 'EFL League One' },
+  { sportSlug: 'efl-league-two', externalId: 'GB4', path: 'league-two', tier: 4, label: 'EFL League Two' },
   { sportSlug: 'laliga', externalId: 'ES1', path: 'laliga', tier: 1, label: 'LaLiga' },
+  { sportSlug: 'laliga2', externalId: 'ES2', path: 'laliga2', tier: 2, label: 'LaLiga 2' },
   { sportSlug: 'seriea', externalId: 'IT1', path: 'serie-a', tier: 1, label: 'Serie A' },
+  { sportSlug: 'serieb', externalId: 'IT2', path: 'serie-b', tier: 2, label: 'Serie B' },
   { sportSlug: 'bundesliga', externalId: 'L1', path: 'bundesliga', tier: 1, label: 'Bundesliga' },
+  { sportSlug: 'bundesliga2', externalId: 'L2', path: '2-bundesliga', tier: 2, label: '2. Bundesliga' },
+  { sportSlug: 'ligue1', externalId: 'FR1', path: 'ligue-1', tier: 1, label: 'Ligue 1' },
+  { sportSlug: 'eredivisie', externalId: 'NL1', path: 'eredivisie', tier: 1, label: 'Eredivisie' },
   { sportSlug: 'ucl', externalId: 'CL', path: 'uefa-champions-league', tier: 1, label: 'Champions League' },
 ]
-
-export function transfermarktConfigured(): boolean {
-  return true
-}
 
 export interface TransfermarktClub {
   externalId: string
@@ -124,97 +111,4 @@ export function parseTransfermarktClubs(html: string): TransfermarktClub[] {
   }
 
   return [...clubs.values()]
-}
-
-export async function ingestClubValuations(db: Database): Promise<ValuationResult> {
-  const tracker = new IngestRunTracker(db, 'transfermarkt', 'valuations')
-  tracker.start()
-
-  const sportIds = new Map(loadSports(db).map(s => [s.slug, s.id]))
-  const capturedAt = new Date().toISOString()
-
-  const insert = db.prepare(`
-    INSERT INTO club_valuations
-      (sports_team_id, squad_value_eur, squad_size, average_age_years, league_tier,
-       competition, source, external_id, captured_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'transfermarkt', ?, ?, ?, ?)
-  `)
-
-  let clubsWritten = 0
-  let competitions = 0
-
-  for (const target of COMPETITIONS) {
-    const sportId = sportIds.get(target.sportSlug)
-    if (!sportId)
-      continue
-
-    const url = `${BASE}/${target.path}/startseite/wettbewerb/${target.externalId}`
-    tracker.requestCount++
-
-    try {
-      const document = await fetchHTML(url, {
-        timeout: 15_000,
-        userAgent: USER_AGENT,
-        headers: {
-          accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'accept-language': 'en-US,en;q=0.9',
-        },
-      })
-      const clubs = parseTransfermarktClubs(document.innerHTML)
-      if (clubs.length === 0)
-        throw new Error('club table was missing or empty')
-
-      db.run('BEGIN')
-      try {
-        for (const club of clubs) {
-          tracker.rowsRead++
-          const teamId = resolveTeam(db, sportId, club.name)
-
-          if (!teamId) {
-            tracker.unmatchedCount++
-            continue
-          }
-
-          insert.run(
-            teamId,
-            club.marketValueEur,
-            club.squadSize,
-            club.averageAgeYears,
-            target.tier,
-            target.label,
-            club.externalId,
-            capturedAt,
-            capturedAt,
-            capturedAt,
-          )
-          clubsWritten++
-          tracker.rowsWritten++
-        }
-        db.run('COMMIT')
-      }
-      catch (err) {
-        try {
-          db.run('ROLLBACK')
-        }
-        catch { /* the original error is the useful one */ }
-        throw err
-      }
-
-      competitions++
-    }
-    catch (err) {
-      tracker.fail(`${target.label}: ${(err as Error).message}`)
-    }
-  }
-
-  const { status, errors } = tracker.finish(`${competitions} competitions · ${clubsWritten} clubs`)
-
-  return {
-    provider: 'transfermarkt',
-    status,
-    clubsWritten,
-    competitions,
-    unmatched: tracker.unmatchedCount,
-    errors,
-  }
 }

@@ -97,4 +97,5 @@ export default defineModel({
   },
 
   belongsTo: ['Sport'],
+  hasMany: ['Athlete', 'AthleteTeamMembership', 'TeamIdentity'],
 } as const)

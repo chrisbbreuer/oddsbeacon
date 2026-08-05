@@ -49,12 +49,6 @@ const CHECKS: Check[] = [
     requiredInProduction: false,
   },
   {
-    key: 'TRANSFERMARKT_API_KEY',
-    label: 'Squad valuations',
-    consequence: 'Soccer fixtures carry no tier or squad-value read, so a first-division side against a fourth-division one looks like any other game.',
-    requiredInProduction: false,
-  },
-  {
     key: 'GOOGLE_CLIENT_ID',
     label: 'Google sign-in',
     consequence: 'The button is hidden and nobody can create an account with Google.',

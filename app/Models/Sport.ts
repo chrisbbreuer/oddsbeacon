@@ -163,5 +163,5 @@ export default defineModel({
     },
   },
 
-  hasMany: ['MarketEvent', 'SportsTeam'],
+  hasMany: ['MarketEvent', 'SportsTeam', 'Athlete'],
 } as const)

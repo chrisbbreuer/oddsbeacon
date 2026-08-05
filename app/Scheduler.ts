@@ -42,6 +42,16 @@ export default function () {
     .job('AutoTrade')
     .everyFifteenMinutes()
 
+  // Transfermarkt career history is intentionally outside the five-minute
+  // pricing loop. This bounded pass resumes durable tasks, refreshes mutable
+  // squad/injury pages by TTL, and never downloads immutable history merely
+  // because the market pipeline ran again.
+  schedule
+    .job('RefreshTransfermarkt')
+    .daily()
+    .at('02:30')
+    .setTimeZone('Europe/Berlin')
+
   // Run a custom action every five minutes
   // schedule.action('CleanupTempFiles').everyFiveMinutes()
 
