@@ -1,6 +1,8 @@
 import { Database } from 'bun:sqlite'
 import { assessMismatch, loadTeamFundamentals } from '../fundamentals/mismatch'
 import { outcomeSideOf, resolveFixture } from '../ingest/kalshi-games'
+import { findIncoherence, fixtureKeyOf, strikeOf } from '../quant/coherence'
+import { movementFor } from '../quant/movement'
 import { assessScheduleEdge, loadScheduleContext } from '../quant/schedule'
 
 /**
@@ -354,6 +356,44 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
     }
   }
 
+  // ---- Ladder incoherence ---------------------------------------------
+  // The venue disagreeing with itself. A spread or total is listed as a
+  // ladder and its rungs are ordered by arithmetic, not by opinion:
+  // clearing a higher bar cannot be likelier than clearing a lower one.
+  // An inversion is therefore not an estimate that the market is wrong,
+  // it is a proof, which is why this is the one signal allowed the full
+  // per-signal cap on its own.
+  const fixtureKey = fixtureKeyOf(market.external_id)
+
+  if (fixtureKey && strikeOf(market.external_id) !== null) {
+    const siblings = db.prepare(`
+      SELECT external_id AS ticker, last_price AS price
+      FROM prediction_markets
+      WHERE venue = ? AND status = 'open' AND external_id LIKE ?
+    `).all(market.venue, `%-${fixtureKey}-%`) as Array<{ ticker: string, price: number }>
+
+    for (const violation of findIncoherence(siblings)) {
+      // Only the rung being priced, and only when this market is the one
+      // quoted too high. The cheap side of an inversion is not the trade.
+      if (violation.ticker !== market.external_id)
+        continue
+
+      // Against the yes side of this rung: it is the one priced above a
+      // strictly easier outcome.
+      const towardsLeader = leader.side === 'yes' ? -violation.gap : violation.gap
+
+      evidence.push({
+        kind: 'ladder_incoherence',
+        summary: `priced ${pct(violation.price)} against ${pct(violation.versusPrice)} for the easier ${violation.versusStrike}`,
+        value: round(violation.gap, 4),
+        contribution: clampSignal(towardsLeader),
+        sampleSize: 2,
+        windowHours: 0,
+      })
+      break
+    }
+  }
+
   // ---- Rest and congestion --------------------------------------------
   // Derived from fixtures already on file, so it costs nothing and it is
   // the effect books price slowest: the second night of a back-to-back
@@ -377,6 +417,48 @@ function evaluateMarket(db: Database, market: MarketRow): Candidate | null {
         sampleSize: schedule.reasons.length,
         windowHours: 0,
       })
+    }
+  }
+
+  // ---- Sportsbook steam -----------------------------------------------
+  // Many books repricing the same selection together, read off the
+  // sportsbook feed rather than the prediction venue. One book moving is
+  // that book adjusting; a consensus moving is the market learning
+  // something, and it happens on the sportsbook side first because that
+  // is where the volume and the risk managers are.
+  //
+  // Reachable only now that a Kalshi market resolves to one of our own
+  // fixtures. `movementFor` has computed this since it was written and
+  // nothing consumed it, because the two halves of the system had no
+  // link between them.
+  if (fixture?.marketEventId && (outcome === 'home' || outcome === 'away')) {
+    const selection = db.prepare(`
+      SELECT s.id AS id
+      FROM selections s
+      JOIN markets mk ON mk.id = s.market_id
+      WHERE mk.market_event_id = ? AND mk.market_type = 'h2h' AND s.side = ?
+      LIMIT 1
+    `).get(fixture.marketEventId, outcome) as { id: number } | null
+
+    if (selection) {
+      const move = movementFor(db, selection.id)
+
+      if (move.steamScore > 0 && Math.abs(move.moveFromOpenPct) > 0.1) {
+        // Decimal odds falling means the selection shortened, which is
+        // the books making it MORE likely. So the sign flips: a negative
+        // move is support for this outcome.
+        const towardsOutcome = move.moveFromOpenPct < 0 ? 1 : -1
+        const towardsLeader = leader.side === 'yes' ? towardsOutcome : -towardsOutcome
+
+        evidence.push({
+          kind: 'steam',
+          summary: `books moved together ${move.moveFromOpenPct > 0 ? 'against' : 'toward'} ${fixture[outcome === 'home' ? 'home' : 'away']} (${pct(move.steamScore)} consensus)`,
+          value: round(move.steamScore, 4),
+          contribution: clampSignal(towardsLeader * move.steamScore * 0.05),
+          sampleSize: 1,
+          windowHours: 0,
+        })
+      }
     }
   }
 

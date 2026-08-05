@@ -16,6 +16,7 @@ const TABLES = [
   'prediction_markets', 'market_traders', 'market_trades',
   'sports', 'sports_teams', 'market_events', 'markets', 'selections',
   'team_standings', 'team_injuries', 'club_valuations',
+  'bookmakers', 'odds', 'odds_snapshots',
 ]
 
 const paths: string[] = []
@@ -188,5 +189,115 @@ describe('schedule rest', () => {
     const kinds = kindsFor(db)
     expect(kinds.flow_imbalance).toBeGreaterThan(0)
     expect(kinds.liquidity).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * The two signals that needed a link between halves of the system.
+ *
+ * Ladder incoherence needs sibling markets on one fixture; steam needs a
+ * Kalshi market to reach a sportsbook selection. Both are tested through
+ * `buildCandidates` for the same reason as the others: the wiring is the
+ * part that was missing, not the arithmetic.
+ */
+describe('ladder incoherence', () => {
+  it('fires on the rung priced above a strictly easier one', () => {
+    const db = freshDb()
+    const id = seedMarket(db, 'KXMLBTOTAL-26AUG042140SDAZ-15', 'SD vs AZ Total Runs?', 'over 15')
+    // The easier rung, quoted lower, which cannot be right.
+    db.run(
+      `INSERT INTO prediction_markets (venue, external_id, question, outcome_label, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
+       VALUES ('kalshi', 'KXMLBTOTAL-26AUG042140SDAZ-14', 'SD vs AZ Total Runs?', 'over 14', 'Sports', 'open', '', 1000, 100, 0.35, ?, ?, ?)`,
+      [daysFromNow(1), hoursAgo(48), hoursAgo(48)],
+    )
+    db.run(`UPDATE prediction_markets SET last_price = 0.55 WHERE id = ?`, [id])
+
+    fills(db, id, 'yes', 20, 0.55, 10)
+    fills(db, id, 'no', 6, 0.55, 8)
+
+    expect(kindsFor(db).ladder_incoherence).toBeGreaterThan(0)
+  })
+
+  it('stays quiet when the ladder is in the right order', () => {
+    const db = freshDb()
+    const id = seedMarket(db, 'KXMLBTOTAL-26AUG042140SDAZ-15', 'SD vs AZ Total Runs?', 'over 15')
+    db.run(
+      `INSERT INTO prediction_markets (venue, external_id, question, outcome_label, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
+       VALUES ('kalshi', 'KXMLBTOTAL-26AUG042140SDAZ-14', 'SD vs AZ Total Runs?', 'over 14', 'Sports', 'open', '', 1000, 100, 0.70, ?, ?, ?)`,
+      [daysFromNow(1), hoursAgo(48), hoursAgo(48)],
+    )
+    db.run(`UPDATE prediction_markets SET last_price = 0.40 WHERE id = ?`, [id])
+
+    fills(db, id, 'yes', 20, 0.40, 10)
+    fills(db, id, 'no', 6, 0.40, 8)
+
+    expect(kindsFor(db).ladder_incoherence).toBeUndefined()
+  })
+
+  it('never fires on a three-way winner market', () => {
+    const db = freshDb()
+    const id = seedMarket(db, 'KXEFLCUPGAME-26AUG08WATCRA-WAT', 'Watford vs Crawley Winner?', 'Watford')
+    db.run(
+      `INSERT INTO prediction_markets (venue, external_id, question, outcome_label, category, status, result, volume, liquidity, last_price, ends_at, created_at, updated_at)
+       VALUES ('kalshi', 'KXEFLCUPGAME-26AUG08WATCRA-CRA', 'Watford vs Crawley Winner?', 'Crawley', 'Sports', 'open', '', 1000, 100, 0.9, ?, ?, ?)`,
+      [daysFromNow(1), hoursAgo(48), hoursAgo(48)],
+    )
+
+    fills(db, id, 'yes', 20, 0.5, 10)
+    fills(db, id, 'no', 6, 0.5, 8)
+
+    // Alternatives, not rungs. Reading them as a ladder would report
+    // every fixture on the board as arbitrage.
+    expect(kindsFor(db).ladder_incoherence).toBeUndefined()
+  })
+})
+
+describe('sportsbook steam', () => {
+  /** A fixture with an h2h market and a price trail on the home side. */
+  function seedSteam(db: ReturnType<typeof freshDb>, prices: number[]) {
+    seedFixture(db, { homeName: 'Home', awayName: 'Away', homeTier: 1, awayTier: 1, commenceAt: daysFromNow(1) })
+    db.run(`INSERT INTO bookmakers (id, slug, short, name, active, sharp, consensus_weight) VALUES (1, 'a', 'A', 'A', 1, 1, 1.0)`)
+    db.run(`INSERT INTO bookmakers (id, slug, short, name, active, sharp, consensus_weight) VALUES (2, 'b', 'B', 'B', 1, 1, 1.0)`)
+    db.run(`INSERT INTO bookmakers (id, slug, short, name, active, sharp, consensus_weight) VALUES (3, 'c', 'C', 'C', 1, 1, 1.0)`)
+    db.run(`INSERT INTO markets (id, market_event_id, market_type, line, line_key, period, complete, status, position) VALUES (1, 100, 'h2h', NULL, '', 'full_game', 1, 'open', 0)`)
+    db.run(`INSERT INTO selections (id, market_id, label, side, point, point_key, position, outcome, graded_at) VALUES (500, 1, 'Home', 'home', NULL, '', 0, -1, '')`)
+
+    // Every book walks the same way, which is what makes it steam.
+    for (const bookmakerId of [1, 2, 3]) {
+      prices.forEach((price, i) => {
+        db.run(
+          `INSERT INTO odds_snapshots (selection_id, bookmaker_id, price, captured_at, created_at, updated_at)
+           VALUES (500, ?, ?, ?, ?, ?)`,
+          [bookmakerId, price, hoursAgo(6 - i), hoursAgo(6 - i), hoursAgo(6 - i)],
+        )
+      })
+      db.run(
+        `INSERT INTO odds (selection_id, bookmaker_id, price, available, created_at, updated_at) VALUES (500, ?, ?, 1, ?, ?)`,
+        [bookmakerId, prices[prices.length - 1], hoursAgo(0), hoursAgo(0)],
+      )
+    }
+  }
+
+  it('fires when the books shortened a side together', () => {
+    const db = freshDb()
+    const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
+    // Decimal odds falling: the books made this side more likely.
+    seedSteam(db, [2.40, 2.20, 2.00, 1.85])
+
+    fills(db, id, 'yes', 20, 0.5, 10)
+    fills(db, id, 'no', 6, 0.5, 8)
+
+    expect(kindsFor(db).steam).toBeGreaterThan(0)
+  })
+
+  it('stays quiet when the books did not move', () => {
+    const db = freshDb()
+    const id = seedMarket(db, 'KXEPLGAME-26AUG08HOMAWA-HOM', 'Home vs Away Winner?', 'Home')
+    seedSteam(db, [2.00, 2.00, 2.00, 2.00])
+
+    fills(db, id, 'yes', 20, 0.5, 10)
+    fills(db, id, 'no', 6, 0.5, 8)
+
+    expect(kindsFor(db).steam).toBeUndefined()
   })
 })
