@@ -39,4 +39,10 @@ export default {
     file: 'Preflight',
     aliases: ['check'],
   },
+
+  // The global stop. Registered under three names because the file
+  // defines three commands, and each has to be reachable on its own.
+  'trading:halt': 'Trading',
+  'trading:resume': 'Trading',
+  'trading:status': 'Trading',
 } satisfies CommandRegistry

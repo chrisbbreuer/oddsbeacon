@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { log } from '@stacksjs/logging'
 import { resolveEntitlements } from '../billing/entitlements'
 import { openCredentials } from './credentials'
+import { haltState } from './halt'
 import { KalshiTradingClient } from './kalshi-trading'
 import { PolymarketTradingClient } from './polymarket-trading'
 import { bookOrderFill, openExposure, openPositionCount, realizedPnlSince } from './positions'
@@ -158,6 +159,15 @@ export async function executeStrategy(
 
   if (decisionIds.length === 0)
     return outcomes
+
+  // The global stop comes first. It is the one check that is not about
+  // this strategy, and a strategy-level reason must never be recorded
+  // over a system-level one — a user reading "at the position cap" when
+  // the real answer was "trading is halted" will go looking in exactly
+  // the wrong place.
+  const global = await haltState(db)
+  if (global.halted)
+    return await Promise.all(decisionIds.map(id => skip(db, id, global.reason)))
 
   const halted = await haltReason(db, strategy)
   if (halted) {

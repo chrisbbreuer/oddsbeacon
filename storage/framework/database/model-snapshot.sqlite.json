@@ -15074,10 +15074,67 @@
             "type": "index"
           }
         ]
+      },
+      {
+        "table": "trading_halts",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "active",
+            "type": "boolean",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 300
+          },
+          {
+            "name": "actor",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 120
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": []
       }
     ]
   },
-  "hash": "7fa691ea95bb419142a7f02a31357dc41186034aa25f7feb0bb453807b66b8b0",
+  "hash": "e6c7e67bb9f168aef0774e78f8b695e77aa8815e9090f3738841c2329633693d",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-06T21:33:31.924Z"
+  "updatedAt": "2026-08-06T21:37:11.240Z"
 }
