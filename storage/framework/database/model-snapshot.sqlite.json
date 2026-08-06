@@ -11814,7 +11814,7 @@
               "trading_strategy_id",
               "prediction_market_id"
             ],
-            "type": "unique"
+            "type": "index"
           }
         ]
       },
@@ -15077,7 +15077,7 @@
       }
     ]
   },
-  "hash": "1399ac2a9c6a13d1a38063a8a817133851636fb809b6120376a18a054cf20a87",
+  "hash": "7fa691ea95bb419142a7f02a31357dc41186034aa25f7feb0bb453807b66b8b0",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-06T21:28:04.325Z"
+  "updatedAt": "2026-08-06T21:33:31.924Z"
 }

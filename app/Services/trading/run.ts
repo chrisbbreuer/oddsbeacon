@@ -186,11 +186,17 @@ interface DecisionWrite {
 /**
  * Write the decision and replace its evidence.
  *
- * Upsert on (strategy, market), because re-running a strategy that still
- * sees the same edge should update its opinion rather than stack a
- * second decision that becomes a second order. An executed decision is
- * left alone — that one already has money behind it, and overwriting it
- * would lose the record the order points at.
+ * A strategy holds one standing opinion per market, and re-running it
+ * updates that opinion rather than stacking a second decision that
+ * becomes a second order. But an opinion is only standing until it is
+ * finished: once a decision has been acted on and its order is no longer
+ * working, the market is open to be considered again, and the next pass
+ * starts a fresh decision beside the old one instead of overwriting a
+ * record an order still points at.
+ *
+ * The one case that must not re-decide is a decision whose order is
+ * still live. Re-deciding there would place a second order into a
+ * position the first one is still building.
  */
 async function upsertDecision(
   db: Database,
@@ -200,17 +206,33 @@ async function upsertDecision(
   now: string,
 ): Promise<number> {
   return await db.transaction(async (transaction) => {
-  const existing = await transaction.prepare<{ id: number, status: string }>(`
-    SELECT id, status FROM trade_decisions
-    WHERE trading_strategy_id = ? AND prediction_market_id = ?
+  const existing = await transaction.prepare<{ id: number, status: string, working: number }>(`
+    SELECT
+      d.id,
+      d.status,
+      (
+        SELECT COUNT(*) FROM exchange_orders o
+        WHERE o.trade_decision_id = d.id AND o.status IN ('pending', 'open', 'partial')
+      ) AS working
+    FROM trade_decisions d
+    WHERE d.trading_strategy_id = ? AND d.prediction_market_id = ?
+    ORDER BY d.id DESC
+    LIMIT 1
   `).get(strategyId, candidate.predictionMarketId)
 
-  if (existing && (existing.status === 'executed' || existing.status === 'failed'))
+  // An order still on the book owns this market until it is done.
+  if (existing && Number(existing.working) > 0)
     return existing.id
+
+  // Anything already acted on is history. The next opinion is its own
+  // row, so the decision feed reads as a sequence of judgements rather
+  // than one row that keeps changing its mind under an executed order.
+  const settled = existing !== null
+    && ['executed', 'failed', 'expired'].includes(existing.status)
 
   let decisionId: number
 
-  if (existing) {
+  if (existing && !settled) {
     await transaction.prepare(`
       UPDATE trade_decisions SET
         venue = ?, side = ?, market_price = ?, fair_value = ?, edge = ?, confidence = ?,

@@ -47,18 +47,51 @@ export function migrationsFor(tables: string[]): string[] {
         return true
 
       const createIndex = file.match(/-index-in-(.+)\.sql$/)
-      return Boolean(createIndex?.[1] && wanted.has(createIndex[1]))
+      if (createIndex?.[1] && wanted.has(createIndex[1]))
+        return true
+
+      // Everything the generator cannot name after a single table lands
+      // in a miscellaneous file — a dropped index, most often. Its name
+      // says nothing about what it touches, so it is matched on its
+      // contents instead. Skipping these builds a schema that still has
+      // constraints production dropped, and a uniqueness the app no
+      // longer relies on is a test that passes for the wrong reason.
+      return /^\d+-auto-/.test(file) && statementsFor(join(dir, file), wanted).length > 0
     })
     .sort()
     .map(file => join(dir, file))
 }
 
+/**
+ * The statements in a file that concern one of the wanted tables.
+ *
+ * A miscellaneous migration may touch tables a given test never creates,
+ * and running those would fail on a table that does not exist. Selecting
+ * by mention keeps each test's schema to the tables it asked for.
+ */
+function statementsFor(path: string, wanted: Set<string>): string[] {
+  return readFileSync(path, 'utf-8')
+    .split(';')
+    .map(statement => statement.trim())
+    .filter(statement => statement.length > 0)
+    .filter(statement => [...wanted].some(table => statement.includes(table)))
+}
+
 /** A database with those tables, created and indexed. */
 export function schemaFor(path: string, tables: string[]): Database {
   const db = new Database(path)
+  const wanted = new Set(tables)
 
-  for (const file of migrationsFor(tables))
+  for (const file of migrationsFor(tables)) {
+    if (/\/\d+-auto-/.test(file)) {
+      for (const statement of statementsFor(file, wanted))
+        db.exec(statement)
+
+      continue
+    }
+
     db.exec(readFileSync(file, 'utf-8'))
+  }
 
   // Application queries are asynchronous in production because Vitess is
   // reached over the MySQL protocol. Keep schema setup and assertions on the

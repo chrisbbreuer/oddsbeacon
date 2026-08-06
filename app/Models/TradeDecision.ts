@@ -29,10 +29,16 @@ export default defineModel({
     { name: 'strategy', columns: ['tradingStrategyId'] },
     { name: 'market', columns: ['predictionMarketId'] },
     { name: 'status', columns: ['status'] },
-    // One live proposal per (strategy, market): a re-run that finds the
-    // same edge should update its decision, not stack duplicates that
-    // each become an order.
-    { name: 'strategy_market', columns: ['tradingStrategyId', 'predictionMarketId'], unique: true },
+    // A strategy revisits a market for as long as the market exists, so
+    // this cannot be unique. It was, and one decision per pair meant a
+    // market a strategy had traded once — or failed to trade once, on a
+    // transient venue error — could never be considered again.
+    //
+    // What must not happen is two live proposals at the same time, and
+    // that is enforced where it can be reasoned about: the write path
+    // updates the standing decision in place and only starts a new one
+    // once the previous one has no working order behind it.
+    { name: 'strategy_market', columns: ['tradingStrategyId', 'predictionMarketId'] },
   ],
 
   attributes: {
