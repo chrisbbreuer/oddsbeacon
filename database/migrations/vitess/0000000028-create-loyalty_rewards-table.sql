@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `loyalty_rewards` (
   `id` bigint PRIMARY KEY auto_increment,
   `name` varchar(255) not null,
-  `description` text,
+  `description` varchar(500),
   `points_required` integer not null,
   `reward_type` varchar(255) not null,
   `discount_percentage` integer,

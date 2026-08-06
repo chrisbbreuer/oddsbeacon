@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `shipping_methods` (
   `id` bigint PRIMARY KEY auto_increment,
   `name` varchar(100) not null,
-  `description` text,
+  `description` varchar(500),
   `base_rate` integer not null,
   `free_shipping` integer,
   `status` ENUM('active', 'inactive', 'draft') not null,

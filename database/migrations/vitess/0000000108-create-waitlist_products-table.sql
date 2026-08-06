@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `waitlist_products` (
   `quantity` integer not null,
   `notification_preference` ENUM('sms', 'email', 'both') not null,
   `source` varchar(100) not null,
-  `notes` text,
+  `notes` varchar(500),
   `status` ENUM('waiting', 'purchased', 'notified', 'cancelled') not null default 'waiting',
   `notified_at` date,
   `purchased_at` date,

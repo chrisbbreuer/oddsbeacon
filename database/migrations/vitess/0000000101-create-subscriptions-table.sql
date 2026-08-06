@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `subscriptions` (
   `id` bigint PRIMARY KEY auto_increment,
-  `type` text not null,
+  `type` varchar(512) not null,
   `plan` varchar(100),
   `provider_id` varchar(255) not null,
   `provider_status` varchar(255) not null,

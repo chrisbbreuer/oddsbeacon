@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `payment_methods` (
   `id` bigint PRIMARY KEY auto_increment,
-  `type` text not null,
+  `type` varchar(512) not null,
   `last_four` integer not null,
   `brand` varchar(50) not null,
   `exp_month` integer not null,

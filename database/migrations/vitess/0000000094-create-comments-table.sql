@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `post_title` varchar(255),
   `status` ENUM('pending', 'approved', 'spam', 'trash') not null default 'pending',
   `ip_address` varchar(45),
-  `user_agent` text,
+  `user_agent` varchar(500),
   `is_approved` integer default 0,
   `post_id` bigint REFERENCES `posts`(`id`),
   `user_id` bigint REFERENCES `users`(`id`),

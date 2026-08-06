@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `athletes` (
   `agent_name` varchar(160) default '',
   `outfitter` varchar(120) default '',
   `status` varchar(255) default 'active',
-  `image_url` text default (''),
+  `image_url` varchar(500) default '',
   `last_seen_at` varchar(40) default '',
   `sport_id` bigint REFERENCES `sports`(`id`),
   `sports_team_id` bigint REFERENCES `sports_teams`(`id`),

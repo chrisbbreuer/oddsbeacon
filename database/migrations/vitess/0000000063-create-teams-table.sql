@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `teams` (
   `id` bigint PRIMARY KEY auto_increment,
   `name` varchar(100) not null,
-  `description` text,
+  `description` varchar(500),
   `member_count` integer default 0,
   `status` varchar(255),
   `created_at` datetime not null default CURRENT_TIMESTAMP,

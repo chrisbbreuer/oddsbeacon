@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `cards` (
   `id` bigint PRIMARY KEY auto_increment,
   `column_id` integer not null,
   `board_id` integer not null REFERENCES `boards`(`id`),
-  `title` text not null,
+  `title` varchar(300) not null,
   `description` text,
   `position` integer,
   `created_by_user_id` integer,

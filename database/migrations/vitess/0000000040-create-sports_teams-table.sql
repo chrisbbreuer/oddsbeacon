@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS `sports_teams` (
   `short_name` varchar(60) default '',
   `abbreviation` varchar(8) default '',
   `aliases` text default (''),
-  `logo` text default (''),
+  `logo` varchar(300) default '',
   `espn_id` varchar(40) default '',
   `record` varchar(40) default '',
   `sport_id` bigint REFERENCES `sports`(`id`),

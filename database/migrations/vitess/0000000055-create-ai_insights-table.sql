@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `ai_insights` (
   `stance` varchar(255) default 'pass',
   `stated_prob` decimal(10,2) default 0,
   `confidence` decimal(10,2) default 0,
-  `summary` text default (''),
+  `summary` varchar(600) default '',
   `rationale` varchar(255) default '',
   `caveats` text default (''),
   `model` varchar(80) default '',

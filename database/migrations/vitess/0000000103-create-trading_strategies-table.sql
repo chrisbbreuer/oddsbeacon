@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `trading_strategies` (
   `user_id` decimal(10,2) REFERENCES `users`(`id`),
   `name` varchar(80),
   `venue` varchar(20),
-  `categories` text,
+  `categories` varchar(300),
   `bankroll` decimal(10,2),
   `max_stake` decimal(10,2),
   `min_edge` decimal(10,2),
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `trading_strategies` (
   `daily_loss_limit` decimal(10,2),
   `auto_execute` tinyint(1),
   `status` varchar(20),
-  `halted_reason` text,
+  `halted_reason` varchar(300),
   `last_run_at` varchar(40),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime

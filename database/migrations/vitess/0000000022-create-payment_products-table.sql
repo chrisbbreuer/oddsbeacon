@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `payment_products` (
   `id` bigint PRIMARY KEY auto_increment,
-  `name` text not null,
+  `name` varchar(512) not null,
   `description` varchar(255),
   `key` varchar(255) not null,
   `unit_price` integer not null,

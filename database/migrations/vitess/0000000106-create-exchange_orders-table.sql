@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS `exchange_orders` (
   `filled_size` decimal(10,2),
   `avg_fill_price` decimal(10,2),
   `status` varchar(20),
-  `error` text,
+  `error` varchar(500),
   `placed_at` varchar(40),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime

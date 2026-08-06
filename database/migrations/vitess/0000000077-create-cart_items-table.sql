@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `cart_items` (
   `product_name` varchar(255) not null,
   `product_sku` varchar(100),
   `product_image` varchar(255),
-  `notes` text,
+  `notes` varchar(500),
   `cart_id` bigint REFERENCES `carts`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime,

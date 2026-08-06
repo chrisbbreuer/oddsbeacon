@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS `exchange_accounts` (
   `masked_identifier` varchar(24),
   `status` varchar(20),
   `balance` decimal(10,2),
-  `last_error` text,
+  `last_error` varchar(300),
   `last_synced_at` varchar(40),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime

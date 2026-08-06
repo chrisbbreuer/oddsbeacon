@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `athlete_identities` (
   `id` bigint PRIMARY KEY auto_increment,
   `provider` varchar(40) not null,
   `external_id` varchar(120) not null,
-  `canonical_url` text not null,
+  `canonical_url` varchar(500) not null,
   `external_name` varchar(160) default '',
   `aliases` text default ('[]'),
   `profile_facts` text default ('{}'),

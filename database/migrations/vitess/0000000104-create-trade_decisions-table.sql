@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `trade_decisions` (
   `rationale` text,
   `decided_by` varchar(60),
   `status` varchar(20),
-  `status_reason` text,
+  `status_reason` varchar(300),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime
 );

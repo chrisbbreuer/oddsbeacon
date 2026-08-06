@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `authors` (
   `id` bigint PRIMARY KEY auto_increment,
   `name` varchar(255) not null,
   `email` varchar(255) not null,
-  `bio` text,
+  `bio` varchar(500),
   `avatar` varchar(255),
   `user_id` bigint REFERENCES `users`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,

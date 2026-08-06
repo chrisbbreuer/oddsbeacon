@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS `decision_evidence` (
   `id` bigint PRIMARY KEY auto_increment,
   `trade_decision_id` decimal(10,2) REFERENCES `trade_decisions`(`id`),
   `kind` varchar(40),
-  `summary` text,
+  `summary` varchar(400),
   `value` decimal(10,2),
   `contribution` decimal(10,2),
   `sample_size` decimal(10,2),

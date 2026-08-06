@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `posts` (
   `title` varchar(255) not null,
   `poster` varchar(255),
   `content` text not null,
-  `excerpt` text,
+  `excerpt` varchar(500),
   `focus_keyword` varchar(100),
   `meta_description` varchar(160),
   `canonical_url` varchar(255),

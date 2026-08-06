@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `mail_preferences` (
   `id` bigint PRIMARY KEY auto_increment,
-  `mailbox` text not null,
+  `mailbox` varchar(320) not null,
   `account_name` varchar(255) not null default 'Stacks',
   `signature` text,
   `display_density` ENUM('comfortable', 'default', 'compact') not null default 'default',

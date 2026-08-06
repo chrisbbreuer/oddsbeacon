@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `activities` (
   `id` bigint PRIMARY KEY auto_increment,
   `type` varchar(50) not null,
-  `description` text not null,
+  `description` varchar(500) not null,
   `subject_type` varchar(100),
   `subject_id` integer,
   `causer` varchar(100),
