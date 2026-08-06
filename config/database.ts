@@ -45,7 +45,17 @@ export default {
       // PredictHQ deliberately starts on one unsharded keyspace. This keeps
       // routing and identifier allocation simple while retaining a clean
       // path to horizontal sharding once the workload justifies it.
-      sharded: false,
+      //
+      // Read from the environment rather than hardcoded, because this is
+      // not only a connection setting: `DB_VITESS_SHARDED` is what the
+      // migration generator reads to decide whether the keyspace can use
+      // AUTO_INCREMENT and foreign keys, and it assumes **sharded** when
+      // the variable is absent. A generator run without it emits DDL for
+      // a keyspace we do not have — tables whose ids nothing allocates —
+      // and the resulting file looks perfectly ordinary. Keeping the two
+      // on one variable means the schema cannot disagree with the cluster
+      // about what kind of cluster it is.
+      sharded: String(env.DB_VITESS_SHARDED ?? 'false').toLowerCase() === 'true',
     },
 
     postgres: {

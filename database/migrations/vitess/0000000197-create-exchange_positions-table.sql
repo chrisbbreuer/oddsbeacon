@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS `exchange_positions` (
   `id` bigint PRIMARY KEY auto_increment,
-  `trading_strategy_id` bigint,
-  `exchange_account_id` bigint,
-  `prediction_market_id` bigint,
+  `trading_strategy_id` bigint REFERENCES `trading_strategies`(`id`),
+  `exchange_account_id` bigint REFERENCES `exchange_accounts`(`id`),
+  `prediction_market_id` bigint REFERENCES `prediction_markets`(`id`),
   `venue` varchar(20),
   `market_external_id` varchar(120),
   `side` varchar(60),

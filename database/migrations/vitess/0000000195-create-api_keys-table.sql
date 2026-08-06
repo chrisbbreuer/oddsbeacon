@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `api_keys` (
   `id` bigint PRIMARY KEY auto_increment,
-  `user_id` bigint,
+  `user_id` bigint REFERENCES `users`(`id`),
   `name` varchar(80),
   `prefix` varchar(40),
   `hash` varchar(120),

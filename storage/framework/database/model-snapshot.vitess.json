@@ -1,7 +1,7 @@
 {
   "plan": {
     "dialect": "vitess",
-    "vitessSharded": true,
+    "vitessSharded": false,
     "tables": [
       {
         "table": "activities",
@@ -15501,7 +15501,7 @@
       }
     ]
   },
-  "hash": "a6aff66ccb715a1d166fdd1deb4638610201b558ae0550cfbaddbee49ae4d36d",
+  "hash": "ea6df3baf1a04b5cf7731f4147984308f981a276d381a8553b8292ac315ae1d9",
   "dialect": "vitess",
-  "updatedAt": "2026-08-06T22:15:07.464Z"
+  "updatedAt": "2026-08-06T23:16:42.105Z"
 }

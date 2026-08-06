@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `alert_subscriptions` (
   `id` bigint PRIMARY KEY auto_increment,
-  `user_id` bigint,
+  `user_id` bigint REFERENCES `users`(`id`),
   `kind` varchar(30),
   `leagues` varchar(300),
   `venue` varchar(20),

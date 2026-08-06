@@ -2,6 +2,7 @@ import type { CLI } from '@stacksjs/types'
 import process from 'node:process'
 import { log } from '@stacksjs/cli'
 import { ExitCode } from '@stacksjs/types'
+import { auditVitessMigrations, keyspaceIsSharded } from '../Services/schema'
 
 /**
  * `buddy preflight` — what will this deployment actually be able to do?
@@ -121,17 +122,37 @@ export default function (cli: CLI) {
         console.log(`     Set ${[check.key, ...(check.companions ?? [])].join(', ')}.`)
       }
 
+      // The schema half of the same question. An env key that is missing
+      // announces itself the first time a feature is used; a table that
+      // cannot allocate an id announces itself the first time someone
+      // writes to it, which on this deployment means mid-trade.
+      const sharded = keyspaceIsSharded()
+      const schemaProblems = process.env.DB_CONNECTION === 'vitess' ? auditVitessMigrations() : []
+
+      if (process.env.DB_CONNECTION === 'vitess') {
+        console.log('')
+        if (schemaProblems.length === 0) {
+          console.log(`  ✓ Vitess migrations match a ${sharded ? 'sharded' : 'single unsharded'} keyspace`)
+        }
+        else {
+          console.log(`  ✗ ${schemaProblems.length} Vitess ${schemaProblems.length === 1 ? 'table does' : 'tables do'} not match a ${sharded ? 'sharded' : 'single unsharded'} keyspace`)
+          for (const problem of schemaProblems)
+            console.log(`     ${problem.table} ${problem.detail}`)
+        }
+      }
+
       const failed = failures(results, isProduction)
       console.log('')
 
-      if (failed.length === 0) {
+      if (failed.length === 0 && schemaProblems.length === 0) {
         log.success(isProduction
           ? 'Ready for production.'
           : 'Nothing is broken. Unset keys above are optional outside production.')
         return
       }
 
-      log.error(`${failed.length} ${failed.length === 1 ? 'problem' : 'problems'} would ship silently. Fix them or deploy knowingly.`)
+      const total = failed.length + schemaProblems.length
+      log.error(`${total} ${total === 1 ? 'problem' : 'problems'} would ship silently. Fix them or deploy knowingly.`)
       process.exit(ExitCode.FatalError)
     })
 }
