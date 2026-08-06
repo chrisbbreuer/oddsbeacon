@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { databaseTimestamp } from '../../app/Services/fundamentals/transfermarkt-backfill'
 import {
   parseTransfermarktCareerRecords,
   parseTransfermarktInjuries,
@@ -10,6 +11,10 @@ import {
 } from '../../app/Services/fundamentals/transfermarkt-dom'
 
 describe('Transfermarkt DOM parsers', () => {
+  test('formats queue timestamps for MySQL DATETIME columns', () => {
+    expect(databaseTimestamp(new Date('2026-08-06T07:15:42.171Z'))).toBe('2026-08-06 07:15:42')
+  })
+
   test('discovers squad player identities from the rendered club table', () => {
     const html = `<table class="items"><tbody><tr>
       <td><table class="inline-table"><tr><td><a title="Ada Striker" href="/ada-striker/profil/spieler/42">Ada</a></td></tr><tr><td>Centre-Forward</td></tr></table></td>

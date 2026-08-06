@@ -60,8 +60,8 @@ export interface TransfermarktBackfillResult {
   remaining: number
 }
 
-const nowIso = (): string => new Date().toISOString()
-const today = (): string => nowIso().slice(0, 10)
+export const databaseTimestamp = (date = new Date()): string => date.toISOString().slice(0, 19).replace('T', ' ')
+const today = (): string => databaseTimestamp().slice(0, 10)
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex')
 const rows = async <T>(sql: string, params: unknown[] = []): Promise<T[]> => await db.unsafe(sql, params).execute() as T[]
 const first = async <T>(sql: string, params: unknown[] = []): Promise<T | undefined> => (await rows<T>(sql, params))[0]
@@ -151,7 +151,7 @@ async function fetchAndSnapshot(task: TaskRow): Promise<FetchResult> {
     })
   }
 
-  const fetchedAt = nowIso()
+  const fetchedAt = databaseTimestamp()
   await updateOrInsert('source_documents', {
     provider: PROVIDER,
     url_hash: sha256(task.url),
@@ -188,7 +188,7 @@ async function enqueue(kind: TaskKind, externalId: string, url: string, payload:
     'SELECT id, status, completed_at FROM backfill_tasks WHERE provider = ? AND kind = ? AND external_id = ? LIMIT 1',
     [PROVIDER, kind, externalId],
   )
-  const timestamp = nowIso()
+  const timestamp = databaseTimestamp()
   if (!existing) {
     await (db as any).insertOrIgnore('backfill_tasks', {
       provider: PROVIDER,
@@ -247,7 +247,7 @@ async function ensureTeam(sport: number, externalId: string, name: string, canon
     'SELECT sports_team_id FROM team_identities WHERE provider = ? AND external_id = ? LIMIT 1',
     [PROVIDER, externalId],
   )
-  const timestamp = nowIso()
+  const timestamp = databaseTimestamp()
   let teamId = Number(identity?.sports_team_id || 0)
   if (!teamId) {
     const searchKey = norm(name)
@@ -286,7 +286,7 @@ async function ensureAthlete(sport: number, externalId: string, name: string, pr
     'SELECT athlete_id FROM athlete_identities WHERE provider = ? AND external_id = ? LIMIT 1',
     [PROVIDER, externalId],
   )
-  const timestamp = nowIso()
+  const timestamp = databaseTimestamp()
   let athleteId = Number(identity?.athlete_id || 0)
   if (!athleteId) {
     athleteId = Number(await (db as any).insertGetId('athletes', {
@@ -351,7 +351,7 @@ async function handleCompetition(task: TaskRow, html: string): Promise<void> {
       average_age_years: club.averageAgeYears,
       league_tier: payload.tier || 0,
       competition: payload.competition || '',
-      updated_at: nowIso(),
+      updated_at: databaseTimestamp(),
     })
     await enqueue('squad', `${payload.sportSlug}:${club.externalId}`, `${BASE}/${clubSlug}/kader/verein/${club.externalId}/plus/1`, {
       ...payload,
@@ -376,12 +376,12 @@ async function handleSquad(task: TaskRow, html: string): Promise<void> {
     })
     if (teamId) {
       await updateOrInsert('athlete_team_memberships', { athlete_id: athleteId, sports_team_id: teamId, started_on: '' }, {
-        ended_on: '', squad_number: 0, role: 'player', competition: payload.competition || '', source: PROVIDER, updated_at: nowIso(),
+        ended_on: '', squad_number: 0, role: 'player', competition: payload.competition || '', source: PROVIDER, updated_at: databaseTimestamp(),
       })
     }
     if (player.marketValueEur > 0) {
       await updateOrInsert('athlete_market_values', { athlete_id: athleteId, provider: PROVIDER, valued_on: today() }, {
-        value_eur: player.marketValueEur, team_name: payload.teamName || '', updated_at: nowIso(),
+        value_eur: player.marketValueEur, team_name: payload.teamName || '', updated_at: databaseTimestamp(),
       })
     }
     const childPayload = { ...payload, teamExternalId: payload.teamExternalId, teamName: payload.teamName }
@@ -431,16 +431,16 @@ async function handleProfile(task: TaskRow, html: string): Promise<void> {
   })
   await db.updateTable('athlete_identities').set({
     profile_facts: JSON.stringify(profile.facts),
-    updated_at: nowIso(),
+    updated_at: databaseTimestamp(),
   }).where('provider', '=', PROVIDER).where('external_id', '=', task.external_id).execute()
   if (currentTeamId) {
     await updateOrInsert('athlete_team_memberships', { athlete_id: athleteId, sports_team_id: currentTeamId, started_on: '' }, {
-      ended_on: '', squad_number: profile.shirtNumber, role: 'player', competition: payload.competition || '', source: PROVIDER, updated_at: nowIso(),
+      ended_on: '', squad_number: profile.shirtNumber, role: 'player', competition: payload.competition || '', source: PROVIDER, updated_at: databaseTimestamp(),
     })
   }
   if (profile.marketValueEur > 0) {
     await updateOrInsert('athlete_market_values', { athlete_id: athleteId, provider: PROVIDER, valued_on: today() }, {
-      value_eur: profile.marketValueEur, team_name: profile.currentTeamName, updated_at: nowIso(),
+      value_eur: profile.marketValueEur, team_name: profile.currentTeamName, updated_at: databaseTimestamp(),
     })
   }
 }
@@ -461,11 +461,11 @@ async function handleTransfers(task: TaskRow, html: string): Promise<void> {
       transferred_on: transferredOn,
       fee_eur: transfer.feeEur,
       market_value_eur: transfer.marketValueEur,
-      updated_at: nowIso(),
+      updated_at: databaseTimestamp(),
     })
     if (toTeamId) {
       await updateOrInsert('athlete_team_memberships', { athlete_id: athleteId, sports_team_id: toTeamId, started_on: transferredOn }, {
-        ended_on: '', squad_number: 0, role: 'player', competition: '', source: PROVIDER, updated_at: nowIso(),
+        ended_on: '', squad_number: 0, role: 'player', competition: '', source: PROVIDER, updated_at: databaseTimestamp(),
       })
     }
   }
@@ -475,7 +475,7 @@ async function handleMarketValues(task: TaskRow, html: string): Promise<void> {
   const { athleteId } = await athleteFor(task)
   for (const value of parseTransfermarktMarketValues(html)) {
     await updateOrInsert('athlete_market_values', { athlete_id: athleteId, provider: PROVIDER, valued_on: normalizeDate(value.valuedOn) }, {
-      value_eur: value.valueEur, team_name: value.teamName, updated_at: nowIso(),
+      value_eur: value.valueEur, team_name: value.teamName, updated_at: databaseTimestamp(),
     })
   }
 }
@@ -498,7 +498,7 @@ async function handleStats(task: TaskRow, html: string): Promise<void> {
       goals: stat.goals,
       assists: stat.assists,
       metrics: JSON.stringify(stat.metrics),
-      updated_at: nowIso(),
+      updated_at: databaseTimestamp(),
     })
   }
 }
@@ -512,7 +512,7 @@ async function handleInjuries(task: TaskRow, html: string): Promise<void> {
       days_missed: injury.daysMissed,
       games_missed: injury.gamesMissed,
       status: injury.endedOn ? 'resolved' : 'active',
-      updated_at: nowIso(),
+      updated_at: databaseTimestamp(),
     })
   }
 }
@@ -535,7 +535,7 @@ async function handleCareerRecords(task: TaskRow, html: string): Promise<void> {
       occurred_on: normalizeDate(record.occurredOn),
       ended_on: normalizeDate(record.endedOn),
       details: JSON.stringify(record.details),
-      updated_at: nowIso(),
+      updated_at: databaseTimestamp(),
     })
   }
 }
@@ -554,8 +554,8 @@ async function handleTask(task: TaskRow, html: string): Promise<void> {
 }
 
 async function claimTask(): Promise<TaskRow | undefined> {
-  const timestamp = nowIso()
-  const staleBefore = new Date(Date.now() - 30 * 60_000).toISOString()
+  const timestamp = databaseTimestamp()
+  const staleBefore = databaseTimestamp(new Date(Date.now() - 30 * 60_000))
   await db.unsafe(
     `UPDATE backfill_tasks SET status = 'pending', locked_at = '', lock_token = '', available_at = '', updated_at = ?
      WHERE provider = ? AND status = 'running' AND locked_at <> '' AND locked_at < ?`,
@@ -585,7 +585,7 @@ async function claimTask(): Promise<TaskRow | undefined> {
 }
 
 async function finishTask(task: TaskRow, fetchResult: FetchResult): Promise<void> {
-  const timestamp = nowIso()
+  const timestamp = databaseTimestamp()
   await db.updateTable('backfill_tasks').set({
     status: 'completed',
     locked_at: '',
@@ -607,12 +607,12 @@ async function failTask(task: TaskRow, error: unknown): Promise<void> {
   const attempts = Math.max(1, Number(task.attempts || 0))
   const exhausted = attempts >= Math.max(1, Number(process.env.TRANSFERMARKT_MAX_ATTEMPTS || 8))
   const delay = Math.min(24 * 3_600_000, 60_000 * 2 ** Math.min(10, attempts - 1))
-  const timestamp = nowIso()
+  const timestamp = databaseTimestamp()
   await db.updateTable('backfill_tasks').set({
     status: exhausted ? 'exhausted' : 'failed',
     locked_at: '',
     lock_token: '',
-    available_at: new Date(Date.now() + delay).toISOString(),
+    available_at: databaseTimestamp(new Date(Date.now() + delay)),
     last_error: (error instanceof Error ? error.message : String(error)).slice(0, 2000),
     updated_at: timestamp,
   }).where('id', '=', task.id).where('lock_token', '=', task.lock_token).execute()
