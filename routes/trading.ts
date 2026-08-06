@@ -39,6 +39,10 @@ route.group({ middleware: ['auth', 'throttle:60,1'] }, () => {
   route.get('/trading/strategies', 'Actions/Trading/GetStrategies')
   route.post('/trading/strategies', 'Actions/Trading/SaveStrategy')
 
+  // What the strategies actually returned. Every other endpoint here
+  // describes intent; this one describes outcome.
+  route.get('/trading/performance', 'Actions/Trading/GetPerformance')
+
   // Manual approval — the path a strategy left on manual, or a plan
   // without automated execution, queues decisions into.
   route.post('/trading/decisions/{id}/review', 'Actions/Trading/ReviewDecision')
