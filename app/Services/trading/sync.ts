@@ -2,6 +2,7 @@ import type { Database } from '../../Support/db'
 import type { PlaceOrderResult, TradingClient } from './venue'
 import { log } from '@stacksjs/logging'
 import { clientFor, revokeAccount } from './execute'
+import { bookOrderFill } from './positions'
 import { isAuthFailure, VenueError } from './venue'
 
 /**
@@ -67,8 +68,12 @@ interface OrderRow {
   size: number
   filled_size: number
   avg_fill_price: number
+  accrued_size: number | null
+  accrued_cost: number | null
   status: string
   placed_at: string
+  trading_strategy_id: number
+  prediction_market_id: number
   account_credentials: string
   account_status: string
 }
@@ -88,10 +93,12 @@ export async function syncOrders(db: Database, now: Date = new Date()): Promise<
     SELECT
       o.id, o.trade_decision_id, o.exchange_account_id, o.venue, o.client_order_id,
       o.external_order_id, o.market_external_id, o.side, o.limit_price, o.size,
-      o.filled_size, o.avg_fill_price, o.status, o.placed_at,
+      o.filled_size, o.avg_fill_price, o.accrued_size, o.accrued_cost, o.status, o.placed_at,
+      d.trading_strategy_id, d.prediction_market_id,
       a.credentials AS account_credentials, a.status AS account_status
     FROM exchange_orders o
     JOIN exchange_accounts a ON a.id = o.exchange_account_id
+    JOIN trade_decisions d ON d.id = o.trade_decision_id
     WHERE o.status IN (${placeholders})
     ORDER BY o.exchange_account_id, o.id
   `).all(...NON_TERMINAL)
@@ -234,12 +241,19 @@ function restedTooLong(placedAt: string, now: Date): boolean {
 }
 
 /**
- * Persist a reconciled status, and carry it through to the decision.
+ * Persist a reconciled status, book any new fill, and carry both through
+ * to the decision.
  *
- * A decision is marked 'executed' the moment its order is accepted, which
- * is the right thing to record at the time and the wrong thing to leave
- * behind when the order is later cancelled unfilled. Rewriting it to
- * 'expired' keeps the feed honest and lets the strategy consider the
+ * The three writes belong in one transaction. A fill booked into a
+ * position without the matching accrual mark on the order is booked
+ * again on the next pass, and an accrual mark without the position is a
+ * fill nobody owns — either way the strategy's exposure stops matching
+ * what the venue says it holds.
+ *
+ * A decision is marked 'executed' the moment its order is accepted,
+ * which is the right thing to record at the time and the wrong thing to
+ * leave behind when the order is later cancelled unfilled. Rewriting it
+ * to 'expired' keeps the feed honest and lets the strategy consider the
  * market again, which a permanently-executed decision would prevent.
  */
 async function writeStatus(
@@ -253,27 +267,41 @@ async function writeStatus(
 ): Promise<void> {
   const now = new Date().toISOString()
 
-  await db.prepare(`
-    UPDATE exchange_orders
-    SET status = ?, filled_size = ?, avg_fill_price = ?, external_order_id = ?, error = ?, updated_at = ?
-    WHERE id = ?
-  `).run(
-    status,
-    filledSize,
-    avgFillPrice,
-    externalOrderId ?? order.external_order_id,
-    note,
-    now,
-    order.id,
-  )
+  await db.transaction(async (transaction) => {
+    await transaction.prepare(`
+      UPDATE exchange_orders
+      SET status = ?, filled_size = ?, avg_fill_price = ?, external_order_id = ?, error = ?, updated_at = ?
+      WHERE id = ?
+    `).run(
+      status,
+      filledSize,
+      avgFillPrice,
+      externalOrderId ?? order.external_order_id,
+      note,
+      now,
+      order.id,
+    )
 
-  if (status === 'cancelled' && filledSize === 0) {
-    await db.prepare(`
-      UPDATE trade_decisions
-      SET status = 'expired', status_reason = ?, updated_at = ?
-      WHERE id = ? AND status = 'executed'
-    `).run(note || 'the order was cancelled before it filled', now, order.trade_decision_id)
-  }
+    await bookOrderFill(transaction, {
+      orderId: order.id,
+      tradingStrategyId: order.trading_strategy_id,
+      exchangeAccountId: order.exchange_account_id,
+      predictionMarketId: order.prediction_market_id,
+      venue: order.venue,
+      marketExternalId: order.market_external_id,
+      side: order.side,
+      accruedSize: Number(order.accrued_size ?? 0),
+      accruedCost: Number(order.accrued_cost ?? 0),
+    }, filledSize, avgFillPrice)
+
+    if (status === 'cancelled' && filledSize === 0) {
+      await transaction.prepare(`
+        UPDATE trade_decisions
+        SET status = 'expired', status_reason = ?, updated_at = ?
+        WHERE id = ? AND status = 'executed'
+      `).run(note || 'the order was cancelled before it filled', now, order.trade_decision_id)
+    }
+  })
 }
 
 function message(error: unknown): string {

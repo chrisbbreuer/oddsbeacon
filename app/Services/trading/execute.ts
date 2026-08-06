@@ -7,6 +7,7 @@ import { resolveEntitlements } from '../billing/entitlements'
 import { openCredentials } from './credentials'
 import { KalshiTradingClient } from './kalshi-trading'
 import { PolymarketTradingClient } from './polymarket-trading'
+import { bookOrderFill, openExposure, openPositionCount } from './positions'
 import { VenueError, isAuthFailure } from './venue'
 
 /**
@@ -163,13 +164,13 @@ export async function executeStrategy(
   const clients = new Map<string, { client: TradingClient, account: AccountRow }>()
 
   for (const decision of decisions) {
-    const openPositions = await countOpenPositions(db, strategy.id)
+    const openPositions = await openPositionCount(db, strategy.id)
     if (openPositions >= strategy.max_open_positions) {
       outcomes.push(await skip(db, decision.id, `at the ${strategy.max_open_positions}-position cap`))
       continue
     }
 
-    const committed = await committedNotional(db, strategy.id)
+    const committed = await openExposure(db, strategy.id)
     if (committed + decision.notional > strategy.bankroll) {
       outcomes.push(await skip(db, decision.id, `would commit $${round(committed + decision.notional)} against a $${round(strategy.bankroll)} bankroll`))
       continue
@@ -203,7 +204,7 @@ export async function executeStrategy(
       }
     }
 
-    outcomes.push(await placeOne(db, decision, resolved.client, resolved.account))
+    outcomes.push(await placeOne(db, strategy, decision, resolved.client, resolved.account))
   }
 
   return outcomes
@@ -219,6 +220,7 @@ export async function executeStrategy(
  */
 async function placeOne(
   db: Database,
+  strategy: Strategy,
   decision: DecisionRow,
   client: TradingClient,
   account: AccountRow,
@@ -268,6 +270,23 @@ async function placeOne(
       SET external_order_id = ?, status = ?, filled_size = ?, avg_fill_price = ?, updated_at = ?
       WHERE id = ?
     `).run(result.externalOrderId, result.status, result.filledSize, result.avgFillPrice, new Date().toISOString(), orderId)
+
+    // An order can cross the moment it is submitted, and a fill that
+    // crosses here is terminal — reconciliation only looks at orders
+    // that can still change, so it would never see this one. Booking it
+    // now is what keeps an immediate fill from being a position nobody
+    // knows we hold.
+    await bookOrderFill(db, {
+      orderId,
+      tradingStrategyId: strategy.id,
+      exchangeAccountId: account.id,
+      predictionMarketId: decision.prediction_market_id,
+      venue: decision.venue,
+      marketExternalId: market.external_id,
+      side: decision.side,
+      accruedSize: 0,
+      accruedCost: 0,
+    }, result.filledSize, result.avgFillPrice)
 
     await db.prepare(`UPDATE trade_decisions SET status = 'executed', status_reason = '', updated_at = ? WHERE id = ?`)
       .run(new Date().toISOString(), decision.id)
@@ -323,30 +342,6 @@ async function haltReason(db: Database, strategy: Strategy): Promise<string> {
   }
 
   return ''
-}
-
-/** Orders still live or filled and unsettled, for the position cap. */
-async function countOpenPositions(db: Database, strategyId: number): Promise<number> {
-  const row = await db.prepare<{ n: number }>(`
-    SELECT COUNT(*) AS n
-    FROM exchange_orders o
-    JOIN trade_decisions d ON d.id = o.trade_decision_id
-    WHERE d.trading_strategy_id = ? AND o.status IN ('pending', 'open', 'partial', 'filled')
-  `).get(strategyId)
-
-  return Number(row?.n ?? 0)
-}
-
-/** Notional already committed, against which the bankroll is checked. */
-async function committedNotional(db: Database, strategyId: number): Promise<number> {
-  const row = await db.prepare<{ total: number }>(`
-    SELECT COALESCE(SUM(o.limit_price * o.size), 0) AS total
-    FROM exchange_orders o
-    JOIN trade_decisions d ON d.id = o.trade_decision_id
-    WHERE d.trading_strategy_id = ? AND o.status IN ('pending', 'open', 'partial', 'filled')
-  `).get(strategyId)
-
-  return Number(row?.total ?? 0)
 }
 
 async function skip(db: Database, decisionId: number, reason: string): Promise<ExecutionOutcome> {

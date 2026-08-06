@@ -2,6 +2,7 @@ import { Database } from '../../Support/db'
 import { runAnalytics } from '../../Services/prediction-markets/analytics'
 import { KalshiProvider } from '../../Services/prediction-markets/kalshi'
 import { PolymarketProvider } from '../../Services/prediction-markets/polymarket'
+import { settlePositions } from '../../Services/trading/positions'
 
 /** Fills pulled from each venue's tape per run. */
 const TRADES_PER_VENUE = 500
@@ -101,8 +102,15 @@ export default {
     }
 
     let analytics
+    let settlement
     try {
       analytics = await runAnalytics(db)
+
+      // Settlement belongs here rather than on its own schedule: the
+      // refresh above is the moment a market's result first exists in our
+      // database, and settling from the same pass means a position never
+      // spends a cycle closed at the venue but open on our books.
+      settlement = await settlePositions(db)
     }
     finally {
       db.close()
@@ -114,6 +122,8 @@ export default {
       markets: marketsUpserted,
       traders: tradersUpserted,
       ...analytics,
+      positionsSettled: settlement.settled,
+      realized: settlement.realized,
       at: now,
     }
   },

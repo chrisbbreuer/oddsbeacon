@@ -24,11 +24,12 @@
           },
           {
             "name": "description",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "subject_type",
@@ -144,7 +145,7 @@
           },
           {
             "name": "selection_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -157,7 +158,7 @@
           },
           {
             "name": "market_event_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -212,7 +213,8 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": true,
-            "defaultValue": ""
+            "defaultValue": "",
+            "maxLength": 600
           },
           {
             "name": "rationale",
@@ -225,7 +227,7 @@
           },
           {
             "name": "caveats",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -480,11 +482,12 @@
           },
           {
             "name": "bio",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "avatar",
@@ -823,7 +826,7 @@
           },
           {
             "name": "board_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1307,7 +1310,7 @@
           },
           {
             "name": "email_list_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -1467,7 +1470,7 @@
           },
           {
             "name": "campaign_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1479,7 +1482,7 @@
           },
           {
             "name": "subscriber_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1491,7 +1494,7 @@
           },
           {
             "name": "email_list_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1615,7 +1618,7 @@
           },
           {
             "name": "board_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1627,11 +1630,12 @@
           },
           {
             "name": "title",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "description",
@@ -1746,7 +1750,7 @@
           },
           {
             "name": "card_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -1758,7 +1762,7 @@
           },
           {
             "name": "user_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -2073,11 +2077,12 @@
           },
           {
             "name": "notes",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "cart_id",
@@ -2426,11 +2431,12 @@
           },
           {
             "name": "user_agent",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "is_approved",
@@ -2827,7 +2833,7 @@
           },
           {
             "name": "trade_decision_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -2852,7 +2858,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 400
           },
           {
             "name": "value",
@@ -3045,11 +3052,12 @@
           },
           {
             "name": "commit_message",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "branch",
@@ -3095,11 +3103,12 @@
           },
           {
             "name": "url",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "error_log",
@@ -3396,11 +3405,12 @@
           },
           {
             "name": "description",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "subscriber_count",
@@ -3526,7 +3536,7 @@
           },
           {
             "name": "email_list_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -3538,7 +3548,7 @@
           },
           {
             "name": "subscriber_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -3959,7 +3969,7 @@
           },
           {
             "name": "user_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -4027,7 +4037,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "last_synced_at",
@@ -4080,7 +4091,7 @@
           },
           {
             "name": "trade_decision_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -4092,7 +4103,7 @@
           },
           {
             "name": "exchange_account_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -4194,7 +4205,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "placed_at",
@@ -4217,6 +4229,22 @@
           {
             "name": "updated_at",
             "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "accrued_size",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "accrued_cost",
+            "type": "decimal",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -4452,7 +4480,7 @@
           },
           {
             "name": "best_bookmaker_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -5156,7 +5184,7 @@
           },
           {
             "name": "error",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -5170,7 +5198,8 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": true,
-            "defaultValue": ""
+            "defaultValue": "",
+            "maxLength": 500
           },
           {
             "name": "created_at",
@@ -5293,7 +5322,7 @@
           },
           {
             "name": "board_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -5746,11 +5775,12 @@
           },
           {
             "name": "description",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "points_required",
@@ -5870,11 +5900,12 @@
           },
           {
             "name": "mailbox",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": true,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 320
           },
           {
             "name": "account_name",
@@ -6416,7 +6447,7 @@
           },
           {
             "name": "home_sports_team_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6429,7 +6460,7 @@
           },
           {
             "name": "away_sports_team_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6552,7 +6583,7 @@
           },
           {
             "name": "prediction_market_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6564,7 +6595,7 @@
           },
           {
             "name": "user_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6594,7 +6625,7 @@
           },
           {
             "name": "body",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6657,7 +6688,7 @@
           },
           {
             "name": "prediction_market_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6669,7 +6700,7 @@
           },
           {
             "name": "market_trader_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -6951,7 +6982,7 @@
           },
           {
             "name": "data",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -7026,7 +7057,7 @@
           },
           {
             "name": "user_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -7038,19 +7069,11 @@
           },
           {
             "name": "channel",
-            "type": "enum",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false,
-            "enumValues": [
-              "email",
-              "sms",
-              "chat",
-              "database",
-              "push",
-              "broadcast"
-            ]
+            "hasDefault": false
           },
           {
             "name": "recipient",
@@ -7079,18 +7102,12 @@
           },
           {
             "name": "status",
-            "type": "enum",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
             "hasDefault": true,
-            "defaultValue": "pending",
-            "enumValues": [
-              "pending",
-              "sent",
-              "delivered",
-              "failed"
-            ]
+            "defaultValue": "pending"
           },
           {
             "name": "error",
@@ -7102,7 +7119,7 @@
           },
           {
             "name": "metadata",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -7588,7 +7605,7 @@
           },
           {
             "name": "order_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -8019,11 +8036,12 @@
           },
           {
             "name": "type",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 512
           },
           {
             "name": "last_four",
@@ -8119,11 +8137,12 @@
           },
           {
             "name": "name",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 512
           },
           {
             "name": "description",
@@ -8328,11 +8347,12 @@
           },
           {
             "name": "excerpt",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "focus_keyword",
@@ -8482,7 +8502,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "category",
@@ -9871,7 +9892,7 @@
           },
           {
             "name": "sports_team_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -9972,11 +9993,12 @@
           },
           {
             "name": "description",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "base_rate",
@@ -10168,11 +10190,12 @@
           },
           {
             "name": "regions",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "postal_codes",
@@ -10583,7 +10606,7 @@
           },
           {
             "name": "aliases",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -10597,7 +10620,8 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": true,
-            "defaultValue": ""
+            "defaultValue": "",
+            "maxLength": 300
           },
           {
             "name": "espn_id",
@@ -10866,11 +10890,12 @@
           },
           {
             "name": "type",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 512
           },
           {
             "name": "plan",
@@ -11233,11 +11258,12 @@
           },
           {
             "name": "description",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "member_count",
@@ -11312,7 +11338,7 @@
           },
           {
             "name": "team_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -11324,11 +11350,12 @@
           },
           {
             "name": "email",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 320
           },
           {
             "name": "role",
@@ -11495,7 +11522,7 @@
           },
           {
             "name": "team_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -11507,7 +11534,7 @@
           },
           {
             "name": "user_id",
-            "type": "integer",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": false,
@@ -11610,7 +11637,7 @@
           },
           {
             "name": "trading_strategy_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -11622,7 +11649,7 @@
           },
           {
             "name": "prediction_market_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -11708,7 +11735,7 @@
           },
           {
             "name": "rationale",
-            "type": "string",
+            "type": "text",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -11738,7 +11765,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "created_at",
@@ -11803,7 +11831,7 @@
           },
           {
             "name": "user_id",
-            "type": "decimal",
+            "type": "bigint",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
@@ -11837,7 +11865,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "bankroll",
@@ -11910,7 +11939,8 @@
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 300
           },
           {
             "name": "last_run_at",
@@ -12237,11 +12267,12 @@
           },
           {
             "name": "notes",
-            "type": "text",
+            "type": "string",
             "isPrimaryKey": false,
             "isUnique": false,
             "isNullable": true,
-            "hasDefault": false
+            "hasDefault": false,
+            "maxLength": 500
           },
           {
             "name": "status",
@@ -13127,10 +13158,1926 @@
             "type": "index"
           }
         ]
+      },
+      {
+        "table": "athletes",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 160
+          },
+          {
+            "name": "search_key",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 180
+          },
+          {
+            "name": "given_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 100
+          },
+          {
+            "name": "family_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 100
+          },
+          {
+            "name": "date_of_birth",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "place_of_birth",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "nationality",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 100
+          },
+          {
+            "name": "second_nationality",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 100
+          },
+          {
+            "name": "position",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 100
+          },
+          {
+            "name": "secondary_positions",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "[]"
+          },
+          {
+            "name": "height_cm",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "preferred_foot",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "shirt_number",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "joined_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "contract_expires_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "agent_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "outfitter",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 120
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "active"
+          },
+          {
+            "name": "image_url",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 500
+          },
+          {
+            "name": "last_seen_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "sport_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "sports",
+              "column": "id"
+            }
+          },
+          {
+            "name": "sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "sports_teams",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athletes_sport_search_key",
+            "columns": [
+              "sport_id",
+              "search_key"
+            ],
+            "type": "index"
+          },
+          {
+            "name": "athletes_current_team",
+            "columns": [
+              "sports_team_id"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_career_records",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "category",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 60
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 64
+          },
+          {
+            "name": "title",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 240
+          },
+          {
+            "name": "season",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "competition",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "team_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "occurred_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "ended_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "details",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "{}"
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_career_records_natural",
+            "columns": [
+              "athlete_id",
+              "provider",
+              "category",
+              "external_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_career_records_timeline",
+            "columns": [
+              "athlete_id",
+              "category",
+              "occurred_on"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_identities",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 120
+          },
+          {
+            "name": "canonical_url",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 500
+          },
+          {
+            "name": "external_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "aliases",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "[]"
+          },
+          {
+            "name": "profile_facts",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "{}"
+          },
+          {
+            "name": "last_seen_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_identities_provider_external",
+            "columns": [
+              "provider",
+              "external_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_identities_athlete",
+            "columns": [
+              "athlete_id"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_injuries",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "injury_type",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 160
+          },
+          {
+            "name": "started_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "ended_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "days_missed",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "games_missed",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "resolved",
+            "maxLength": 40
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfermarkt",
+            "maxLength": 40
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_injuries_natural",
+            "columns": [
+              "athlete_id",
+              "provider",
+              "started_on",
+              "injury_type"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_injuries_dates",
+            "columns": [
+              "athlete_id",
+              "started_on",
+              "ended_on"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_market_values",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "value_eur",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "valued_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 20
+          },
+          {
+            "name": "team_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfermarkt",
+            "maxLength": 40
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_values_natural",
+            "columns": [
+              "athlete_id",
+              "provider",
+              "valued_on"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_values_date",
+            "columns": [
+              "athlete_id",
+              "valued_on"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_season_stats",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "season",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 20
+          },
+          {
+            "name": "competition",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "appearances",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "starts",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "minutes",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "points",
+            "type": "double",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "goals",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "assists",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "metrics",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "{}"
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfermarkt",
+            "maxLength": 40
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_stats_natural",
+            "columns": [
+              "athlete_id",
+              "provider",
+              "season",
+              "competition",
+              "sports_team_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_stats_lookup",
+            "columns": [
+              "athlete_id",
+              "season"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_team_memberships",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "started_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "ended_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "squad_number",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "role",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "player",
+            "maxLength": 40
+          },
+          {
+            "name": "competition",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "source",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfermarkt",
+            "maxLength": 40
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "sports_teams",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_memberships_natural",
+            "columns": [
+              "athlete_id",
+              "sports_team_id",
+              "started_on"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_memberships_team_dates",
+            "columns": [
+              "sports_team_id",
+              "started_on",
+              "ended_on"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "athlete_transfers",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "from_sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "to_sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "from_team_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "to_team_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfer",
+            "maxLength": 40
+          },
+          {
+            "name": "season",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "transferred_on",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 20
+          },
+          {
+            "name": "fee_eur",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "market_value_eur",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "transfermarkt",
+            "maxLength": 40
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 200
+          },
+          {
+            "name": "athlete_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "athletes",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "athlete_transfers_natural",
+            "columns": [
+              "athlete_id",
+              "provider",
+              "external_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "athlete_transfers_date",
+            "columns": [
+              "athlete_id",
+              "transferred_on"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "backfill_tasks",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 160
+          },
+          {
+            "name": "url",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "pending"
+          },
+          {
+            "name": "priority",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 100
+          },
+          {
+            "name": "attempts",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "available_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "locked_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "lock_token",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 64
+          },
+          {
+            "name": "completed_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "last_error",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": ""
+          },
+          {
+            "name": "document_hash",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 64
+          },
+          {
+            "name": "payload",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "{}"
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "backfill_tasks_natural",
+            "columns": [
+              "provider",
+              "kind",
+              "external_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "backfill_tasks_claim",
+            "columns": [
+              "status",
+              "available_at",
+              "priority"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "exchange_positions",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "trading_strategy_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "trading_strategies",
+              "column": "id"
+            }
+          },
+          {
+            "name": "exchange_account_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "exchange_accounts",
+              "column": "id"
+            }
+          },
+          {
+            "name": "prediction_market_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "prediction_markets",
+              "column": "id"
+            }
+          },
+          {
+            "name": "venue",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 20
+          },
+          {
+            "name": "market_external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 120
+          },
+          {
+            "name": "side",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 60
+          },
+          {
+            "name": "size",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "cost_basis",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "avg_price",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "realized_pnl",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 20
+          },
+          {
+            "name": "settlement_price",
+            "type": "decimal",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          },
+          {
+            "name": "opened_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "settled_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "strategy_status",
+            "columns": [
+              "trading_strategy_id",
+              "status"
+            ],
+            "type": "index"
+          },
+          {
+            "name": "account",
+            "columns": [
+              "exchange_account_id"
+            ],
+            "type": "index"
+          },
+          {
+            "name": "market",
+            "columns": [
+              "prediction_market_id"
+            ],
+            "type": "index"
+          },
+          {
+            "name": "book",
+            "columns": [
+              "trading_strategy_id",
+              "market_external_id",
+              "side",
+              "status"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "source_documents",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "url",
+            "type": "text",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "url_hash",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "content_hash",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "storage_path",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 500
+          },
+          {
+            "name": "http_status",
+            "type": "integer",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 200
+          },
+          {
+            "name": "content_type",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "text/html",
+            "maxLength": 160
+          },
+          {
+            "name": "etag",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 500
+          },
+          {
+            "name": "last_modified",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "byte_length",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": 0
+          },
+          {
+            "name": "fetched_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "parsed_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "parser_version",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "source_documents_version",
+            "columns": [
+              "provider",
+              "url_hash",
+              "content_hash"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "source_documents_url_fetched",
+            "columns": [
+              "url_hash",
+              "fetched_at"
+            ],
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "table": "team_identities",
+        "columns": [
+          {
+            "name": "id",
+            "type": "bigint",
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false
+          },
+          {
+            "name": "provider",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 40
+          },
+          {
+            "name": "external_id",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": false,
+            "maxLength": 120
+          },
+          {
+            "name": "canonical_url",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 500
+          },
+          {
+            "name": "external_name",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 160
+          },
+          {
+            "name": "last_seen_at",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": true,
+            "defaultValue": "",
+            "maxLength": 40
+          },
+          {
+            "name": "sports_team_id",
+            "type": "bigint",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "references": {
+              "table": "sports_teams",
+              "column": "id"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": false,
+            "hasDefault": true,
+            "defaultValue": "CURRENT_TIMESTAMP"
+          },
+          {
+            "name": "updated_at",
+            "type": "datetime",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "team_identities_provider_external",
+            "columns": [
+              "provider",
+              "external_id"
+            ],
+            "type": "unique"
+          },
+          {
+            "name": "team_identities_team",
+            "columns": [
+              "sports_team_id"
+            ],
+            "type": "index"
+          }
+        ]
       }
     ]
   },
-  "hash": "2253c704d455db192ad6a1f812e35afe85fa386b3d4c03f61c323e849115f81b",
+  "hash": "1399ac2a9c6a13d1a38063a8a817133851636fb809b6120376a18a054cf20a87",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-05T00:38:09.397Z"
+  "updatedAt": "2026-08-06T21:28:04.325Z"
 }

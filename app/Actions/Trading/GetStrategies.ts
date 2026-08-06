@@ -17,7 +17,8 @@ interface StrategyRow {
   status: string
   halted_reason: string
   last_run_at: string
-  open_orders: number
+  working_orders: number
+  open_positions: number
   committed: number
 }
 
@@ -46,19 +47,33 @@ export default {
           s.id, s.name, s.venue, s.categories, s.bankroll, s.max_stake, s.min_edge,
           s.min_confidence, s.max_open_positions, s.daily_loss_limit, s.auto_execute,
           s.status, s.halted_reason, s.last_run_at,
-          COALESCE(o.open_orders, 0) AS open_orders,
-          COALESCE(o.committed, 0) AS committed
+          COALESCE(o.working_orders, 0) AS working_orders,
+          COALESCE(p.open_positions, 0) AS open_positions,
+          COALESCE(o.working, 0) + COALESCE(p.at_risk, 0) AS committed
         FROM trading_strategies s
+        -- Only the unfilled remainder of a working order. Whatever has
+        -- filled is already carried by the position it created, and
+        -- counting both is how a bankroll appears fully committed at
+        -- half the exposure.
         LEFT JOIN (
           SELECT
             d.trading_strategy_id AS sid,
-            COUNT(*) AS open_orders,
-            SUM(eo.limit_price * eo.size) AS committed
+            COUNT(*) AS working_orders,
+            SUM(eo.limit_price * (eo.size - COALESCE(eo.accrued_size, 0))) AS working
           FROM exchange_orders eo
           JOIN trade_decisions d ON d.id = eo.trade_decision_id
-          WHERE eo.status IN ('pending', 'open', 'partial', 'filled')
+          WHERE eo.status IN ('pending', 'open', 'partial')
           GROUP BY d.trading_strategy_id
         ) AS o ON o.sid = s.id
+        LEFT JOIN (
+          SELECT
+            trading_strategy_id AS sid,
+            COUNT(*) AS open_positions,
+            SUM(cost_basis) AS at_risk
+          FROM exchange_positions
+          WHERE status = 'open' AND size > 0
+          GROUP BY trading_strategy_id
+        ) AS p ON p.sid = s.id
         WHERE s.user_id = ?
         ORDER BY s.id
       `).all(userId)
@@ -83,7 +98,8 @@ export default {
           status: s.status,
           haltedReason: s.halted_reason,
           lastRunAt: s.last_run_at,
-          openOrders: s.open_orders,
+          workingOrders: s.working_orders,
+          openPositions: s.open_positions,
           committed: Math.round(s.committed * 100) / 100,
           bankrollRemaining: Math.round((s.bankroll - s.committed) * 100) / 100,
         })),

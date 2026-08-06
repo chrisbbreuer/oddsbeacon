@@ -124,5 +124,23 @@ export default defineModel({
       validation: { rule: schema.string().max(40) },
       factory: faker => faker.date.recent().toISOString(),
     },
+    // How much of this order's fill has already been folded into a
+    // position, and what it cost. Fills arrive cumulatively — the venue
+    // reports a running total and an average, never the increment — so
+    // booking the difference needs the last total we booked. Without
+    // these, a partial fill that grows across two reconciliation passes
+    // is counted twice.
+    accruedSize: {
+      type: 'number',
+      fillable: false,
+      validation: { rule: schema.float().min(0) },
+      factory: () => 0,
+    },
+    accruedCost: {
+      type: 'number',
+      fillable: false,
+      validation: { rule: schema.float().min(0) },
+      factory: () => 0,
+    },
   },
 } as const)
