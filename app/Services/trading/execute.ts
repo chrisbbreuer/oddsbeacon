@@ -55,6 +55,29 @@ export interface ExecutionOutcome {
  */
 const KELLY_FRACTION = 0.25
 
+/**
+ * How old our view of a market's price may be when an order is sent.
+ *
+ * The trading loop runs every fifteen minutes and the price it decided
+ * on came from whenever ingestion last ran. Sending an order against a
+ * quote nobody has refreshed since is not trading on a stale price, it
+ * is trading on no price at all — the venue is somewhere, and we do not
+ * know where.
+ */
+const MAX_QUOTE_AGE_MINUTES = 10
+
+/**
+ * How far a market may move between the decision and the order.
+ *
+ * A limit price protects against paying too much; it does not protect
+ * against the reasoning being obsolete. Three points of movement in a
+ * binary market is news, and news is exactly the case where a fair value
+ * derived from the preceding day's tape is no longer the right number.
+ * Better to skip and let the next pass re-derive it from the tape that
+ * now includes whatever moved it.
+ */
+const MAX_QUOTE_DRIFT = 0.03
+
 export function stakeFor(candidate: Candidate, strategy: Strategy, availableBankroll: number): number {
   const price = candidate.marketPrice
   if (price <= 0 || price >= 1)
@@ -102,6 +125,8 @@ interface DecisionRow {
   prediction_market_id: number
   venue: string
   side: string
+  /** The venue price this decision was reasoned about. */
+  market_price: number
   limit_price: number
   size: number
   notional: number
@@ -153,7 +178,7 @@ export async function executeStrategy(
 
   const placeholders = decisionIds.map(() => '?').join(', ')
   const decisions = await db.prepare<DecisionRow>(`
-    SELECT id, prediction_market_id, venue, side, limit_price, size, notional, confidence, edge
+    SELECT id, prediction_market_id, venue, side, market_price, limit_price, size, notional, confidence, edge
     FROM trade_decisions
     WHERE id IN (${placeholders})
     ORDER BY confidence DESC, edge DESC
@@ -228,11 +253,20 @@ async function placeOne(
   const now = new Date().toISOString()
   const clientOrderId = randomUUID()
 
-  const market = await db.prepare<{ external_id: string }>('SELECT external_id FROM prediction_markets WHERE id = ?')
+  const market = await db.prepare<{
+    external_id: string
+    status: string
+    last_price: number
+    updated_at: string
+  }>('SELECT external_id, status, last_price, updated_at FROM prediction_markets WHERE id = ?')
     .get(decision.prediction_market_id)
 
   if (!market)
     return await skip(db, decision.id, 'market no longer in our database')
+
+  const stale = quoteObjection(decision, market, now)
+  if (stale)
+    return await skip(db, decision.id, stale)
 
   const insert = await db.prepare(`
     INSERT INTO exchange_orders (
@@ -309,6 +343,40 @@ async function placeOne(
 
     return { decisionId: decision.id, placed: false, reason: message }
   }
+}
+
+/**
+ * Why this decision must not reach the venue now, or '' if it may.
+ *
+ * A decision carries the price it was reasoned about. Between then and
+ * here the market has kept trading and the ingestion loop has kept
+ * running, and this is the last point at which the two can be compared
+ * before real money depends on the answer.
+ */
+export function quoteObjection(
+  decision: Pick<DecisionRow, 'market_price' | 'limit_price'>,
+  market: { status: string, last_price: number, updated_at: string },
+  now: string,
+): string {
+  if (market.status !== 'open' && market.status !== 'active')
+    return `market is ${market.status}`
+
+  const age = Date.parse(now) - Date.parse(market.updated_at)
+  if (!Number.isFinite(age) || age > MAX_QUOTE_AGE_MINUTES * 60_000)
+    return `no price for this market in the last ${MAX_QUOTE_AGE_MINUTES} minutes`
+
+  const drift = market.last_price - decision.market_price
+  if (Math.abs(drift) > MAX_QUOTE_DRIFT) {
+    return `market moved ${drift > 0 ? 'up' : 'down'} ${(Math.abs(drift) * 100).toFixed(1)} points since this was decided`
+  }
+
+  // At or through our limit there is no edge left to take. The order
+  // would rest unfilled until the expiry pass cancelled it, holding
+  // bankroll against a trade we no longer want.
+  if (market.last_price >= decision.limit_price)
+    return `market is quoted at ${(market.last_price * 100).toFixed(1)} against our ${(decision.limit_price * 100).toFixed(1)} limit`
+
+  return ''
 }
 
 /**
