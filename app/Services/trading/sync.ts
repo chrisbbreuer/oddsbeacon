@@ -42,6 +42,19 @@ const RESTING_TTL_MINUTES = 45
 /** Statuses that can still change, and so still need to be asked about. */
 const NON_TERMINAL = ['pending', 'open', 'partial'] as const
 
+export interface SyncOptions {
+  now?: Date
+  /**
+   * How to obtain a client for an account's sealed credentials.
+   *
+   * Injectable so the reconciliation logic can be exercised against a
+   * venue that behaves the way a test needs it to. Every branch here is
+   * about what a venue said, and a test that cannot make a venue say
+   * something is a test of nothing.
+   */
+  clientFor?: (sealedCredentials: string) => Promise<TradingClient>
+}
+
 export interface SyncSummary {
   /** Rows examined. */
   examined: number
@@ -85,7 +98,9 @@ interface OrderRow {
  * address from a private key, which is not free, and an account
  * typically has several orders in flight.
  */
-export async function syncOrders(db: Database, now: Date = new Date()): Promise<SyncSummary> {
+export async function syncOrders(db: Database, options: SyncOptions = {}): Promise<SyncSummary> {
+  const now = options.now ?? new Date()
+  const openClient = options.clientFor ?? clientFor
   const summary: SyncSummary = { examined: 0, recovered: 0, advanced: 0, expired: 0, unreachable: 0 }
 
   const placeholders = NON_TERMINAL.map(() => '?').join(', ')
@@ -119,7 +134,7 @@ export async function syncOrders(db: Database, now: Date = new Date()): Promise<
     let client = clients.get(order.exchange_account_id)
     if (!client) {
       try {
-        client = await clientFor(order.account_credentials)
+        client = await openClient(order.account_credentials)
         clients.set(order.exchange_account_id, client)
       }
       catch (error) {

@@ -127,11 +127,19 @@ export async function meter(
   const day = now.toISOString().slice(0, 10)
   const timestamp = now.toISOString()
 
-  await db.updateOrInsert(
-    'api_usage',
-    { api_key_id: key.id, day, endpoint },
-    { requests: 0, created_at: timestamp, updated_at: timestamp },
-  )
+  // Insert-or-ignore, never update-or-insert: the second form would
+  // write `requests = 0` over an existing bucket on every call, so the
+  // counter would sit at one forever and the quota would never bind.
+  // The unique index on the three columns is what makes the ignore safe
+  // against two requests arriving together.
+  await db.insertOrIgnore('api_usage', {
+    api_key_id: key.id,
+    day,
+    endpoint,
+    requests: 0,
+    created_at: timestamp,
+    updated_at: timestamp,
+  })
 
   await db.prepare(
     'UPDATE api_usage SET requests = requests + 1, updated_at = ? WHERE api_key_id = ? AND day = ? AND endpoint = ?',
@@ -167,15 +175,28 @@ export async function usageFor(db: Database, apiKeyId: number, days = 30): Promi
   `).all(apiKeyId, since)
 }
 
-/** `phq_<prefix>_<secret>` split into its halves, or null if malformed. */
+/**
+ * `phq_<prefix>_<secret>` split into its halves, or null if malformed.
+ *
+ * Split on the first separator after the prefix rather than on every
+ * one. The secret is base64url, whose alphabet includes the underscore,
+ * so a plain split rejects roughly two keys in three — which reads as a
+ * key that was issued and then never worked.
+ */
 export function parse(presented: string): { prefix: string, secret: string } | null {
   const trimmed = presented.trim().replace(/^Bearer\s+/i, '')
-  const parts = trimmed.split('_')
-
-  if (parts.length !== 3 || parts[0] !== 'phq' || !parts[1] || !parts[2])
+  if (!trimmed.startsWith('phq_'))
     return null
 
-  return { prefix: parts[1], secret: parts[2] }
+  const rest = trimmed.slice('phq_'.length)
+  const separator = rest.indexOf('_')
+  if (separator <= 0)
+    return null
+
+  const prefix = rest.slice(0, separator)
+  const secret = rest.slice(separator + 1)
+
+  return prefix && secret ? { prefix, secret } : null
 }
 
 export function digest(secret: string): string {
