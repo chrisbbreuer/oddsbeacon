@@ -1,6 +1,7 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import RunAutoTradeAction from '../Actions/Trading/RunAutoTrade'
+import { monitored } from '../Services/monitoring'
 
 /**
  * The trading loop: score markets from the ingested tape, judge the
@@ -25,7 +26,7 @@ export default new Job({
   backoff: 3,
   rate: Every.FifteenMinutes,
 
-  handle: async () => {
+  handle: monitored('AutoTrade', async () => {
     return RunAutoTradeAction.handle()
-  },
+  }),
 })

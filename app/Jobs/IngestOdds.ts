@@ -1,6 +1,7 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import IngestOddsAction from '../Actions/Ingest/IngestOdds'
+import { monitored } from '../Services/monitoring'
 
 /**
  * The live data loop: pull fresh prices from the active provider, persist
@@ -16,7 +17,7 @@ export default new Job({
   backoff: 3,
   rate: Every.Minute,
 
-  handle: async () => {
+  handle: monitored('IngestOdds', async () => {
     return IngestOddsAction.handle()
-  },
+  }),
 })

@@ -1,6 +1,7 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import BroadcastBoard from '../Actions/Odds/BroadcastBoard'
+import { monitored } from '../Services/monitoring'
 
 /**
  * Pushes the latest odds board to realtime subscribers on a cadence.
@@ -16,7 +17,7 @@ export default new Job({
   backoff: 3,
   rate: Every.Minute,
 
-  handle: async () => {
+  handle: monitored('BroadcastOdds', async () => {
     return BroadcastBoard.handle()
-  },
+  }),
 })

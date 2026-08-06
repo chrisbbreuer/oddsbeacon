@@ -1,6 +1,7 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import IngestPredictionMarketsAction from '../Actions/PredictionMarkets/IngestPredictionMarkets'
+import { monitored } from '../Services/monitoring'
 
 /**
  * The prediction-market data loop: pull the public Kalshi + Polymarket
@@ -17,7 +18,7 @@ export default new Job({
   backoff: 3,
   rate: Every.FiveMinutes,
 
-  handle: async () => {
+  handle: monitored('IngestPredictionMarkets', async () => {
     return IngestPredictionMarketsAction.handle()
-  },
+  }),
 })

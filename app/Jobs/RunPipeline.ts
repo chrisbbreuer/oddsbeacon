@@ -1,4 +1,5 @@
 import RunPipeline from '../Actions/Ingest/RunPipeline'
+import { monitored } from '../Services/monitoring'
 
 /**
  * The scheduled data loop.
@@ -8,5 +9,5 @@ import RunPipeline from '../Actions/Ingest/RunPipeline'
  * ordering that makes it correct.
  */
 export default {
-  handle: async () => RunPipeline.handle(),
+  handle: monitored('RunPipeline', async () => RunPipeline.handle()),
 }

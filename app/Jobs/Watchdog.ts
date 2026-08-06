@@ -2,6 +2,7 @@ import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import { Database } from '../Support/db'
 import { log } from '@stacksjs/logging'
+import { monitored } from '../Services/monitoring'
 import { runWatchdog } from '../Services/watchdog'
 
 /**
@@ -19,7 +20,7 @@ export default new Job({
   backoff: 3,
   rate: Every.FiveMinutes,
 
-  handle: async () => {
+  handle: monitored('Watchdog', async () => {
     const db = new Database()
 
     try {
@@ -33,5 +34,5 @@ export default new Job({
     finally {
       db.close()
     }
-  },
+  }),
 })

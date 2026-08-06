@@ -1,6 +1,7 @@
 import { Job } from '@stacksjs/queue'
 import { Every } from '@stacksjs/types'
 import SyncOrdersAction from '../Actions/Trading/SyncOrders'
+import { monitored } from '../Services/monitoring'
 
 /**
  * Reconcile open orders with the venues that hold them.
@@ -24,7 +25,7 @@ export default new Job({
   backoff: 3,
   rate: Every.Minute,
 
-  handle: async () => {
+  handle: monitored('SyncOrders', async () => {
     return SyncOrdersAction.handle()
-  },
+  }),
 })
