@@ -38,6 +38,15 @@ route.group({ middleware: ['throttle:60,1'] }, () => {
   route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
 })
 
+// ---- Alert subscriptions ---------------------------------------------------
+// Standing requests to be told about something. Authenticated, because
+// an alert has to reach a person and an anonymous token is not one.
+route.group({ middleware: ['auth', 'throttle:60,1'] }, () => {
+  route.get('/alerts/subscriptions', 'Actions/Alerts/ListSubscriptions')
+  route.post('/alerts/subscriptions', 'Actions/Alerts/SaveSubscription')
+  route.delete('/alerts/subscriptions/{id}', 'Actions/Alerts/DeleteSubscription')
+})
+
 // ---- Community -------------------------------------------------------------
 // User-authored text that other people read. Tighter than the sheets:
 // posting is the one write here whose output is public.
