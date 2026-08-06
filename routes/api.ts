@@ -1,4 +1,4 @@
-import { response, route } from '@stacksjs/router'
+import { route } from '@stacksjs/router'
 
 /**
  * Unversioned API routes, served under `/api`.
@@ -12,7 +12,10 @@ import { response, route } from '@stacksjs/router'
  */
 
 // ---- Odds: aliases onto v1 -------------------------------------------------
-route.get('/health', () => response.json({ status: 'ok' }))
+// Answers from its dependencies rather than from a literal: an instance
+// that cannot reach its database has to fail this, or a load balancer
+// keeps routing to it. See app/Services/health.ts.
+route.get('/health', 'Actions/GetHealth')
 route.get('/odds', 'Actions/V1/GetBoard')
 route.get('/odds/arbitrage', 'Actions/V1/GetArbitrage')
 route.get('/odds/edges', 'Actions/V1/GetEdges')

@@ -1,4 +1,4 @@
-import { response, route } from '@stacksjs/router'
+import { route } from '@stacksjs/router'
 
 /**
  * Version 1 of the public API, served under `/api/v1`.
@@ -48,4 +48,7 @@ route.group({ middleware: ['throttle:20,1'] }, () => {
   route.get('/training', 'Actions/V1/GetTrainingData')
 })
 
-route.get('/health', () => response.json({ version: 'v1', status: 'ok' }))
+// The same check as `/api/health`. Kept at both paths because a probe
+// configured against the versioned prefix should not get a weaker answer
+// than one configured against the unversioned one.
+route.get('/health', 'Actions/GetHealth')
