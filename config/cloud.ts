@@ -702,6 +702,10 @@ export const tsCloud: TsCloudConfig = {
         // The main service owns schema migration. Both processes connect to
         // the same vtgate keyspace, so the API must never race this step.
         'bun node_modules/@stacksjs/buddy/dist/cli.js migrate',
+        // These model fixtures are canonical provider metadata, not sample
+        // rows. The seeder skips populated tables, making fresh installs and
+        // ordinary deploys equally safe and idempotent.
+        'bun node_modules/@stacksjs/buddy/dist/cli.js seed --only Sport,Bookmaker',
       ],
       env: {
         APP_ENV: 'production',
