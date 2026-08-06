@@ -685,6 +685,10 @@ export const tsCloud: TsCloudConfig = {
       root: '.',
       path: '/',
       domain: 'predicthq.org',
+      // Raw provider documents are immutable evidence and must outlive the
+      // release that fetched them. ts-cloud links this directory through the
+      // site's shared storage on every atomic deploy.
+      sharedPaths: ['storage/ingest'],
       // Point at the installed CLI's built entry, NOT the `./buddy` shim.
       // ts-cloud runs `start` under bun, so `./buddy serve` becomes
       // `bun ./buddy serve` — and `buddy` is a shell script, which bun tries
