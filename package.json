@@ -72,7 +72,7 @@
     "@stacksjs/stx": "^0.2.153",
     "bun-plugin-stx": "^0.2.153",
     "bun-query-builder": "^0.2.14",
-    "stacks": "^0.70.282",
+    "stacks": "^0.70.283",
     "ts-charts": "github:stacksjs/ts-charts",
     "ts-web-scraper": "^0.1.6",
     "viem": "^2.55.11"
