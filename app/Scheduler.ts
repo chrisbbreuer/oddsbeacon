@@ -50,6 +50,13 @@ export default function () {
     .job('SyncOrders')
     .everyMinute()
 
+  // Asks whether the loops above are still producing. Outside them on
+  // purpose: a check that runs inside the pass it watches cannot report
+  // the pass never running. See app/Services/watchdog.ts.
+  schedule
+    .job('Watchdog')
+    .everyFiveMinutes()
+
   // Transfermarkt career history is intentionally outside the five-minute
   // pricing loop. This bounded pass resumes durable tasks, refreshes mutable
   // squad/injury pages by TTL, and never downloads immutable history merely

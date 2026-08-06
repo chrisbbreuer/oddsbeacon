@@ -1,0 +1,194 @@
+import type { Database } from '../Support/db'
+import { log } from '@stacksjs/logging'
+import { useDatabase } from '@stacksjs/notifications'
+import { channel } from '@stacksjs/realtime'
+
+/**
+ * Noticing when the data stops arriving.
+ *
+ * Every ingestion pass records what it did, and `/api/v1/status` will
+ * report it to anyone who asks — but nothing asked. A provider that
+ * stopped matching, a key that expired, a worker that died: all of them
+ * look from the outside exactly like a quiet night, and the board keeps
+ * serving the last prices it had as though they were current. The product
+ * is worth what its data freshness is worth, so a stall has to announce
+ * itself rather than wait to be discovered.
+ *
+ * What counts as overdue depends on the loop. Prices refresh every few
+ * minutes and daily fundamentals refresh once a day, so a single
+ * threshold would either alert constantly on the slow ones or never on
+ * the fast ones.
+ */
+
+/** How long each kind of pass may go between successes, in minutes. */
+const OVERDUE_AFTER: Record<string, number> = {
+  odds: 20,
+  schedule: 90,
+  fundamentals: 36 * 60,
+}
+
+/** Anything not named above. Generous, because guessing low cries wolf. */
+const DEFAULT_OVERDUE_MINUTES = 6 * 60
+
+/**
+ * How long to stay quiet after alerting on the same loop.
+ *
+ * A stall lasts until someone fixes it, and a watchdog that repeats every
+ * minute for an hour teaches people to filter it out — which is the same
+ * as not having one.
+ */
+const COOLDOWN_MINUTES = 60
+
+export interface Stall {
+  provider: string
+  kind: string
+  status: string
+  /** Minutes since this loop last succeeded, or null if it never has. */
+  ageMinutes: number | null
+  reason: string
+}
+
+export interface WatchdogSummary {
+  checked: number
+  stalls: Stall[]
+  alerted: number
+}
+
+/**
+ * Find every loop that has stopped producing, and announce the new ones.
+ */
+export async function runWatchdog(db: Database, now: Date = new Date()): Promise<WatchdogSummary> {
+  const stalls = await findStalls(db, now)
+  let alerted = 0
+
+  for (const stall of stalls) {
+    if (await alertedRecently(db, stall, now))
+      continue
+
+    await announce(stall)
+    alerted++
+  }
+
+  const checked = await countLoops(db)
+  return { checked, stalls, alerted }
+}
+
+/**
+ * Loops that are overdue or outright failing.
+ *
+ * Judged on the last *successful* pass rather than the last pass of any
+ * kind. A provider failing every minute has a very recent run and no
+ * fresh data, and reading recency alone would call that healthy.
+ */
+export async function findStalls(db: Database, now: Date = new Date()): Promise<Stall[]> {
+  const rows = await db.query<{
+    provider: string
+    kind: string
+    status: string
+    last_success: string | null
+  }>(`
+    SELECT
+      provider,
+      kind,
+      (
+        SELECT status FROM ingest_runs latest
+        WHERE latest.provider = runs.provider AND latest.kind = runs.kind
+        ORDER BY latest.id DESC LIMIT 1
+      ) AS status,
+      MAX(CASE WHEN status IN ('success', 'partial') THEN finished_at END) AS last_success
+    FROM ingest_runs runs
+    GROUP BY provider, kind
+  `).all()
+
+  const stalls: Stall[] = []
+
+  for (const row of rows) {
+    const limit = OVERDUE_AFTER[row.kind] ?? DEFAULT_OVERDUE_MINUTES
+
+    if (!row.last_success) {
+      stalls.push({
+        provider: row.provider,
+        kind: row.kind,
+        status: row.status ?? 'unknown',
+        ageMinutes: null,
+        reason: 'has never completed a pass',
+      })
+      continue
+    }
+
+    const ageMinutes = Math.round((now.getTime() - Date.parse(row.last_success)) / 60_000)
+    if (!Number.isFinite(ageMinutes) || ageMinutes <= limit)
+      continue
+
+    stalls.push({
+      provider: row.provider,
+      kind: row.kind,
+      status: row.status ?? 'unknown',
+      ageMinutes,
+      reason: `last succeeded ${ageMinutes} minutes ago, and runs every ${limit} at the latest`,
+    })
+  }
+
+  return stalls
+}
+
+/**
+ * Whether this loop has already been announced inside the cooldown.
+ *
+ * Read from the notifications this watchdog writes rather than from
+ * memory, so the quiet period survives a restart — otherwise a crash
+ * loop in the worker becomes a notification loop as well.
+ */
+async function alertedRecently(db: Database, stall: Stall, now: Date): Promise<boolean> {
+  const since = new Date(now.getTime() - COOLDOWN_MINUTES * 60_000).toISOString()
+
+  const row = await db.query<{ n: number }>(`
+    SELECT COUNT(*) AS n FROM notifications
+    WHERE type = 'ingest_stalled'
+      AND created_at >= ?
+      AND data LIKE ?
+  `).get(since, `%"loop":"${stall.provider}/${stall.kind}"%`)
+
+  return Number(row?.n ?? 0) > 0
+}
+
+/**
+ * Record and broadcast one stall.
+ *
+ * The log line is written first and unconditionally. The notification
+ * table and the realtime channel are both best-effort — neither is
+ * running in every environment — but a stall that fails to notify and
+ * leaves nothing behind is the failure this whole file exists to end.
+ */
+async function announce(stall: Stall): Promise<void> {
+  const loop = `${stall.provider}/${stall.kind}`
+  log.error(`[watchdog] ${loop} ${stall.reason}`)
+
+  const payload = { loop, provider: stall.provider, kind: stall.kind, status: stall.status, ageMinutes: stall.ageMinutes, reason: stall.reason }
+
+  try {
+    await useDatabase().send({ userId: 0, type: 'ingest_stalled', data: payload })
+  }
+  catch (error) {
+    log.warn(`[watchdog] could not record the stall notification: ${message(error)}`)
+  }
+
+  try {
+    await channel('alerts').broadcast('ingest_stalled', payload)
+  }
+  catch (error) {
+    log.warn(`[watchdog] could not broadcast the stall: ${message(error)}`)
+  }
+}
+
+async function countLoops(db: Database): Promise<number> {
+  const row = await db.query<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM (SELECT 1 FROM ingest_runs GROUP BY provider, kind) AS loops',
+  ).get()
+
+  return Number(row?.n ?? 0)
+}
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
