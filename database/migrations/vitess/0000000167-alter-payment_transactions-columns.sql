@@ -1,0 +1,2 @@
+ALTER TABLE `payment_transactions` ADD CONSTRAINT `payment_transactions_user_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`);
+ALTER TABLE `payment_transactions` ADD CONSTRAINT `payment_transactions_payment_method_id_fk` FOREIGN KEY (`payment_method_id`) REFERENCES `payment_methods`(`id`);
