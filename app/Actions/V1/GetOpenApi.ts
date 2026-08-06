@@ -31,10 +31,26 @@ const SPEC = {
       '`fairProb` has that margin removed and is the only one an edge should be',
       'computed against. Comparing a price to an implied probability measures vig,',
       'not value.',
+      '',
+      'Endpoints accept an API key and are metered when one is presented. `/training`',
+      'requires one: it returns thousands of rows a call, and serving that to a caller',
+      'nobody can name is a question of who holds the data rather than of rate limits.',
     ].join('\n'),
   },
   servers: [{ url: '/api/v1' }],
   components: {
+    securitySchemes: {
+      apiKey: {
+        type: 'http',
+        scheme: 'bearer',
+        description: [
+          'A key issued under your account, sent as `Authorization: Bearer phq_...`.',
+          'Optional on every endpoint but `/training`, which requires one. Presenting',
+          'a key raises your allowance to the daily quota of your plan and meters the',
+          'requests against it; without one the per-address rate limit applies.',
+        ].join(' '),
+      },
+    },
     schemas: {
       Meta: {
         type: 'object',
@@ -198,6 +214,7 @@ const SPEC = {
     '/training': {
       get: {
         summary: 'Labelled pre-kickoff feature vectors',
+        security: [{ apiKey: [] }],
         description: 'Features are frozen at capture time and never recomputed, so they contain no information a live caller would not have had. Split train and test chronologically on capturedAt — a random split leaks rows from the same event across both sides.',
         parameters: [
           COMMON_PARAMS.sport,

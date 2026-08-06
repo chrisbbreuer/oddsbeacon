@@ -19,7 +19,14 @@ arbitrage — is visible on one screen.
 
 **Automated positions.** A strategy states what it will trade and how much. The
 decision engine proposes, the evidence behind the proposal is recorded next to it,
-and orders reach a venue only when a subscription entitles it.
+and orders reach a venue only when a subscription entitles it. New strategies run
+on paper first — the same decisions and the same limits, filled against the tape —
+so a strategy has a track record before it has money behind it.
+
+**A record of what happened.** Orders are reconciled against the venue every
+minute, fills become positions, and positions settle against the market's own
+result. That is what makes hit rate, realized return, and drawdown answerable,
+and it is what the risk limits are computed from.
 
 ## Requirements
 
@@ -53,6 +60,7 @@ fallback.
 | `app/Actions/` | Query and command handlers, reused by routes, events, and the CLI |
 | `app/Jobs/` | Scheduled ingestion and broadcast jobs |
 | `app/Support/` | Pure domain logic — odds math, board assembly, branding |
+| `app/Services/trading/` | Evidence, judgement, execution, reconciliation, positions |
 | `routes/` | HTTP routes, registered through `app/Routes.ts` |
 | `resources/views/` | stx templates for the board, live feed, and smart money |
 | `config/` | Typed configuration, one file per subsystem |
