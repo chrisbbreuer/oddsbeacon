@@ -71,7 +71,7 @@
   "dependencies": {
     "@stacksjs/stx": "^0.2.153",
     "bun-plugin-stx": "^0.2.153",
-    "stacks": "^0.70.276",
+    "stacks": "^0.70.278",
     "ts-charts": "github:stacksjs/ts-charts",
     "ts-web-scraper": "^0.1.6",
     "viem": "^2.55.11"
