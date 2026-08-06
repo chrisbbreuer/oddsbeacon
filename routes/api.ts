@@ -38,6 +38,15 @@ route.group({ middleware: ['throttle:60,1'] }, () => {
   route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
 })
 
+// ---- API keys --------------------------------------------------------------
+// Managed with a session, never with a key: a key that can mint another
+// key turns one leak into permanent access.
+route.group({ middleware: ['auth', 'throttle:30,1'] }, () => {
+  route.get('/keys', 'Actions/ApiKeys/ListApiKeys')
+  route.post('/keys', 'Actions/ApiKeys/CreateApiKey')
+  route.delete('/keys/{id}', 'Actions/ApiKeys/RevokeApiKey')
+})
+
 // ---- Alert subscriptions ---------------------------------------------------
 // Standing requests to be told about something. Authenticated, because
 // an alert has to reach a person and an anonymous token is not one.

@@ -30,6 +30,9 @@ export default {
   'verified': 'EnsureEmailIsVerified',
   'csrf': 'Csrf',
   'compress': 'Compress',
+  // Optional by default; `apikey:required` refuses an unkeyed request.
+  // See app/Middleware/ApiKey.ts.
+  'apikey': 'ApiKey',
   // Add more middleware aliases here
   // Note: Use ! prefix for negation (e.g., '!auth', '!env:development')
 } satisfies Middleware
