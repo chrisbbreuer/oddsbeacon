@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `trading_strategies` (
   `id` bigint PRIMARY KEY auto_increment,
-  `user_id` decimal(10,2) REFERENCES `users`(`id`),
+  `user_id` bigint REFERENCES `users`(`id`),
   `name` varchar(80),
   `venue` varchar(20),
   `categories` varchar(300),

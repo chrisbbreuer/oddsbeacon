@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS `selections` (
   `point` decimal(10,2),
   `point_key` varchar(20) not null default '',
   `position` decimal(10,2) default 0,
-  `sports_team_id` decimal(10,2) REFERENCES `sports_teams`(`id`) ON DELETE SET NULL,
+  `sports_team_id` bigint REFERENCES `sports_teams`(`id`) ON DELETE SET NULL,
   `outcome` decimal(10,2) not null default -1,
   `graded_at` varchar(40) default '',
   `market_id` bigint REFERENCES `markets`(`id`),

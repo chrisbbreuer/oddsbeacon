@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `market_notes` (
   `id` bigint PRIMARY KEY auto_increment,
-  `prediction_market_id` decimal(10,2) REFERENCES `prediction_markets`(`id`),
-  `user_id` decimal(10,2) REFERENCES `users`(`id`),
+  `prediction_market_id` bigint REFERENCES `prediction_markets`(`id`),
+  `user_id` bigint REFERENCES `users`(`id`),
   `author_name` varchar(60),
   `stance` varchar(10),
   `body` text,

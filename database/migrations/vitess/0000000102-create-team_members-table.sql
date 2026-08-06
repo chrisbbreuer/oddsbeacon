@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `team_members` (
   `id` bigint PRIMARY KEY auto_increment,
-  `team_id` integer not null REFERENCES `teams`(`id`),
-  `user_id` integer not null REFERENCES `users`(`id`),
+  `team_id` bigint not null REFERENCES `teams`(`id`),
+  `user_id` bigint not null REFERENCES `users`(`id`),
   `role` ENUM('owner', 'admin', 'member', 'viewer') not null default 'member',
   `status` ENUM('active', 'suspended') not null default 'active',
   `created_at` datetime not null default CURRENT_TIMESTAMP,

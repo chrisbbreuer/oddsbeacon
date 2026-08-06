@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `decision_evidence` (
   `id` bigint PRIMARY KEY auto_increment,
-  `trade_decision_id` decimal(10,2) REFERENCES `trade_decisions`(`id`),
+  `trade_decision_id` bigint REFERENCES `trade_decisions`(`id`),
   `kind` varchar(40),
   `summary` varchar(400),
   `value` decimal(10,2),

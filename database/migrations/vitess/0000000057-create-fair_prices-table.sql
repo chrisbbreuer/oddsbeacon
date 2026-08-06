@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `fair_prices` (
   `method_spread` decimal(10,2) default 0,
   `fair_price` decimal(10,2) default 0,
   `best_price` decimal(10,2) default 0,
-  `best_bookmaker_id` decimal(10,2) REFERENCES `bookmakers`(`id`) ON DELETE SET NULL,
+  `best_bookmaker_id` bigint REFERENCES `bookmakers`(`id`) ON DELETE SET NULL,
   `edge_pct` decimal(10,2) default 0,
   `kelly_fraction` decimal(10,2) default 0,
   `overround_pct` decimal(10,2) default 0,

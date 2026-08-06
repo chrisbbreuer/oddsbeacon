@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS `campaign_sends` (
   `id` bigint PRIMARY KEY auto_increment,
-  `campaign_id` integer not null REFERENCES `campaigns`(`id`),
-  `subscriber_id` integer not null REFERENCES `subscribers`(`id`),
-  `email_list_id` integer not null REFERENCES `email_lists`(`id`),
+  `campaign_id` bigint not null REFERENCES `campaigns`(`id`),
+  `subscriber_id` bigint not null REFERENCES `subscribers`(`id`),
+  `email_list_id` bigint not null REFERENCES `email_lists`(`id`),
   `status` ENUM('queued', 'sent', 'failed', 'bounced', 'complained') not null default 'queued',
   `provider_message_id` varchar(255),
   `error` varchar(255),

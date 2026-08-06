@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `exchange_orders` (
   `id` bigint PRIMARY KEY auto_increment,
-  `trade_decision_id` decimal(10,2) REFERENCES `trade_decisions`(`id`),
-  `exchange_account_id` decimal(10,2) REFERENCES `exchange_accounts`(`id`),
+  `trade_decision_id` bigint REFERENCES `trade_decisions`(`id`),
+  `exchange_account_id` bigint REFERENCES `exchange_accounts`(`id`),
   `venue` varchar(20),
   `client_order_id` varchar(80),
   `external_order_id` varchar(120),

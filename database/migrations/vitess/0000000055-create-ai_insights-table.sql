@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS `ai_insights` (
   `id` bigint PRIMARY KEY auto_increment,
   `kind` varchar(40) not null default 'candidate_review',
-  `selection_id` decimal(10,2) REFERENCES `selections`(`id`) ON DELETE CASCADE,
-  `market_event_id` decimal(10,2) REFERENCES `market_events`(`id`) ON DELETE CASCADE,
+  `selection_id` bigint REFERENCES `selections`(`id`) ON DELETE CASCADE,
+  `market_event_id` bigint REFERENCES `market_events`(`id`) ON DELETE CASCADE,
   `feature_hash` varchar(80) not null default '',
   `stance` varchar(255) default 'pass',
   `stated_prob` decimal(10,2) default 0,

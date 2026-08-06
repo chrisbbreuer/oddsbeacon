@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `card_comments` (
   `id` bigint PRIMARY KEY auto_increment,
-  `card_id` integer not null REFERENCES `cards`(`id`),
-  `user_id` integer REFERENCES `users`(`id`),
+  `card_id` bigint not null REFERENCES `cards`(`id`),
+  `user_id` bigint REFERENCES `users`(`id`),
   `body` text not null,
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime,

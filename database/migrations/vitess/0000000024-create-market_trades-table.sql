@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `market_trades` (
   `id` bigint PRIMARY KEY auto_increment,
-  `prediction_market_id` decimal(10,2) REFERENCES `prediction_markets`(`id`),
-  `market_trader_id` decimal(10,2) REFERENCES `market_traders`(`id`),
+  `prediction_market_id` bigint REFERENCES `prediction_markets`(`id`),
+  `market_trader_id` bigint REFERENCES `market_traders`(`id`),
   `venue` varchar(20),
   `external_id` varchar(120),
   `side` varchar(120),

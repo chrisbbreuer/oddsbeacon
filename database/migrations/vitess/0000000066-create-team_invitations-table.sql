@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `team_invitations` (
   `id` bigint PRIMARY KEY auto_increment,
-  `team_id` integer not null REFERENCES `teams`(`id`),
+  `team_id` bigint not null REFERENCES `teams`(`id`),
   `email` varchar(320) not null,
   `role` ENUM('admin', 'member', 'viewer') not null default 'member',
   `token_hash` varchar(64) not null,

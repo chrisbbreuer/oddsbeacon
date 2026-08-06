@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `notification_deliveries` (
   `id` bigint PRIMARY KEY auto_increment,
-  `user_id` integer REFERENCES `users`(`id`),
+  `user_id` bigint REFERENCES `users`(`id`),
   `channel` varchar(255) not null,
   `recipient` text not null,
   `subject` varchar(255),

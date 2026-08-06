@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `order_idempotency` (
   `id` bigint PRIMARY KEY auto_increment,
   `idempotency_key` varchar(255) not null,
-  `order_id` integer not null REFERENCES `orders`(`id`),
+  `order_id` bigint not null REFERENCES `orders`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime
 );

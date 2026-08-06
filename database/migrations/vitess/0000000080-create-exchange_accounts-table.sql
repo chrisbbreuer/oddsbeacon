@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `exchange_accounts` (
   `id` bigint PRIMARY KEY auto_increment,
-  `user_id` decimal(10,2) REFERENCES `users`(`id`),
+  `user_id` bigint REFERENCES `users`(`id`),
   `venue` varchar(20),
   `label` varchar(60),
   `credentials` varchar(255),
