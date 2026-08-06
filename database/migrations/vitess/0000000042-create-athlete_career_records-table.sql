@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `athlete_career_records` (
   `team_name` varchar(160) default '',
   `occurred_on` varchar(20) default '',
   `ended_on` varchar(20) default '',
-  `details` text default '{}',
+  `details` text default ('{}'),
   `athlete_id` bigint REFERENCES `athletes`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime

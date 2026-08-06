@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `athlete_season_stats` (
   `points` double precision default 0,
   `goals` integer default 0,
   `assists` integer default 0,
-  `metrics` text default '{}',
+  `metrics` text default ('{}'),
   `provider` varchar(40) default 'transfermarkt',
   `athlete_id` bigint REFERENCES `athletes`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` bigint PRIMARY KEY auto_increment,
   `type` varchar(255) not null,
-  `data` varchar(255) not null,
+  `data` text not null,
   `read_at` datetime,
   `user_id` bigint REFERENCES `users`(`id`),
   `created_at` datetime not null default CURRENT_TIMESTAMP,

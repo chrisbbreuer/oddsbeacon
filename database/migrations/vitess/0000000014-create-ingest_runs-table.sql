@@ -12,8 +12,8 @@ CREATE TABLE IF NOT EXISTS `ingest_runs` (
   `unmatched_count` decimal(10,2) default 0,
   `quota_remaining` decimal(10,2) default -1,
   `quota_used` decimal(10,2) default -1,
-  `error` text default '',
-  `summary` text default '',
+  `error` text default (''),
+  `summary` text default (''),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime
 );

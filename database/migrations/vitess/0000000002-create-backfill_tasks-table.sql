@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS `backfill_tasks` (
   `locked_at` varchar(40) default '',
   `lock_token` varchar(64) default '',
   `completed_at` varchar(40) default '',
-  `last_error` text default '',
+  `last_error` text default (''),
   `document_hash` varchar(64) default '',
-  `payload` text default '{}',
+  `payload` text default ('{}'),
   `created_at` datetime not null default CURRENT_TIMESTAMP,
   `updated_at` datetime
 );

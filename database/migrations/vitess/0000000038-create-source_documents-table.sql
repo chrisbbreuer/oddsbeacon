@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `source_documents` (
   `storage_path` text not null,
   `http_status` integer default 200,
   `content_type` varchar(160) default 'text/html',
-  `etag` text default '',
+  `etag` text default (''),
   `last_modified` varchar(160) default '',
   `byte_length` bigint default 0,
   `fetched_at` varchar(40) not null,
