@@ -1,4 +1,4 @@
-import { route } from '@stacksjs/router'
+import { response, route } from '@stacksjs/router'
 
 /**
  * Unversioned API routes, served under `/api`.
@@ -12,6 +12,7 @@ import { route } from '@stacksjs/router'
  */
 
 // ---- Odds: aliases onto v1 -------------------------------------------------
+route.get('/health', () => response.json({ status: 'ok' }))
 route.get('/odds', 'Actions/V1/GetBoard')
 route.get('/odds/arbitrage', 'Actions/V1/GetArbitrage')
 route.get('/odds/edges', 'Actions/V1/GetEdges')
