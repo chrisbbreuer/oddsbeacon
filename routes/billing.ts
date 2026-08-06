@@ -18,6 +18,8 @@ import { route } from '@stacksjs/router'
 
 route.post('/billing/webhook', 'Actions/Billing/SubscriptionWebhook')
 
-route.group({ middleware: ['auth'] }, () => {
+// Each checkout call creates a session at Stripe, so an unthrottled loop
+// here is an unthrottled loop against our payment provider.
+route.group({ middleware: ['auth', 'throttle:10,1'] }, () => {
   route.post('/billing/checkout', 'Actions/Billing/CreateSubscriptionCheckout')
 })

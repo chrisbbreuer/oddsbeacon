@@ -29,12 +29,21 @@ route.get('/markets/whales', 'Actions/PredictionMarkets/GetWhaleTrades')
 route.get('/markets/graph', 'Actions/PredictionMarkets/GetSignalGraph')
 
 // ---- Bet sheets (signed-in user or an anon token) --------------------------
-route.get('/sheets', 'Actions/Sheets/ListSheets')
-route.post('/sheets', 'Actions/Sheets/SaveSheet')
-route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
+// These accept an anonymous token rather than a session, so there is no
+// account to hold responsible for a flood — the rate limit is the only
+// thing standing between an anonymous caller and unbounded rows.
+route.group({ middleware: ['throttle:60,1'] }, () => {
+  route.get('/sheets', 'Actions/Sheets/ListSheets')
+  route.post('/sheets', 'Actions/Sheets/SaveSheet')
+  route.delete('/sheets/{id}', 'Actions/Sheets/DeleteSheet')
+})
 
 // ---- Community -------------------------------------------------------------
-route.post('/community/notes', 'Actions/Community/PostNote')
+// User-authored text that other people read. Tighter than the sheets:
+// posting is the one write here whose output is public.
+route.group({ middleware: ['throttle:20,1'] }, () => {
+  route.post('/community/notes', 'Actions/Community/PostNote')
+})
 
 // `/coming-soon` is served as an STX view from
 // `storage/framework/defaults/resources/views/coming-soon.stx`. The view
