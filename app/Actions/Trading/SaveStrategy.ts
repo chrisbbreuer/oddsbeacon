@@ -6,9 +6,14 @@ import { resolveEntitlements } from '../../Services/billing/entitlements'
  * POST /api/trading/strategies — create or update a strategy.
  *
  * Two gates, and they are different questions. The strategy count is
- * about the plan; arming `autoExecute` is about whether the plan permits
- * placing orders at all. A Signal user may keep a strategy and watch what
- * it would do — that is the tier — but cannot arm it.
+ * about the plan; arming a *live* strategy is about whether the plan
+ * permits placing orders at all. A Signal user may keep a strategy and
+ * watch what it would do — that is the tier — but cannot arm it against
+ * a venue.
+ *
+ * A paper strategy is armable on any plan, because it spends nothing and
+ * proves something: without it a user's only way to learn whether a
+ * strategy works is to pay for the plan that lets it trade for real.
  *
  * Every limit is clamped rather than merely validated. A rejected form
  * teaches the user the bound; a silently accepted 10,000% Kelly fraction
@@ -39,8 +44,15 @@ export default {
 
       const id = Number(request?.get?.('id') ?? 0) || 0
       const autoExecute = request?.get?.('autoExecute') === 'true'
+      // Anything that is not explicitly 'live' is paper. Going live is
+      // the consequential direction, so it is the one that has to be
+      // asked for, and a typo lands on the harmless side.
+      const mode = request?.get?.('mode') === 'live' ? 'live' : 'paper'
 
-      if (autoExecute && !entitlements.canAutoExecute) {
+      // Paper needs no plan: it places no orders and touches no venue,
+      // and a user who cannot try a strategy has no way to find out
+      // whether it is worth paying to arm.
+      if (autoExecute && mode === 'live' && !entitlements.canAutoExecute) {
         return response.error(
           `Automated execution is not included in the ${entitlements.tier} plan. Upgrade to Auto to place orders.`,
           402,
@@ -66,6 +78,7 @@ export default {
       const fields = {
         name: (request?.get?.('name') ?? 'Untitled strategy').slice(0, 80),
         venue,
+        mode,
         categories: (request?.get?.('categories') ?? '').slice(0, 300),
         bankroll: clamp(Number(request?.get?.('bankroll') ?? 1000), 1, MAX_BANKROLL),
         maxStake: clamp(Number(request?.get?.('maxStake') ?? 100), 1, MAX_STAKE),
@@ -96,12 +109,12 @@ export default {
 
         await db.prepare(`
           UPDATE trading_strategies SET
-            name = ?, venue = ?, categories = ?, bankroll = ?, max_stake = ?,
+            name = ?, venue = ?, mode = ?, categories = ?, bankroll = ?, max_stake = ?,
             min_edge = ?, min_confidence = ?, max_open_positions = ?, daily_loss_limit = ?,
             auto_execute = ?, status = ?, halted_reason = '', updated_at = ?
           WHERE id = ?
         `).run(
-          fields.name, fields.venue, fields.categories, fields.bankroll, fields.maxStake,
+          fields.name, fields.venue, fields.mode, fields.categories, fields.bankroll, fields.maxStake,
           fields.minEdge, fields.minConfidence, fields.maxOpenPositions, fields.dailyLossLimit,
           fields.autoExecute, fields.status, now, id,
         )
@@ -111,12 +124,12 @@ export default {
 
       const insert = await db.prepare(`
         INSERT INTO trading_strategies (
-          user_id, name, venue, categories, bankroll, max_stake, min_edge, min_confidence,
+          user_id, name, venue, mode, categories, bankroll, max_stake, min_edge, min_confidence,
           max_open_positions, daily_loss_limit, auto_execute, status, halted_reason,
           last_run_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?, ?)
       `).run(
-        userId, fields.name, fields.venue, fields.categories, fields.bankroll, fields.maxStake,
+        userId, fields.name, fields.venue, fields.mode, fields.categories, fields.bankroll, fields.maxStake,
         fields.minEdge, fields.minConfidence, fields.maxOpenPositions, fields.dailyLossLimit,
         fields.autoExecute, fields.status, now, now,
       )

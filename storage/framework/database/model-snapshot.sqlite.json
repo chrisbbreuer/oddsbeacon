@@ -11967,6 +11967,15 @@
             "isUnique": false,
             "isNullable": true,
             "hasDefault": false
+          },
+          {
+            "name": "mode",
+            "type": "string",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "isNullable": true,
+            "hasDefault": false,
+            "maxLength": 10
           }
         ],
         "indexes": [
@@ -15134,7 +15143,7 @@
       }
     ]
   },
-  "hash": "e6c7e67bb9f168aef0774e78f8b695e77aa8815e9090f3738841c2329633693d",
+  "hash": "ae718ca367ed2f3423d27382641e70559cfe18bbe3d4e2fc023787831ae827ea",
   "dialect": "sqlite",
-  "updatedAt": "2026-08-06T21:37:11.240Z"
+  "updatedAt": "2026-08-06T21:46:31.183Z"
 }

@@ -18,7 +18,8 @@ import type { Database } from '../../Support/db'
 
 export interface Fill {
   tradingStrategyId: number
-  exchangeAccountId: number
+  /** Null for a paper fill, which belongs to no venue account. */
+  exchangeAccountId: number | null
   predictionMarketId: number
   venue: string
   marketExternalId: string
@@ -43,7 +44,7 @@ export interface SettlementSummary {
 export interface OrderBooking {
   orderId: number
   tradingStrategyId: number
-  exchangeAccountId: number
+  exchangeAccountId: number | null
   predictionMarketId: number
   venue: string
   marketExternalId: string

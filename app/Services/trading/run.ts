@@ -36,7 +36,7 @@ export interface RunSummary {
 /** Every strategy the loop should consider this pass. */
 export async function activeStrategies(db: Database): Promise<Strategy[]> {
   return await db.prepare<Strategy>(`
-    SELECT id, user_id, venue, bankroll, max_stake, min_edge, min_confidence,
+    SELECT id, user_id, venue, mode, bankroll, max_stake, min_edge, min_confidence,
           max_open_positions, daily_loss_limit, auto_execute, status
     FROM trading_strategies
     WHERE status = 'active'

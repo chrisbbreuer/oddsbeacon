@@ -100,6 +100,23 @@ export default defineModel({
       validation: { rule: schema.float().min(0) },
       factory: faker => faker.number.int({ min: 50, max: 1000 }),
     },
+    // 'paper' | 'live'
+    //
+    // Paper runs the identical decision path and books simulated fills
+    // against the tape, touching no venue and no money. It is where a
+    // strategy earns the right to be armed: the alternative was going
+    // from "saved" to "real orders at an exchange" with no record of
+    // whether the thing had ever been right.
+    //
+    // New strategies start here, and the column is read as 'live' when
+    // absent so that strategies which predate it keep behaving as their
+    // owners set them up.
+    mode: {
+      type: 'string',
+      fillable: true,
+      validation: { rule: schema.string().min(1).max(10) },
+      factory: () => 'paper',
+    },
     // Place orders automatically, or queue decisions for approval.
     autoExecute: {
       type: 'boolean',

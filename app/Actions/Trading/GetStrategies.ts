@@ -6,6 +6,7 @@ interface StrategyRow {
   id: number
   name: string
   venue: string
+  mode: string | null
   categories: string
   bankroll: number
   max_stake: number
@@ -44,7 +45,7 @@ export default {
     try {
       const strategies = await db.prepare<StrategyRow>(`
         SELECT
-          s.id, s.name, s.venue, s.categories, s.bankroll, s.max_stake, s.min_edge,
+          s.id, s.name, s.venue, s.mode, s.categories, s.bankroll, s.max_stake, s.min_edge,
           s.min_confidence, s.max_open_positions, s.daily_loss_limit, s.auto_execute,
           s.status, s.halted_reason, s.last_run_at,
           COALESCE(o.working_orders, 0) AS working_orders,
@@ -87,6 +88,8 @@ export default {
           id: s.id,
           name: s.name,
           venue: s.venue,
+          // Absent means live, matching how the executor reads it.
+          mode: s.mode === 'paper' ? 'paper' : 'live',
           categories: s.categories ? s.categories.split(',').map(c => c.trim()).filter(Boolean) : [],
           bankroll: s.bankroll,
           maxStake: s.max_stake,

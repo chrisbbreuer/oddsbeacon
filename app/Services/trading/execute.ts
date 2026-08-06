@@ -7,6 +7,7 @@ import { resolveEntitlements } from '../billing/entitlements'
 import { openCredentials } from './credentials'
 import { haltState } from './halt'
 import { KalshiTradingClient } from './kalshi-trading'
+import { executePaper } from './paper'
 import { PolymarketTradingClient } from './polymarket-trading'
 import { bookOrderFill, openExposure, openPositionCount, realizedPnlSince } from './positions'
 import { VenueError, isAuthFailure } from './venue'
@@ -28,6 +29,8 @@ export interface Strategy {
   id: number
   user_id: number
   venue: string
+  /** 'paper' | 'live'. Absent on strategies that predate the column. */
+  mode: string | null
   bankroll: number
   max_stake: number
   min_edge: number
@@ -98,6 +101,17 @@ export function stakeFor(candidate: Candidate, strategy: Strategy, availableBank
   )
 
   return stake > 0 ? Math.floor(stake * 100) / 100 : 0
+}
+
+/**
+ * Whether this strategy trades on paper.
+ *
+ * A strategy written before the column existed has no mode, and reading
+ * that as paper would silently stop a live strategy from trading. So the
+ * absent case is live, and only an explicit 'paper' simulates.
+ */
+export function isPaper(strategy: Pick<Strategy, 'mode'>): boolean {
+  return strategy.mode === 'paper'
 }
 
 /** The venue client for an account, decrypting its credentials. */
@@ -179,12 +193,20 @@ export async function executeStrategy(
     return await Promise.all(decisionIds.map(id => skip(db, id, halted)))
   }
 
+  if (!strategy.auto_execute)
+    return await Promise.all(decisionIds.map(id => skip(db, id, 'strategy is set to manual approval')))
+
+  // Paper diverges here, after every limit the strategy declares has
+  // already been checked and before anything that costs money. It needs
+  // no entitlement, because the point of it is to be the thing a user
+  // runs before they are willing to pay for the thing that trades — and
+  // no venue account, because it never contacts one.
+  if (isPaper(strategy))
+    return await executePaper(db, strategy, decisionIds)
+
   const entitlements = await resolveEntitlements(db, strategy.user_id)
   if (!entitlements.canAutoExecute)
     return await Promise.all(decisionIds.map(id => skip(db, id, `plan ${entitlements.tier} does not include automated execution`)))
-
-  if (!strategy.auto_execute)
-    return await Promise.all(decisionIds.map(id => skip(db, id, 'strategy is set to manual approval')))
 
   const placeholders = decisionIds.map(() => '?').join(', ')
   const decisions = await db.prepare<DecisionRow>(`
