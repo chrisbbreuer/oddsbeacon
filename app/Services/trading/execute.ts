@@ -84,6 +84,18 @@ export async function clientFor(sealedCredentials: string): Promise<TradingClien
     : new PolymarketTradingClient(credentials)
 }
 
+/**
+ * Stop using an account the venue no longer accepts.
+ *
+ * Credentials rejected once will be rejected every subsequent call, so
+ * the account is marked before the next pass reaches the network rather
+ * than burning a round trip per order to relearn the same answer.
+ */
+export async function revokeAccount(db: Database, accountId: number, reason: string): Promise<void> {
+  await db.prepare('UPDATE exchange_accounts SET status = \'revoked\', last_error = ?, updated_at = ? WHERE id = ?')
+    .run(reason.slice(0, 300), new Date().toISOString(), accountId)
+}
+
 interface DecisionRow {
   id: number
   prediction_market_id: number
@@ -271,12 +283,8 @@ async function placeOne(
     await db.prepare(`UPDATE trade_decisions SET status = 'failed', status_reason = ?, updated_at = ? WHERE id = ?`)
       .run(message.slice(0, 300), new Date().toISOString(), decision.id)
 
-    // Credentials the venue no longer accepts will fail every subsequent
-    // order too. Mark the account so the next pass stops before the
-    // network instead of burning a round trip per decision.
     if (error instanceof VenueError && isAuthFailure(error.status)) {
-      await db.prepare(`UPDATE exchange_accounts SET status = 'revoked', last_error = ?, updated_at = ? WHERE id = ?`)
-        .run(message.slice(0, 300), new Date().toISOString(), account.id)
+      await revokeAccount(db, account.id, message)
       log.warn(`[trading] ${decision.venue} rejected our credentials; account ${account.id} marked revoked`)
     }
 

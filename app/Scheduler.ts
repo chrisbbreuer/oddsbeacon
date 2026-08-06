@@ -42,6 +42,14 @@ export default function () {
     .job('AutoTrade')
     .everyFifteenMinutes()
 
+  // Reconciliation runs far more often than the loop that places the
+  // orders. A fill arrives whenever someone crosses, and until it has
+  // been read back every risk check downstream is working from what was
+  // true at placement. See app/Jobs/SyncOrders.ts.
+  schedule
+    .job('SyncOrders')
+    .everyMinute()
+
   // Transfermarkt career history is intentionally outside the five-minute
   // pricing loop. This bounded pass resumes durable tasks, refreshes mutable
   // squad/injury pages by TTL, and never downloads immutable history merely
