@@ -91,7 +91,9 @@ export default defineModel({
       validation: { rule: schema.number().min(1).max(500) },
       factory: faker => faker.number.int({ min: 3, max: 25 }),
     },
-    // Realized loss (USD) within a UTC day that halts the strategy.
+    // Realized loss (USD) from positions settled within a UTC day that
+    // halts the strategy. Realized, not deployed and not marked to
+    // market: only a position that closed below its cost basis counts.
     dailyLossLimit: {
       type: 'number',
       fillable: true,

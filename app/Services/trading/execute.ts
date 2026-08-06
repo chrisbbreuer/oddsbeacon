@@ -7,7 +7,7 @@ import { resolveEntitlements } from '../billing/entitlements'
 import { openCredentials } from './credentials'
 import { KalshiTradingClient } from './kalshi-trading'
 import { PolymarketTradingClient } from './polymarket-trading'
-import { bookOrderFill, openExposure, openPositionCount } from './positions'
+import { bookOrderFill, openExposure, openPositionCount, realizedPnlSince } from './positions'
 import { VenueError, isAuthFailure } from './venue'
 
 /**
@@ -314,10 +314,20 @@ async function placeOne(
 /**
  * Why this strategy must not trade right now, or '' if it may.
  *
- * The daily loss check is deliberately on realized losses from filled
- * orders rather than marked-to-market exposure: a limit that trips on an
- * unrealized swing halts a strategy for a price move that has not cost
- * anything yet.
+ * The daily limit is on realized loss — positions closed today, at what
+ * they actually returned against what they cost. Two things it is
+ * deliberately not:
+ *
+ *   Not capital deployed. Summing what filled orders cost calls a
+ *   strategy that put $1,000 to work and is up on it "down $1,000",
+ *   which halts a winning strategy for the crime of trading.
+ *
+ *   Not marked to market. An open position moving against us has not
+ *   cost anything yet, and a limit that trips on an unrealized swing
+ *   closes the book on exactly the days it should stay open.
+ *
+ * How much a strategy may have at risk at once is a different question,
+ * and the bankroll check answers it.
  */
 async function haltReason(db: Database, strategy: Strategy): Promise<string> {
   if (strategy.status === 'halted')
@@ -327,18 +337,12 @@ async function haltReason(db: Database, strategy: Strategy): Promise<string> {
 
   if (strategy.daily_loss_limit > 0) {
     const startOfDay = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`
+    const realized = await realizedPnlSince(db, strategy.id, startOfDay)
 
-    const row = await db.prepare<{ spent: number }>(`
-      SELECT COALESCE(SUM(o.filled_size * o.avg_fill_price), 0) AS spent
-      FROM exchange_orders o
-      JOIN trade_decisions d ON d.id = o.trade_decision_id
-      WHERE d.trading_strategy_id = ?
-        AND o.status IN ('filled', 'partial')
-        AND o.placed_at >= ?
-    `).get(strategy.id, startOfDay)
-
-    if (Number(row?.spent ?? 0) >= strategy.daily_loss_limit)
-      return `daily loss limit reached ($${round(Number(row?.spent ?? 0))} of $${round(strategy.daily_loss_limit)} at risk today)`
+    // Only a loss counts. A profitable day never halts a strategy, and
+    // gains do not net against a limit that exists to stop a bad run.
+    if (realized < 0 && Math.abs(realized) >= strategy.daily_loss_limit)
+      return `daily loss limit reached (down $${round(Math.abs(realized))} of $${round(strategy.daily_loss_limit)} today)`
   }
 
   return ''
