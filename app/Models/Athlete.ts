@@ -7,7 +7,18 @@ export default defineModel({
   table: 'athletes',
   primaryKey: 'id',
   autoIncrement: true,
-  traits: { useTimestamps: true, useSeeder: { count: 0 } },
+  traits: {
+    useTimestamps: true,
+    useSeeder: { count: 0 },
+    // The participants endpoint a paid feed charges for. Read-only for the
+    // same reason as `Sport`: this is a roster, and the generated write
+    // routes would let a caller edit the people every player prop resolves
+    // against.
+    useApi: {
+      uri: 'participants',
+      routes: ['index', 'show'],
+    },
+  },
   indexes: [
     { name: 'athletes_sport_search_key', columns: ['sport_id', 'search_key'] },
     { name: 'athletes_current_team', columns: ['sports_team_id'] },

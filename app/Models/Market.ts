@@ -40,9 +40,20 @@ export default defineModel({
     // moneyline row and the upsert would insert a duplicate market on
     // every single pass. `line_key` is the same value as a string, with
     // '' standing in for "no line", so the constraint actually binds.
+    // `player_name` is part of the key, not a detail hanging off it.
+    // Without it, two players' props of the same type at the same line —
+    // "over 25.5 points" for either of two starters — collide on this
+    // index, and the resolver hands back whichever market it created
+    // first. Both players' prices then land on one market and the board
+    // shows one of them quoted twice. It is the same class of failure as
+    // matching selections by label, and it fails just as silently, so the
+    // constraint carries the player rather than trusting callers to.
+    //
+    // '' for every market that is not a prop, so the constraint binds
+    // exactly as it did before for those.
     {
       name: 'markets_event_type_line_period',
-      columns: ['market_event_id', 'market_type', 'line_key', 'period'],
+      columns: ['market_event_id', 'market_type', 'line_key', 'period', 'player_name'],
       unique: true,
     },
     { name: 'markets_type', columns: ['market_type'] },

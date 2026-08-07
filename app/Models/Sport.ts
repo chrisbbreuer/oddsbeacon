@@ -21,6 +21,16 @@ export default defineModel({
 
   traits: {
     useTimestamps: true,
+    // The league catalogue, read-only and unauthenticated. This is the
+    // direct answer to a paid feed's `GET /sports`, and it is reference
+    // data — there is nothing here worth guarding and nothing a caller
+    // should be able to write. `index` and `show` only, deliberately: the
+    // generated `store`/`update`/`destroy` would let anyone with the URL
+    // edit the league list every ingestion pass depends on.
+    useApi: {
+      uri: 'sports',
+      routes: ['index', 'show'],
+    },
     // Reference data, not sample data: these are the real leagues and the
     // real provider keys, so a freshly-seeded database can immediately
     // ingest live events rather than showing invented ones. Generating

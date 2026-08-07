@@ -97,6 +97,52 @@ export default defineModel({
       validation: { rule: schema.string().max(40) },
       factory: () => new Date().toISOString(),
     },
+    /**
+     * Deep link to this exact selection on the book's own site.
+     *
+     * The difference between "DraftKings has 2.10" and a click that lands
+     * on the bet slip already filled in. Worth a column rather than a
+     * reconstruction, because the URL shape is per-book and changes
+     * without notice — the adapter that read the price is the only thing
+     * that knows how to address it.
+     */
+    link: {
+      type: 'string',
+      fillable: true,
+      default: '',
+      validation: { rule: schema.string().max(300) },
+      factory: () => '',
+    },
+    /**
+     * The book's own id for this selection.
+     *
+     * Its "selection id", "outcome id", or whatever it calls the thing.
+     * Placing a bet programmatically needs it, and so does asking the book
+     * about one specific outcome rather than re-reading a whole event.
+     */
+    sid: {
+      type: 'string',
+      fillable: true,
+      default: '',
+      validation: { rule: schema.string().max(80) },
+      factory: () => '',
+    },
+    /**
+     * Money already matched at this price, on an exchange.
+     *
+     * Zero for a traditional sportsbook, which quotes a price rather than
+     * reporting a market. On an exchange it is the weight behind the
+     * number: a price with £4 matched is a quote, the same price with
+     * £40,000 matched is a consensus, and averaging the two as equals is
+     * how a thin market gets to outvote a deep one.
+     */
+    tradedVolume: {
+      type: 'number',
+      fillable: true,
+      default: 0,
+      validation: { rule: schema.float().min(0) },
+      factory: () => 0,
+    },
   },
 
   belongsTo: ['Selection', 'Bookmaker'],

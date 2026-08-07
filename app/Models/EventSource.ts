@@ -84,6 +84,21 @@ export default defineModel({
       validation: { rule: schema.string().max(40) },
       factory: () => new Date().toISOString(),
     },
+    /**
+     * The rotation number this book prints against the game.
+     *
+     * The betting industry's own cross-book identifier, and the one thing
+     * a human comparing two screens actually reads. Zero means the
+     * provider did not publish one; they are per-book and per-day, which
+     * is why it belongs on the source link rather than on the event.
+     */
+    rotationNumber: {
+      type: 'number',
+      fillable: true,
+      default: 0,
+      validation: { rule: schema.number().min(0) },
+      factory: () => 0,
+    },
   },
 
   belongsTo: ['MarketEvent'],

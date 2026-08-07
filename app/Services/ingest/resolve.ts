@@ -437,10 +437,16 @@ export async function resolveMarket(db: Database, identity: MarketIdentity): Pro
   const period = identity.period ?? 'full_game'
   const key = lineKey(identity.line)
 
+  // `player_name` is part of the lookup for the same reason it is part of
+  // the unique index: two players' props of the same type at the same line
+  // are different markets, and omitting it here would return the first
+  // player's market for the second player's price.
+  const playerName = identity.playerName ?? ''
+
   const existing = await db.query(`
     SELECT id FROM markets
-    WHERE market_event_id = ? AND market_type = ? AND line_key = ? AND period = ?
-  `).get(identity.eventId, identity.marketType, key, period) as { id: number } | null
+    WHERE market_event_id = ? AND market_type = ? AND line_key = ? AND period = ? AND player_name = ?
+  `).get(identity.eventId, identity.marketType, key, period, playerName) as { id: number } | null
 
   if (existing)
     return existing.id
@@ -456,7 +462,7 @@ export async function resolveMarket(db: Database, identity: MarketIdentity): Pro
     identity.line,
     key,
     period,
-    identity.playerName ?? '',
+    playerName,
     identity.complete === false ? 0 : 1,
     identity.position ?? 0,
     nowIso(),

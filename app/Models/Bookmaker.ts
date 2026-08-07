@@ -35,15 +35,23 @@ export default defineModel({
     useSeeder: {
       count: 0,
       fixtures: [
-        { slug: 'pinnacle', name: 'Pinnacle', kind: 'sportsbook', providerKey: 'pinnacle', accent: 'orange', short: 'PIN', region: 'eu', sharp: true, consensusWeight: 4, active: true },
-        { slug: 'circa', name: 'Circa Sports', kind: 'sportsbook', providerKey: 'circasports', accent: 'red', short: 'CIR', region: 'us', sharp: true, consensusWeight: 3, active: true },
-        { slug: 'betonlineag', name: 'BetOnline', kind: 'sportsbook', providerKey: 'betonlineag', accent: 'lime', short: 'BOL', region: 'us', sharp: true, consensusWeight: 2, active: true },
-        { slug: 'draftkings', name: 'DraftKings', kind: 'sportsbook', providerKey: 'draftkings', accent: 'emerald', short: 'DK', region: 'us', sharp: false, consensusWeight: 1, active: true },
-        { slug: 'fanduel', name: 'FanDuel', kind: 'sportsbook', providerKey: 'fanduel', accent: 'sky', short: 'FD', region: 'us', sharp: false, consensusWeight: 1, active: true },
-        { slug: 'betmgm', name: 'BetMGM', kind: 'sportsbook', providerKey: 'betmgm', accent: 'amber', short: 'MGM', region: 'us', sharp: false, consensusWeight: 1, active: true },
-        { slug: 'caesars', name: 'Caesars', kind: 'sportsbook', providerKey: 'williamhill_us', accent: 'yellow', short: 'CZR', region: 'us', sharp: false, consensusWeight: 1, active: true },
-        { slug: 'bet365', name: 'bet365', kind: 'sportsbook', providerKey: 'bet365', accent: 'green', short: 'B365', region: 'uk', sharp: false, consensusWeight: 1.5, active: true },
-        { slug: 'betfair', name: 'Betfair Exchange', kind: 'sportsbook', providerKey: 'betfair_ex_uk', accent: 'fuchsia', short: 'BF', region: 'uk', sharp: true, consensusWeight: 3.5, active: true },
+        { slug: 'pinnacle', name: 'Pinnacle', kind: 'sportsbook', providerKey: 'pinnacle', accent: 'orange', short: 'PIN', region: 'eu', sharp: true, consensusWeight: 4, active: true, transport: 'json' },
+        { slug: 'circa', name: 'Circa Sports', kind: 'sportsbook', providerKey: 'circasports', accent: 'red', short: 'CIR', region: 'us', sharp: true, consensusWeight: 3, active: true, transport: 'json' },
+        { slug: 'betonlineag', name: 'BetOnline', kind: 'sportsbook', providerKey: 'betonlineag', accent: 'lime', short: 'BOL', region: 'us', sharp: true, consensusWeight: 2, active: true, transport: 'json' },
+        { slug: 'draftkings', name: 'DraftKings', kind: 'sportsbook', providerKey: 'draftkings', accent: 'emerald', short: 'DK', region: 'us', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'fanduel', name: 'FanDuel', kind: 'sportsbook', providerKey: 'fanduel', accent: 'sky', short: 'FD', region: 'us', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'betmgm', name: 'BetMGM', kind: 'sportsbook', providerKey: 'betmgm', accent: 'amber', short: 'MGM', region: 'us', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'caesars', name: 'Caesars', kind: 'sportsbook', providerKey: 'williamhill_us', accent: 'yellow', short: 'CZR', region: 'us', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'espnbet', name: 'ESPN BET', kind: 'sportsbook', providerKey: 'espnbet', accent: 'rose', short: 'ESPN', region: 'us', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'bet365', name: 'bet365', kind: 'sportsbook', providerKey: 'bet365', accent: 'green', short: 'B365', region: 'uk', sharp: false, consensusWeight: 1.5, active: true, transport: 'browser' },
+        { slug: 'williamhill', name: 'William Hill', kind: 'sportsbook', providerKey: 'williamhill', accent: 'blue', short: 'WH', region: 'uk', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        { slug: 'unibet', name: 'Unibet', kind: 'sportsbook', providerKey: 'unibet', accent: 'indigo', short: 'UNI', region: 'eu', sharp: false, consensusWeight: 1, active: true, transport: 'json' },
+        // Exchanges. Two-sided order books rather than bookmakers: the
+        // price is what someone actually matched, and the depth behind it
+        // is published, which is why they carry sharp weight.
+        { slug: 'betfair', name: 'Betfair Exchange', kind: 'sportsbook', providerKey: 'betfair_ex_uk', accent: 'fuchsia', short: 'BF', region: 'uk', sharp: true, consensusWeight: 3.5, active: true, transport: 'json' },
+        { slug: 'smarkets', name: 'Smarkets', kind: 'sportsbook', providerKey: 'smarkets', accent: 'cyan', short: 'SMK', region: 'uk', sharp: true, consensusWeight: 3, active: true, transport: 'json' },
+        { slug: 'matchbook', name: 'Matchbook', kind: 'sportsbook', providerKey: 'matchbook', accent: 'purple', short: 'MB', region: 'uk', sharp: true, consensusWeight: 2.5, active: true, transport: 'json' },
         // Order books rather than bookmakers: no margin to remove, and the
         // price is a traded probability, so they anchor fair value well.
         { slug: 'polymarket', name: 'Polymarket', kind: 'prediction', providerKey: 'polymarket', accent: 'violet', short: 'PM', region: 'global', sharp: true, consensusWeight: 3, active: true },
@@ -151,6 +159,51 @@ export default defineModel({
       default: '',
       validation: { rule: schema.string().max(40) },
       factory: () => '',
+    },
+    /**
+     * How our own adapter reaches this book.
+     *
+     * '' means we have no native adapter and the book only ever arrives
+     * via a paid aggregator. The distinction is operational: a `browser`
+     * book costs a page load per poll and cannot be cadenced like a `json`
+     * one, and knowing which is which is what stops the engine budgeting
+     * them the same.
+     */
+    transport: {
+      type: 'string',
+      fillable: true,
+      default: '',
+      validation: { rule: schema.enum(['', 'json', 'html', 'browser', 'websocket']) },
+      factory: () => '',
+    },
+    /**
+     * When this book last returned a usable price.
+     *
+     * Distinct from `lastSeenAt`, which moves whenever the book is
+     * mentioned. This only moves on success, so it is the field that can
+     * answer "has DraftKings been quiet for an hour" — the question a
+     * silently-broken adapter otherwise never prompts anyone to ask.
+     */
+    lastSuccessAt: {
+      type: 'string',
+      fillable: true,
+      default: '',
+      validation: { rule: schema.string().max(40) },
+      factory: () => '',
+    },
+    /**
+     * Consecutive failed passes, reset by any success.
+     *
+     * A book has a bad minute constantly; a book has a bad *afternoon*
+     * rarely, and only the second is worth waking someone for. Counting
+     * the streak rather than the failures is what separates them.
+     */
+    failureStreak: {
+      type: 'number',
+      fillable: true,
+      default: 0,
+      validation: { rule: schema.number().min(0) },
+      factory: () => 0,
     },
   },
 

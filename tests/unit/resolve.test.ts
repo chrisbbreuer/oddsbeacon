@@ -263,3 +263,66 @@ describe('resolveMarket and resolveSelection', () => {
     db.close()
   })
 })
+
+describe('resolveMarket and player props', () => {
+  /**
+   * Two players' props of the same type at the same line are different
+   * markets. Before `player_name` was part of the market's natural key,
+   * the second player's lookup matched the first player's row and both
+   * their prices landed on one market — the same silent misattribution
+   * that matching selections by label used to cause.
+   */
+  it('keeps two players\' props at the same line apart', async () => {
+    const db = freshDb()
+
+    const first = await resolveMarket(db as any, {
+      eventId: 1,
+      marketType: 'player_points',
+      line: 25.5,
+      playerName: 'Jayson Tatum',
+    })
+
+    const second = await resolveMarket(db as any, {
+      eventId: 1,
+      marketType: 'player_points',
+      line: 25.5,
+      playerName: 'Jaylen Brown',
+    })
+
+    expect(second).not.toBe(first)
+  })
+
+  it('returns the same market for the same player twice', async () => {
+    const db = freshDb()
+
+    const identity = {
+      eventId: 1,
+      marketType: 'player_points',
+      line: 25.5,
+      playerName: 'Jayson Tatum',
+    }
+
+    expect(await resolveMarket(db as any, identity)).toBe(await resolveMarket(db as any, identity))
+  })
+
+  it('still dedupes ordinary markets, which carry no player', async () => {
+    const db = freshDb()
+
+    const identity = { eventId: 1, marketType: 'h2h', line: null }
+    expect(await resolveMarket(db as any, identity)).toBe(await resolveMarket(db as any, identity))
+  })
+
+  it('keeps a player prop apart from a team market at the same line', async () => {
+    const db = freshDb()
+
+    const team = await resolveMarket(db as any, { eventId: 1, marketType: 'totals', line: 25.5 })
+    const player = await resolveMarket(db as any, {
+      eventId: 1,
+      marketType: 'totals',
+      line: 25.5,
+      playerName: 'Jayson Tatum',
+    })
+
+    expect(player).not.toBe(team)
+  })
+})
