@@ -19,6 +19,7 @@ export const routes = [
   { pattern: '/cart', filePath: 'storage/framework/defaults/resources/views/cart.stx', isDynamic: false, params: [] },
   { pattern: '/coming-soon', filePath: 'storage/framework/defaults/resources/views/coming-soon.stx', isDynamic: false, params: [] },
   { pattern: '/community', filePath: 'resources/views/community.stx', isDynamic: false, params: [] },
+  { pattern: '/compare', filePath: 'resources/views/compare.stx', isDynamic: false, params: [] },
   { pattern: '/dashboard', filePath: 'storage/framework/defaults/resources/views/dashboard/index.stx', isDynamic: false, params: [] },
   { pattern: '/features', filePath: 'resources/views/features.stx', isDynamic: false, params: [] },
   { pattern: '/live', filePath: 'resources/views/live.stx', isDynamic: false, params: [] },
@@ -29,6 +30,7 @@ export const routes = [
   { pattern: '/signup', filePath: 'resources/views/signup.stx', isDynamic: false, params: [] },
   { pattern: '/scores/:league/game/:id', filePath: 'resources/views/scores/[league]/game/[id].stx', isDynamic: true, params: ["league","id"] },
   { pattern: '/scores/:league/:day', filePath: 'resources/views/scores/[league]/[day].stx', isDynamic: true, params: ["league","day"] },
+  { pattern: '/compare/:competitor', filePath: 'resources/views/compare/[competitor].stx', isDynamic: true, params: ["competitor"] },
   { pattern: '/orders/:id', filePath: 'storage/framework/defaults/resources/views/orders/[id].stx', isDynamic: true, params: ["id"] },
 ] as const
 

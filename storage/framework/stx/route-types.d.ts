@@ -22,6 +22,7 @@ declare module "stx/routes" {
     '/cart': {  }
     '/coming-soon': {  }
     '/community': {  }
+    '/compare': {  }
     '/dashboard': {  }
     '/features': {  }
     '/live': {  }
@@ -32,6 +33,7 @@ declare module "stx/routes" {
     '/signup': {  }
     '/scores/:league/game/:id': { league: string; id: string }
     '/scores/:league/:day': { league: string; day: string }
+    '/compare/:competitor': { competitor: string }
     '/orders/:id': { id: string }
   }
 }

@@ -34,6 +34,17 @@ route.group({ middleware: ['throttle:240,1', 'apikey'] }, () => {
   // One event with every market on it.
   route.get('/events/{id}', 'Actions/V1/GetEvent')
 
+  // What each book *offers* on an event, as opposed to what it is pricing.
+  // A book that pulled a market and a book that never had it look
+  // identical through the odds; only this separates them.
+  route.get('/events/{id}/markets', 'Actions/V1/GetEventMarkets')
+
+  // The board as it stood at an instant, reconstructed from the change
+  // log. A paid feed charges roughly ten times a live call for this; it is
+  // close to free here because the fair-value model needs the history
+  // anyway.
+  route.get('/historical/odds', 'Actions/V1/GetHistoricalOdds')
+
   // Where the best price beats de-vigged fair value.
   route.get('/edges', 'Actions/V1/GetEdges')
 
