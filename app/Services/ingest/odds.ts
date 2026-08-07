@@ -1,10 +1,12 @@
 import type { Database } from '../../Support/db'
 import type { FeedEvent, OddsProvider } from '../odds/provider'
-import type { PriceWrite } from './prices'
+import type { CoverageWrite, PriceWrite } from './prices'
+import type { SportRow } from './resolve'
 import process from 'node:process'
+import { sportEnabled } from '../../../config/odds'
 import { SyntheticProvider } from '../odds/synthetic'
 import { TheOddsApiProvider } from '../odds/the-odds-api'
-import { loadBookmakerIndex, writePrices } from './prices'
+import { loadBookmakerIndex, writeCoverage, writePrices } from './prices'
 import { loadSports, resolveEvent, resolveMarket, resolveSelection, resolveTeam } from './resolve'
 import { IngestRunTracker } from './run'
 
@@ -26,19 +28,37 @@ const MARKET_LABELS: Record<string, string> = {
 }
 
 /**
+ * Leagues this pass should ask a bookmaker about.
+ *
+ * Two gates, and they answer different questions. `active` on the model
+ * says whether we track the league at all; `sportEnabled` says whether
+ * bookmaker prices are wanted for it right now, which is an operational
+ * choice and lives in `config/odds.ts`. Keeping them apart means turning
+ * off polling does not look like deleting a league.
+ */
+export async function pollableSports(db: Database): Promise<SportRow[]> {
+  return (await loadSports(db)).filter(sport => sportEnabled(sport.slug))
+}
+
+/**
  * Pick the active provider: the real feed when `ODDS_API_KEY` is set,
  * otherwise the simulator over real fixtures.
  *
  * The fallback is recorded loudly in the run row rather than hidden. A
  * synthetic board that looks live is exactly how the previous system
  * concealed a feed that had never matched anything.
+ *
+ * The paid feed additionally needs a league it has a key for. That is a
+ * property of the provider, not of the league, so it is filtered here
+ * rather than in `pollableSports` — a book adapter covering a league The
+ * Odds API does not is a case we expect to have shortly.
  */
 export async function resolveProvider(db: Database): Promise<OddsProvider> {
   const key = process.env.ODDS_API_KEY
   if (!key)
     return new SyntheticProvider(db)
 
-  const sports = (await loadSports(db)).filter(s => s.odds_api_key)
+  const sports = (await pollableSports(db)).filter(s => s.odds_api_key)
   return new TheOddsApiProvider(key, sports)
 }
 
@@ -75,6 +95,7 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
   let markets = 0
   let selections = 0
   const writes: PriceWrite[] = []
+  const coverage: CoverageWrite[] = []
 
   try {
     const result = await db.transaction(async (transaction) => {
@@ -117,12 +138,19 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
             line: market.line,
             period: market.period ?? 'full_game',
             label: MARKET_LABELS[market.marketType] ?? market.marketType,
+            playerName: market.playerName,
             // Two- and three-way markets partition the outcome space;
             // anything else may not, and only a complete market has a
             // meaningful hold or arbitrage reading.
             complete: market.outcomes.length >= 2,
           })
           markets++
+
+          // What this book offers, recorded separately from what it is
+          // currently pricing. A book that pulled its props before kickoff
+          // and a book that never offered them look identical through the
+          // odds table, and only the first is normal.
+          coverage.push({ bookmakerId, marketEventId: eventId, marketType: market.marketType })
 
           for (const [index, outcome] of market.outcomes.entries()) {
             const selectionId = await resolveSelection(transaction, {
@@ -141,6 +169,9 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
               price: outcome.price,
               point: outcome.point,
               limitAmount: outcome.limitAmount,
+              link: outcome.link,
+              sid: outcome.sid,
+              tradedVolume: outcome.tradedVolume,
               observedAt: book.lastUpdate,
             })
             tracker.rowsRead++
@@ -149,6 +180,7 @@ export async function ingestOdds(db: Database, provider?: OddsProvider): Promise
       }
       }
 
+      await writeCoverage(transaction, coverage)
       return await writePrices(transaction, writes)
     })
     tracker.rowsWritten = result.written
