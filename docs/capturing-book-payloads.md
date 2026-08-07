@@ -99,7 +99,7 @@ BetOnline 2× against 1× for a recreational book.
 | --- | --- | --- |
 | **`fanduel`** | [sportsbook.fanduel.com](https://sportsbook.fanduel.com) | The other half of the US duopoly. Expect an Akamai-style edge like DraftKings — capture all headers. |
 | **`betmgm`** | [sports.betmgm.com](https://sports.betmgm.com) | **Endpoint known, session-gated.** `cds-api/bettingoffer/fixtures` on the state host (`www.az.betmgm.com`) is the right call, but replaying it without the browser's `__cf_bm` cookie and device fingerprint returns a bot-detection page. Needs `transport: 'browser'`, not a plain fetch. |
-| **`caesars`** | [sportsbook.caesars.com](https://sportsbook.caesars.com) | **Endpoint known, WAF-gated.** `api.americanwagering.com/regions/us/locations/<state>/brands/czr/sb/...` needs the `x-aws-waf-token` a browser mints; without it CloudFront answers 403. Also `transport: 'browser'`. Seeded with `providerKey: 'williamhill_us'` — same platform as William Hill US, so solving one likely solves both. |
+| **`caesars`** | [sportsbook.caesars.com](https://sportsbook.caesars.com) | **Endpoint known, part-solved.** See the note below. Seeded with `providerKey: 'williamhill_us'` — same platform as William Hill US, so solving one likely solves both. |
 | **`espnbet`** | [espnbet.com](https://espnbet.com) | Penn/Hollywood platform underneath. |
 
 ### Exchanges — back *and* lay, plus real volume
@@ -126,6 +126,37 @@ usually in the same response, but confirm before assuming.
 | **`williamhill`** | [williamhill.com](https://sports.williamhill.com) | See the Caesars note — likely shared platform. |
 | **`unibet`** | [unibet.co.uk](https://www.unibet.co.uk) | Kindred group platform, shared with several other brands. |
 | **`bet365`** | [bet365.com](https://www.bet365.com) | **Leave until last.** Already marked `transport: 'browser'` in `config/odds.ts` because it is the one book expected to resist a plain fetch — heavy obfuscation and session binding. If the capture turns out to be unusable, the honest outcome is to drop it from the config rather than ship a flaky adapter. |
+
+## Where the browser transport got to
+
+`transport: 'browser'` means driving headless Chrome over CDP — from
+`ts-web-scraper`'s `Browser` — so the site's own client mints whatever
+token its API requires, instead of replaying a captured one that expires.
+
+What is established, by running it rather than by reasoning about it:
+
+- **Headless Chrome passes Caesars' WAF for the page itself.** A full
+  259KB render, correct title, and an `aws-waf-token` cookie minted. The
+  challenge is not the obstacle.
+- **The API still refuses.** Calling
+  `api.americanwagering.com/.../v3/sports-menu` from *inside* that page —
+  same origin, same cookie jar — returns 403 both with and without the
+  token forwarded as `x-aws-waf-token`.
+- **The header is not the raw cookie.** A live capture carries
+  `x-aws-waf-token: <uuid>:<blob>`; the cookie holds only a 406-character
+  blob with no uuid. Something in the page assembles the header from more
+  than the cookie, and that assembly is the unsolved part.
+
+The next step is to watch what the page's own client actually sends —
+CDP's `Network.requestWillBeSent` — rather than guessing at the format.
+That needs a network-capture API on `Browser`, which does not exist yet.
+
+BetMGM is at the same stage and is likely the same shape of problem.
+
+Fixed along the way: `Browser.launch()` was broken outright — it built the
+DevTools URL wrongly and threw `Failed to parse JSON` on every call, so no
+consumer had ever launched a browser through this library. Released in
+`ts-web-scraper` 0.1.10.
 
 ## Geo-blocks are not the same as anti-bot checks
 
