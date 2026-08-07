@@ -68,8 +68,15 @@ function cacheFor(book: BookBudget): ScraperCache {
 /**
  * The default user agent.
  *
- * Named rather than disguised. A book that would rather we did not read
- * its endpoint should be able to tell that we are, and to say so.
+ * Names us, so a book that would rather we did not read its endpoint can
+ * tell that we are and can say so.
+ *
+ * It is only a default. Some books refuse a self-identifying client
+ * outright — DraftKings' edge answers this UA with a 403 and a Chrome one
+ * with a 200, on an otherwise identical request — and those adapters
+ * override it with a browser UA in their own header map, where the choice
+ * is documented rather than hidden. So do not read this constant as a
+ * guarantee about what leaves the process; read each adapter.
  */
 const USER_AGENT = process.env.ODDS_USER_AGENT
   || 'PredictHQ/1.0 (+https://predicthq.com; odds aggregation)'

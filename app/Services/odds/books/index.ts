@@ -1,29 +1,29 @@
 import type { BookAdapter } from './adapter'
 import { enabledBooks } from '../../../../config/odds'
+import { draftkings } from './draftkings'
 
 /**
  * The adapter registry.
  *
- * ### Why this is empty
+ * ### One at a time, each against a real payload
  *
- * Every adapter has to be written against the book's actual response, and
+ * An adapter has to be written against the book's actual response, and
  * that response can only be obtained by making the request. Writing one
- * from an assumed payload shape produces a file that looks finished, has
- * tests that pass against the assumption, and fails on first contact — the
- * worst of the three possible states, because it claims coverage we do not
- * have.
+ * from an assumed shape produces a file that looks finished, passes tests
+ * against the assumption, and fails on first contact — worse than no
+ * adapter, because it claims coverage we do not have.
  *
- * So adapters land here one at a time as their real payloads are captured,
- * each with a recorded fixture in `tests/unit/`. Everything they plug into
- * — the contract in `adapter.ts`, the aggregation in `native.ts`, the
- * fallback in `composite.ts`, the budgeted context in `context.ts`, and the
- * loop in `engine.ts` — is built and tested against fakes already.
+ * So each adapter lands with a recorded fixture in `tests/fixtures/`, taken
+ * from a response the book actually sent, and its test pins the
+ * translation against that.
  *
  * The engine handles an empty registry correctly: `refreshSchedule` skips
  * any league no adapter covers, so it schedules nothing and polls nothing
  * rather than looping on an empty fetch.
  */
-const ADAPTERS: BookAdapter[] = []
+const ADAPTERS: BookAdapter[] = [
+  draftkings,
+]
 
 /**
  * Adapters that are both written and switched on.
