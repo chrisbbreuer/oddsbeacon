@@ -101,6 +101,10 @@ export default function (cli: CLI) {
       for (const schedule of active)
         log.info(`  ${schedule.slug} every ${schedule.intervalMs}ms`)
 
+      // Sockets before polls. A book that pushes takes its leagues off the
+      // polling path from its first message, so opening them first avoids
+      // one redundant pass per pushing book at startup.
+      engine.startSubscriptions()
       engine.start()
 
       // The board changes shape constantly — games start, games finish —
@@ -112,6 +116,8 @@ export default function (cli: CLI) {
 
       const shutdown = () => {
         clearInterval(refresh)
+        // `stop` closes the sockets too; a half-shut process holding a
+        // socket open is how a supervisor restart ends up with two.
         engine.stop()
         log.info('Odds loop stopped.')
         process.exit(0)

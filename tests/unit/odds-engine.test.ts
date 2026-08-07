@@ -1,7 +1,7 @@
 import type { ScheduledEvent, SportSchedule } from '../../app/Services/odds/engine'
 import { describe, expect, it } from 'bun:test'
 import { oddsConfig } from '../../config/odds'
-import { dueSports, intervalForSport } from '../../app/Services/odds/engine'
+import { dueSports, intervalForSport, OddsEngine } from '../../app/Services/odds/engine'
 
 /**
  * How often each league gets asked for a price.
@@ -146,5 +146,113 @@ describe('dueSports', () => {
   it('treats a league exactly at its interval as due', () => {
     const due = dueSports([schedule('nfl', 1_000, NOW - 1_000)], NOW)
     expect(due.map(s => s.slug)).toEqual(['nfl'])
+  })
+})
+
+describe('push subscriptions', () => {
+  function adapter(slug: string, sports: string[], pushes = false) {
+    return {
+      slug,
+      kind: 'sportsbook' as const,
+      transport: 'json' as const,
+      sports,
+      fetchSport: async () => [],
+      ...(pushes
+        ? {
+            subscribe: (_ctx: any, onChange: (e: any) => void) => {
+              // Announce coverage the way a real socket would, on its
+              // first message rather than on connect.
+              for (const sport of sports)
+                onChange({ sportSlug: sport, externalId: 'x', commenceAt: '', homeTeam: '', awayTeam: '', books: [] })
+              return { close: () => {} }
+            },
+          }
+        : {}),
+    }
+  }
+
+  function engineWith(adapters: any[]) {
+    return new OddsEngine({
+      db: {} as any,
+      adapters,
+      sports: [{ slug: 'nfl' }, { slug: 'nba' }] as any,
+      contextFor: () => ({}) as any,
+      loadEvents: async () => [],
+    })
+  }
+
+  it('does not consider a league pushed before any socket opens', () => {
+    const engine = engineWith([adapter('pinnacle', ['nfl'], true)])
+    expect(engine.fullyPushed('nfl')).toBe(false)
+  })
+
+  it('marks a league pushed once its only book is pushing', () => {
+    const engine = engineWith([adapter('pinnacle', ['nfl'], true)])
+    engine.startSubscriptions()
+    expect(engine.fullyPushed('nfl')).toBe(true)
+  })
+
+  it('keeps polling a league where only one of two books pushes', () => {
+    // The dangerous case: trusting the socket here would silently freeze
+    // draftkings' prices, visible only as a book that stopped moving.
+    const engine = engineWith([
+      adapter('pinnacle', ['nfl'], true),
+      adapter('draftkings', ['nfl'], false),
+    ])
+    engine.startSubscriptions()
+
+    expect(engine.fullyPushed('nfl')).toBe(false)
+  })
+
+  it('treats a league no adapter covers as not pushed', () => {
+    const engine = engineWith([adapter('pinnacle', ['nfl'], true)])
+    engine.startSubscriptions()
+
+    // Nothing covers nba, so it is not "fully pushed" by vacuous truth.
+    expect(engine.fullyPushed('nba')).toBe(false)
+  })
+
+  it('puts a league back on the polling path when sockets close', () => {
+    const engine = engineWith([adapter('pinnacle', ['nfl'], true)])
+    engine.startSubscriptions()
+    expect(engine.fullyPushed('nfl')).toBe(true)
+
+    engine.stopSubscriptions()
+    expect(engine.fullyPushed('nfl')).toBe(false)
+  })
+
+  it('survives an adapter whose socket refuses to open', () => {
+    const broken = {
+      slug: 'pinnacle',
+      kind: 'sportsbook' as const,
+      transport: 'websocket' as const,
+      sports: ['nfl'],
+      fetchSport: async () => [],
+      subscribe: () => { throw new Error('handshake failed') },
+    }
+
+    const engine = engineWith([broken])
+    expect(() => engine.startSubscriptions()).not.toThrow()
+
+    // Falls back to polling rather than going dark.
+    expect(engine.fullyPushed('nfl')).toBe(false)
+  })
+
+  it('does not open a second socket for the same book', () => {
+    let opened = 0
+    const counting = {
+      slug: 'pinnacle',
+      kind: 'sportsbook' as const,
+      transport: 'websocket' as const,
+      sports: ['nfl'],
+      fetchSport: async () => [],
+      subscribe: () => { opened++; return { close: () => {} } },
+    }
+
+    const engine = engineWith([counting])
+    engine.startSubscriptions()
+    engine.startSubscriptions()
+
+    expect(opened).toBe(1)
   })
 })

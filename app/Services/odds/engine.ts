@@ -1,7 +1,8 @@
 import type { OddsSettings } from '../../../config/odds'
 import type { Database } from '../../Support/db'
 import type { SportRow } from '../ingest/resolve'
-import type { BookAdapter, BookContext } from './books/adapter'
+import type { FeedEvent } from './provider'
+import type { BookAdapter, BookContext, Subscription } from './books/adapter'
 import { bucketFor, cadenceFor, oddsConfig, sportEnabled } from '../../../config/odds'
 import { ingestOdds } from '../ingest/odds'
 import { adaptersForSport } from './books/adapter'
@@ -110,6 +111,10 @@ export interface EngineOptions {
   loadEvents: () => Promise<ScheduledEvent[]>
   /** Called after a pass that changed at least one price. */
   onChange?: (summary: { sports: string[], changed: number }) => void | Promise<void>
+  /** Called for each pushed update from a book's socket. */
+  onPush?: (bookSlug: string, event: FeedEvent) => void | Promise<void>
+  /** Provenance for a subscription, which outlives any single pass. */
+  trackerFor?: (adapter: BookAdapter) => any
   /** How often the loop wakes to check what is due. */
   tickMs?: number
   settings?: OddsSettings
@@ -129,6 +134,21 @@ export class OddsEngine {
   private running = false
   private stopped = false
 
+  /** Live subscriptions, by book slug. */
+  private readonly subscriptions = new Map<string, Subscription>()
+
+  /**
+   * Leagues currently covered by a push subscription, by book slug.
+   *
+   * A set per book rather than one shared set: two books can both push,
+   * and a league is only safe to stop polling once *every* adapter that
+   * covers it is pushing. Collapsing them would silence polling for a
+   * league one book pushes and another does not, and the second book's
+   * prices would simply stop updating — visible only as a book that has
+   * quietly gone stale.
+   */
+  private readonly pushed = new Map<string, Set<string>>()
+
   constructor(private readonly options: EngineOptions) {}
 
   private get now(): number {
@@ -137,6 +157,65 @@ export class OddsEngine {
 
   private get settings(): OddsSettings {
     return this.options.settings ?? oddsConfig
+  }
+
+  /**
+   * A league is only safe to stop polling when every adapter covering it
+   * is pushing. One book on a socket and another on polls means the second
+   * book's prices stop updating the moment we trust the first.
+   */
+  fullyPushed(sportSlug: string): boolean {
+    const covering = adaptersForSport(this.options.adapters, sportSlug)
+    if (covering.length === 0)
+      return false
+
+    return covering.every(adapter => this.pushed.get(adapter.slug)?.has(sportSlug) === true)
+  }
+
+  /**
+   * Open a socket for every adapter that offers one.
+   *
+   * A pushed update is applied immediately rather than being queued for
+   * the next tick — the entire reason to hold a socket open is that the
+   * change lands in milliseconds, and deferring it to a poll boundary
+   * would spend the connection and keep the latency.
+   */
+  startSubscriptions(): void {
+    for (const adapter of this.options.adapters) {
+      if (!adapter.subscribe || this.subscriptions.has(adapter.slug))
+        continue
+
+      const tracker = this.options.trackerFor?.(adapter) ?? null
+      const ctx = this.options.contextFor(adapter, tracker)
+
+      try {
+        const subscription = adapter.subscribe(ctx, (event) => {
+          // Record coverage before applying, so a league is marked pushed
+          // from the first message rather than after a full pass.
+          const covered = this.pushed.get(adapter.slug) ?? new Set<string>()
+          covered.add(event.sportSlug)
+          this.pushed.set(adapter.slug, covered)
+
+          void this.options.onPush?.(adapter.slug, event)
+        })
+
+        this.subscriptions.set(adapter.slug, subscription)
+      }
+      catch {
+        // A socket that will not open is not fatal: the league stays on
+        // the polling path, which is slower and still correct.
+        this.pushed.delete(adapter.slug)
+      }
+    }
+  }
+
+  /** Close every socket. Called on shutdown. */
+  stopSubscriptions(): void {
+    for (const subscription of this.subscriptions.values())
+      subscription.close()
+
+    this.subscriptions.clear()
+    this.pushed.clear()
   }
 
   /** Recompute every league's cadence from the current board. */
@@ -173,7 +252,14 @@ export class OddsEngine {
    */
   async runOnce(): Promise<PassResult> {
     const now = this.now
+
+    // A league every covering book is pushing does not need polling. This
+    // is the whole payoff of holding a socket open, and it is filtered
+    // here rather than in `dueSports` so the schedule stays a pure
+    // function of the board — a book dropping its socket must put the
+    // league straight back on the polling path with no state to unwind.
     const due = dueSports([...this.schedules.values()], now)
+      .filter(schedule => !this.fullyPushed(schedule.slug))
 
     if (due.length === 0)
       return { polled: [], changed: 0, errors: [] }
@@ -231,6 +317,7 @@ export class OddsEngine {
 
   stop(): void {
     this.stopped = true
+    this.stopSubscriptions()
     if (this.timer) {
       clearInterval(this.timer)
       this.timer = null
