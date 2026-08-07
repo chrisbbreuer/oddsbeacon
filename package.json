@@ -1,9 +1,9 @@
 {
-  "name": "printel",
+  "name": "predicthq",
   "type": "module",
   "version": "0.0.0",
   "private": true,
-  "description": "Prin.tel — Prediction Intel. Signals and automated positions across Kalshi and Polymarket.",
+  "description": "PredictHQ — Prediction Intel. Signals and automated positions across Kalshi and Polymarket.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "contributors": [
     "Chris Breuer <chris@stacksjs.org>"
@@ -74,7 +74,7 @@
     "bun-query-builder": "^0.2.22",
     "stacks": "^0.70.292",
     "ts-charts": "github:stacksjs/ts-charts",
-    "ts-web-scraper": "^0.1.6",
+    "ts-web-scraper": "^0.1.7",
     "viem": "^2.55.11"
   },
   "devDependencies": {

@@ -22,6 +22,22 @@ export interface FeedOutcome {
   price: number
   /** Maximum stake, when the book publishes one. */
   limitAmount?: number
+  /**
+   * Deep link to this selection on the book's own site.
+   *
+   * Per-book and unreconstructable from anything else we hold, so the
+   * adapter that read the price is the only thing able to supply it.
+   */
+  link?: string
+  /** The book's own id for this outcome, for per-selection reads. */
+  sid?: string
+  /**
+   * Money already matched at this price, on an exchange.
+   *
+   * Absent for a sportsbook, which quotes a price rather than reporting a
+   * market. Where it exists it is the weight behind the number.
+   */
+  tradedVolume?: number
 }
 
 /** One bet type at one line, as a single book quotes it. */
@@ -40,6 +56,14 @@ export interface FeedMarket {
    */
   line: number | null
   period?: string
+  /**
+   * The player this market is about, for props.
+   *
+   * Part of a market's identity rather than a label on it: two players'
+   * props of the same type at the same line are different markets, and the
+   * unique index on `markets` carries this column for exactly that reason.
+   */
+  playerName?: string
   outcomes: FeedOutcome[]
 }
 
