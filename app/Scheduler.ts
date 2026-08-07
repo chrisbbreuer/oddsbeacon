@@ -22,6 +22,14 @@ export default function () {
   // each stage consumes what the previous one produced, and running them
   // out of order does not fail loudly — it produces subtly stale numbers.
   //
+  // Prices are the one stage that also has a faster path. `buddy
+  // odds:watch` polls the books on a per-league cadence measured in
+  // seconds, which cron cannot express — its floor is one minute, and a
+  // game in play needs better than that. The pass here still ingests
+  // prices, deliberately: it is the floor that keeps the board moving when
+  // the watch process is not running, and writing the same unchanged price
+  // twice costs nothing because history is appended only on change.
+  //
   // See app/Actions/Ingest/RunPipeline.ts for the ordering and why.
   schedule
     .job('RunPipeline')

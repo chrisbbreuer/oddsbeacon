@@ -40,6 +40,12 @@ export default {
     aliases: ['check'],
   },
 
+  // The realtime price loop — the fourth runtime role, alongside web,
+  // realtime, and scheduler. Cron's floor is one minute and a game in play
+  // needs seconds, so this runs as its own long-lived process rather than
+  // as a scheduled job. See app/Services/odds/engine.ts.
+  'odds:watch': 'OddsWatch',
+
   // The global stop. Registered under three names because the file
   // defines three commands, and each has to be reachable on its own.
   'trading:halt': 'Trading',
