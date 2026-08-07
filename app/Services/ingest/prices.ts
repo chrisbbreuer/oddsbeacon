@@ -21,6 +21,12 @@ export interface PriceWrite {
   available?: boolean
   /** Provider's own timestamp for the quote, if it publishes one. */
   observedAt?: string
+  /** Deep link to this selection on the book's own site. */
+  link?: string
+  /** The book's own id for this outcome. */
+  sid?: string
+  /** Money matched at this price on an exchange. Zero for a sportsbook. */
+  tradedVolume?: number
 }
 
 export interface PriceWriteResult {
@@ -28,6 +34,74 @@ export interface PriceWriteResult {
   changed: number
   snapshots: number
 }
+
+/**
+ * How many rows go into one statement.
+ *
+ * Bounded for two reasons: a multi-row INSERT eventually exceeds MySQL's
+ * `max_allowed_packet`, and an `IN (…)` list of unbounded length stops
+ * being a usable query plan. Five hundred is comfortably inside both while
+ * still turning a full board into a handful of round trips.
+ */
+const PRICE_BATCH = 500
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size)
+    out.push(items.slice(i, i + size))
+  return out
+}
+
+function priceKey(selectionId: number, bookmakerId: number): string {
+  return `${selectionId}:${bookmakerId}`
+}
+
+/**
+ * The prices we already hold for everything in this batch, in one read.
+ *
+ * Keyed on selection alone rather than the selection/bookmaker pair: a
+ * row-constructor `IN` is spelled differently on every dialect we run on,
+ * and the extra rows this pulls back are the other books' quotes on
+ * selections we are already writing — cheap, and filtered in memory.
+ */
+async function loadPriorPrices(
+  db: Database,
+  writes: PriceWrite[],
+): Promise<Map<string, { price: number, point: number | null }>> {
+  const prior = new Map<string, { price: number, point: number | null }>()
+  const selectionIds = [...new Set(writes.map(w => w.selectionId))]
+
+  for (const group of chunk(selectionIds, PRICE_BATCH)) {
+    const placeholders = group.map(() => '?').join(', ')
+    const rows = await db.query<{ selection_id: number, bookmaker_id: number, price: number, point: number | null }>(
+      `SELECT selection_id, bookmaker_id, price, point FROM odds WHERE selection_id IN (${placeholders})`,
+    ).all(...group)
+
+    for (const row of rows) {
+      prior.set(priceKey(Number(row.selection_id), Number(row.bookmaker_id)), {
+        price: Number(row.price),
+        point: row.point === null || row.point === undefined ? null : Number(row.point),
+      })
+    }
+  }
+
+  return prior
+}
+
+/** Columns a colliding `odds` row takes from the incoming quote. */
+const ODDS_MERGE_COLUMNS = [
+  'price',
+  'american',
+  'implied_prob',
+  'point',
+  'limit_amount',
+  'available',
+  'observed_at',
+  'link',
+  'sid',
+  'traded_volume',
+  'updated_at',
+]
 
 /**
  * Upsert current prices and append history for the ones that moved.
@@ -41,25 +115,47 @@ export interface PriceWriteResult {
  * The unique index on (selection, bookmaker, captured_at) then makes a
  * retried or overlapping pass idempotent rather than letting it write a
  * second identical observation that would read as a movement of zero.
+ *
+ * ### Why this is batched
+ *
+ * It used to run a `SELECT`, an upsert, and for a moved price a second
+ * `SELECT` and an insert — per quote. Two to four round trips times
+ * thousands of selections times every book was affordable at one pass
+ * every five minutes and is not affordable at one pass a second, which is
+ * what the realtime engine asks for. The work is identical; it now travels
+ * in three statements per chunk instead of four per row.
  */
 export async function writePrices(db: Database, writes: PriceWrite[]): Promise<PriceWriteResult> {
   const now = nowIso()
 
-  const previous = db.prepare('SELECT price, point FROM odds WHERE selection_id = ? AND bookmaker_id = ?')
-
-  let written = 0
-  let changed = 0
-  let snapshots = 0
-
+  // Last quote wins. The same selection and book arriving twice in one
+  // batch is a provider repeating an event, and carrying both into a
+  // multi-row upsert is a portability trap: MySQL silently keeps the last
+  // while Postgres and SQLite reject the whole statement.
+  const latest = new Map<string, PriceWrite>()
   for (const w of writes) {
     if (!Number.isFinite(w.price) || w.price <= 1)
       continue
+    latest.set(priceKey(w.selectionId, w.bookmakerId), w)
+  }
 
-    const prior = await previous.get(w.selectionId, w.bookmakerId) as { price: number, point: number | null } | null
+  const pending = [...latest.values()]
+  if (pending.length === 0)
+    return { written: 0, changed: 0, snapshots: 0 }
+
+  const prior = await loadPriorPrices(db, pending)
+
+  const oddsRows: Record<string, unknown>[] = []
+  const snapshotRows: Record<string, unknown>[] = []
+  let changed = 0
+
+  for (const w of pending) {
     const point = w.point ?? null
     const implied = impliedProbability(w.price)
 
-    await db.updateOrInsert('odds', { selection_id: w.selectionId, bookmaker_id: w.bookmakerId }, {
+    oddsRows.push({
+      selection_id: w.selectionId,
+      bookmaker_id: w.bookmakerId,
       price: w.price,
       american: toAmericanNumber(w.price),
       implied_prob: implied,
@@ -67,33 +163,107 @@ export async function writePrices(db: Database, writes: PriceWrite[]): Promise<P
       limit_amount: w.limitAmount ?? 0,
       available: w.available === false ? 0 : 1,
       observed_at: w.observedAt || now,
+      link: w.link ?? '',
+      sid: w.sid ?? '',
+      traded_volume: w.tradedVolume ?? 0,
       updated_at: now,
     })
-    written++
 
-    const moved = prior === null || prior.price !== w.price || (prior.point ?? null) !== point
-    if (moved) {
-      changed++
-      const exists = await db.query<{ id: number }>(
-        'SELECT id FROM odds_snapshots WHERE selection_id = ? AND bookmaker_id = ? AND captured_at = ?',
-      ).get(w.selectionId, w.bookmakerId, now)
-      await db.insertOrIgnore('odds_snapshots', {
-        selection_id: w.selectionId,
-        bookmaker_id: w.bookmakerId,
-        price: w.price,
-        implied_prob: implied,
-        point,
-        captured_at: now,
-        is_opening: prior === null ? 1 : 0,
-        created_at: now,
-        updated_at: now,
-      })
-      if (!exists)
-        snapshots++
-    }
+    const was = prior.get(priceKey(w.selectionId, w.bookmakerId)) ?? null
+    const moved = was === null || was.price !== w.price || was.point !== point
+    if (!moved)
+      continue
+
+    changed++
+    snapshotRows.push({
+      selection_id: w.selectionId,
+      bookmaker_id: w.bookmakerId,
+      price: w.price,
+      implied_prob: implied,
+      point,
+      captured_at: now,
+      is_opening: was === null ? 1 : 0,
+      created_at: now,
+      updated_at: now,
+    })
   }
 
-  return { written, changed, snapshots }
+  for (const group of chunk(oddsRows, PRICE_BATCH))
+    await db.upsert('odds', group, ['selection_id', 'bookmaker_id'], ODDS_MERGE_COLUMNS)
+
+  // No merge columns: a snapshot that already exists at this timestamp is
+  // the idempotency guarantee working, not something to overwrite. The
+  // ignore form's affected-row count is exactly how many landed.
+  let snapshots = 0
+  for (const group of chunk(snapshotRows, PRICE_BATCH))
+    snapshots += (await db.upsert('odds_snapshots', group, ['selection_id', 'bookmaker_id', 'captured_at'])).changes
+
+  return { written: oddsRows.length, changed, snapshots }
+}
+
+/** One observation that a book offers a market on an event. */
+export interface CoverageWrite {
+  bookmakerId: number
+  marketEventId: number
+  marketType: string
+}
+
+/**
+ * Record what each book is offering, separately from what it is pricing.
+ *
+ * The two questions look identical through the `odds` table and are not.
+ * A book that pulled its player props ten minutes before kickoff and a
+ * book that never offered them both have no prop prices; the first is a
+ * market closing, which is information, and the second is a gap in our
+ * coverage, which is a bug. Only a record of the *offer* separates them.
+ *
+ * `lastSeenAt` is the whole payload, so a market that stops appearing ages
+ * out visibly rather than lingering as a claim we can no longer support.
+ * Repeats within one pass are collapsed for the same reason `writePrices`
+ * dedupes: a duplicate conflict key inside one multi-row statement is
+ * tolerated by MySQL and rejected by SQLite and Postgres.
+ */
+export async function writeCoverage(db: Database, entries: CoverageWrite[]): Promise<number> {
+  if (entries.length === 0)
+    return 0
+
+  const now = nowIso()
+  const rows = new Map<string, Record<string, unknown>>()
+
+  for (const entry of entries) {
+    const key = `${entry.bookmakerId}:${entry.marketEventId}:${entry.marketType}`
+    const existing = rows.get(key)
+
+    if (existing) {
+      // Each distinct line the book quotes on this market type. A single
+      // main total and an alternate ladder are different amounts of
+      // market, and the count is what tells them apart.
+      existing.line_count = (existing.line_count as number) + 1
+      continue
+    }
+
+    rows.set(key, {
+      bookmaker_id: entry.bookmakerId,
+      market_event_id: entry.marketEventId,
+      market_type: entry.marketType,
+      line_count: 1,
+      last_seen_at: now,
+      updated_at: now,
+    })
+  }
+
+  const list = [...rows.values()]
+
+  for (const group of chunk(list, PRICE_BATCH)) {
+    await db.upsert(
+      'book_market_coverage',
+      group,
+      ['bookmaker_id', 'market_event_id', 'market_type'],
+      ['line_count', 'last_seen_at', 'updated_at'],
+    )
+  }
+
+  return list.length
 }
 
 /**

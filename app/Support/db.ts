@@ -10,6 +10,12 @@ interface SqlExecutor {
   transaction?: <T>(fn: (transaction: SqlExecutor) => Promise<T> | T) => Promise<T>
   updateOrInsert?: (table: string, match: Record<string, unknown>, values: Record<string, unknown>) => Promise<unknown>
   insertOrIgnore?: (table: string, values: Record<string, unknown>) => Promise<unknown>
+  upsert?: (
+    table: string,
+    rows: Record<string, unknown>[],
+    conflictColumns: string[],
+    mergeColumns?: string[],
+  ) => Promise<unknown>
 }
 
 export interface RunResult {
@@ -97,6 +103,35 @@ export class Database {
     if (!this.executor.insertOrIgnore)
       throw new Error('The configured database driver does not support insertOrIgnore')
     await this.executor.insertOrIgnore(table, values)
+  }
+
+  /**
+   * Write many rows in one statement, updating the ones that collide.
+   *
+   * The driver emits `ON DUPLICATE KEY UPDATE` on Vitess and MySQL and
+   * `ON CONFLICT … DO UPDATE` on Postgres and SQLite, so this is one round
+   * trip whatever the deployment runs on. An empty `mergeColumns` gives
+   * the do-nothing form — `INSERT IGNORE` / `DO NOTHING` — which is what
+   * an append-only history table wants.
+   *
+   * Callers must not pass two rows sharing a conflict key. MySQL would
+   * quietly keep the last, while Postgres and SQLite reject the statement
+   * outright, so the same call would behave differently per dialect. The
+   * count returned is the driver's affected-row count, which under MySQL's
+   * `ON DUPLICATE KEY UPDATE` counts an update as two — reliable for the
+   * ignore form, not a row tally for the merge form.
+   */
+  async upsert(
+    table: string,
+    rows: Record<string, unknown>[],
+    conflictColumns: string[],
+    mergeColumns: string[] = [],
+  ): Promise<RunResult> {
+    if (rows.length === 0)
+      return { changes: 0, lastInsertRowid: 0 }
+    if (!this.executor.upsert)
+      throw new Error('The configured database driver does not support upsert')
+    return runResult(await this.executor.upsert(table, rows, conflictColumns, mergeColumns))
   }
 
   close(): void {

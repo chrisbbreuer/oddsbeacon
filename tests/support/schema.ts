@@ -137,6 +137,39 @@ export function schemaFor(path: string, tables: string[]): Database {
         `INSERT OR IGNORE INTO ${table} (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
       ).run(...Object.values(values))
     },
+    /**
+     * The multi-row upsert the driver gives us in production.
+     *
+     * SQLite and Postgres spell it `ON CONFLICT`, MySQL and Vitess spell it
+     * `ON DUPLICATE KEY UPDATE`, and the driver picks. Only the SQLite form
+     * is needed here, but the *semantics* have to match or these tests
+     * would prove something production does not do: an empty merge list is
+     * the do-nothing form, and the affected-row count is how many rows
+     * actually landed.
+     */
+    async upsert(
+      table: string,
+      rows: Record<string, unknown>[],
+      conflictColumns: string[],
+      mergeColumns: string[] = [],
+    ): Promise<{ changes: number, lastInsertRowid: number }> {
+      if (rows.length === 0)
+        return { changes: 0, lastInsertRowid: 0 }
+
+      const columns = Object.keys(rows[0]!)
+      const tuple = `(${columns.map(() => '?').join(', ')})`
+      const values = rows.map(() => tuple).join(', ')
+      const params = rows.flatMap(row => columns.map(column => row[column] as unknown))
+      const target = conflictColumns.join(', ')
+
+      const resolution = mergeColumns.length === 0
+        ? 'DO NOTHING'
+        : `DO UPDATE SET ${mergeColumns.map(column => `${column} = excluded.${column}`).join(', ')}`
+
+      return db.query(
+        `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${values} ON CONFLICT (${target}) ${resolution}`,
+      ).run(...params) as { changes: number, lastInsertRowid: number }
+    },
   })
 
   return db
