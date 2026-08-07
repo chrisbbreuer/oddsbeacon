@@ -290,6 +290,25 @@ async function getJson<T>(url: string, ctx: BookContext, what: string): Promise<
     return null
 
   if (!response.ok) {
+    // A 403 here is usually not a blocked scraper but a blocked *country*:
+    // Pinnacle refuses jurisdictions it is not licensed in, and says so in
+    // the body. Reporting that as a bare "HTTP 403" sends whoever reads the
+    // run row hunting for a header problem that does not exist, so the
+    // reason is pulled out and named.
+    if (response.status === 403) {
+      const reason = await response.clone().json()
+        .then((body: any) => String(body?.detail ?? body?.reason ?? ''))
+        .catch(() => '')
+
+      if (reason) {
+        ctx.tracker.fail(
+          `pinnacle: ${what} refused — ${reason}. `
+          + 'Set ODDS_PROXY_PINNACLE to a host in a jurisdiction Pinnacle serves.',
+        )
+        return null
+      }
+    }
+
     ctx.tracker.fail(`pinnacle: ${what} HTTP ${response.status}`)
     return null
   }

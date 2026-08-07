@@ -98,8 +98,8 @@ BetOnline 2× against 1× for a recreational book.
 | Book | Where | Notes |
 | --- | --- | --- |
 | **`fanduel`** | [sportsbook.fanduel.com](https://sportsbook.fanduel.com) | The other half of the US duopoly. Expect an Akamai-style edge like DraftKings — capture all headers. |
-| **`betmgm`** | [sports.betmgm.com](https://sports.betmgm.com) | Geo-gated by state; you may need a state in the URL path. |
-| **`caesars`** | [sportsbook.caesars.com](https://sportsbook.caesars.com) | Seeded with `providerKey: 'williamhill_us'` — same platform as William Hill US. A capture here may well fit both. |
+| **`betmgm`** | [sports.betmgm.com](https://sports.betmgm.com) | **Endpoint known, session-gated.** `cds-api/bettingoffer/fixtures` on the state host (`www.az.betmgm.com`) is the right call, but replaying it without the browser's `__cf_bm` cookie and device fingerprint returns a bot-detection page. Needs `transport: 'browser'`, not a plain fetch. |
+| **`caesars`** | [sportsbook.caesars.com](https://sportsbook.caesars.com) | **Endpoint known, WAF-gated.** `api.americanwagering.com/regions/us/locations/<state>/brands/czr/sb/...` needs the `x-aws-waf-token` a browser mints; without it CloudFront answers 403. Also `transport: 'browser'`. Seeded with `providerKey: 'williamhill_us'` — same platform as William Hill US, so solving one likely solves both. |
 | **`espnbet`** | [espnbet.com](https://espnbet.com) | Penn/Hollywood platform underneath. |
 
 ### Exchanges — back *and* lay, plus real volume

@@ -70,6 +70,24 @@ export interface BookBudget {
   requestsPerSecond: number
   /** Jurisdictions this book quotes for, used to skip pointless calls. */
   regions: string[]
+  /**
+   * Send this book's requests out through a proxy.
+   *
+   * For books that are lawfully available only from certain countries.
+   * Pinnacle answers a request from the United States with
+   * `{"reason":"location"}` and a 403 — a licensing condition on who may
+   * use the service, not an anti-bot check. The right answer to that is to
+   * make the request from somewhere it is permitted, on a host we own
+   * there, rather than to disguise where it came from.
+   *
+   * Production already runs in Germany, so nothing is needed there. This
+   * exists so a developer working from a blocked country can route through
+   * the same host instead of being unable to run the book at all.
+   *
+   * Read from the environment rather than written here: it is deployment
+   * topology, and it differs per machine.
+   */
+  proxy?: string
 }
 
 export interface OddsSettings {
@@ -109,17 +127,20 @@ const BOOKS: BookBudget[] = [
   // margin, high limit, and it welcomes winning bettors, which is what
   // makes its price an estimate of probability rather than of where the
   // public money sits.
-  // Disabled, and not because the adapter is unfinished — it is written and
-  // tested against real payloads. Pinnacle geo-blocks the United States
-  // explicitly: the API answers `{"reason":"location","detail":"Access
-  // from United States is prohibited"}` with a 403. That is a regulatory
-  // restriction on who may use the service, not an anti-bot measure, and
-  // routing around it is a different decision from setting a user agent.
+  // Pinnacle serves Germany and refuses the United States outright: the API
+  // answers a US request with `{"reason":"location"}` and a 403. That is a
+  // licensing condition on who may use the service, not an anti-bot check.
   //
-  // Enable this only from a jurisdiction Pinnacle serves. It is the sharpest
-  // line available and weighted 4x for that reason, so it is worth the
-  // deployment being somewhere it can legitimately be read.
-  { slug: 'pinnacle', enabled: false, transport: 'json', requestsPerSecond: 4, regions: ['eu'] },
+  // Production runs in Germany, so this works there as an ordinary request
+  // from a country Pinnacle serves. Working from a blocked country, set
+  // `ODDS_PROXY_PINNACLE` to route through that same host rather than
+  // disabling the book — the request is then made from where it is
+  // permitted, which is a different thing from hiding where it came from.
+  //
+  // Worth the trouble: it is the sharpest public line, weighted 4x, it
+  // covers NBA and NHL where DraftKings had nothing, and it publishes stake
+  // limits that almost no book does.
+  { slug: 'pinnacle', enabled: true, transport: 'json', requestsPerSecond: 4, regions: ['eu'] },
   { slug: 'circa', enabled: true, transport: 'json', requestsPerSecond: 2, regions: ['us'] },
   { slug: 'betonlineag', enabled: true, transport: 'json', requestsPerSecond: 2, regions: ['us'] },
 
@@ -193,7 +214,23 @@ export const oddsConfig: OddsSettings = {
 /** The books actually pollable right now, after the env kill switch. */
 export function enabledBooks(settings: OddsSettings = oddsConfig): BookBudget[] {
   const off = disabledByEnv()
-  return settings.books.filter(book => book.enabled && !off.has(book.slug))
+  return settings.books
+    .filter(book => book.enabled && !off.has(book.slug))
+    .map(book => ({ ...book, proxy: proxyFor(book.slug) }))
+}
+
+/**
+ * The egress route for one book, from the environment.
+ *
+ * `ODDS_PROXY_<SLUG>` for a single book, `ODDS_PROXY_URL` for all of them.
+ * The per-book form wins, because the reason to proxy is usually specific
+ * to one book's licensing rather than to the deployment as a whole —
+ * routing every book through one country would change what the other
+ * thirteen are quoted, which is the opposite of what is wanted.
+ */
+export function proxyFor(slug: string, env: Record<string, string | undefined> = process.env): string | undefined {
+  const key = `ODDS_PROXY_${slug.replace(/-/g, '_').toUpperCase()}`
+  return env[key]?.trim() || env.ODDS_PROXY_URL?.trim() || undefined
 }
 
 /**

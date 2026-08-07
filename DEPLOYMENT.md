@@ -14,6 +14,7 @@ Set these in `.env` (production values in `.env.production`):
 | `ODDS_API_KEY` | The **fallback** odds provider. Asked only about leagues our own book adapters returned nothing for, so its request count falls to near zero. Unset with no adapters → synthetic line mover. |
 | `ODDS_BOOKS_DISABLED` | Comma-separated book slugs to stop polling immediately, without a deploy. The fast switch; the `enabled` flags in `config/odds.ts` are the slow one. |
 | `ODDS_USER_AGENT` | Overrides the user agent the book adapters identify themselves with. Named rather than disguised by default. |
+| `ODDS_PROXY_PINNACLE` / `ODDS_PROXY_URL` | Egress route for a geo-restricted book. Pinnacle refuses the United States (`{"reason":"location"}`), which is a licensing condition rather than an anti-bot check. Unset in production, which runs in Germany — a country Pinnacle serves. Set it to that host when working from a blocked one. |
 | `BROADCAST_HOST` / `BROADCAST_PORT` | Realtime (ts-broadcasting) server bind (default `0.0.0.0:6001`). |
 | `BROADCAST_SCHEME` | `ws` locally, `wss` in production (behind TLS). |
 | `BROADCAST_REDIS_ENABLED` + `REDIS_*` | Required when the API/ingest run in **separate** processes from the broadcast server so broadcasts fan out across them. See `config/realtime.ts`. |

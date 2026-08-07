@@ -108,6 +108,13 @@ export function bookContextFor(
           timeout: init.timeoutMs ?? 12_000,
           signal,
           useFresh: false,
+          // Adapters inspect error statuses rather than having them thrown
+          // away — `BookContext.fetch` promises the response, including
+          // failures, and a book usually says *why* it refused in the body.
+          throwOnError: false,
+          // Set only for books that are lawfully readable from somewhere
+          // other than where this process runs. See `BookBudget.proxy`.
+          ...(budget?.proxy ? { proxy: budget.proxy } : {}),
         })
 
         // Reconstitute a Response so adapters have one shape to handle,

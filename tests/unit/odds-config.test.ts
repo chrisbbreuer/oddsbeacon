@@ -14,7 +14,7 @@
 
 import process from 'node:process'
 import { afterEach, describe, expect, it } from 'bun:test'
-import { bucketFor, cadenceFor, enabledBooks, oddsConfig, sportEnabled } from '../../config/odds'
+import { bucketFor, cadenceFor, enabledBooks, oddsConfig, proxyFor, sportEnabled } from '../../config/odds'
 
 const NOW = Date.parse('2026-08-06T18:00:00.000Z')
 
@@ -110,10 +110,10 @@ describe('enabledBooks', () => {
     expect(slugs).toContain('draftkings')
     // Not yet written, so not yet claimed as coverage.
     expect(slugs).not.toContain('bet365')
-    // Written and tested, but Pinnacle geo-blocks the United States
-    // outright — a regulatory restriction rather than an anti-bot one, so
-    // it stays off until the deployment is somewhere it may be read.
-    expect(slugs).not.toContain('pinnacle')
+    // On, because production runs in Germany and Pinnacle serves Germany.
+    // From a jurisdiction it refuses, the fix is ODDS_PROXY_PINNACLE rather
+    // than switching the book off.
+    expect(slugs).toContain('pinnacle')
   })
 
   it('drops a book named in the env kill switch', () => {
@@ -150,5 +150,40 @@ describe('enabledBooks', () => {
         continue
       expect(known.has(book.slug)).toBe(true)
     }
+  })
+})
+
+describe('proxyFor', () => {
+  it('is unset by default, so nothing is routed unexpectedly', () => {
+    expect(proxyFor('pinnacle', {})).toBeUndefined()
+  })
+
+  it('reads a per-book route', () => {
+    expect(proxyFor('pinnacle', { ODDS_PROXY_PINNACLE: 'http://de.example:8080' }))
+      .toBe('http://de.example:8080')
+  })
+
+  it('falls back to the shared route', () => {
+    expect(proxyFor('pinnacle', { ODDS_PROXY_URL: 'http://all.example:8080' }))
+      .toBe('http://all.example:8080')
+  })
+
+  it('prefers the per-book route over the shared one', () => {
+    // Routing every book through one country would change what the other
+    // thirteen quote, so the specific reason wins over the blanket one.
+    const proxy = proxyFor('pinnacle', {
+      ODDS_PROXY_PINNACLE: 'http://de.example:8080',
+      ODDS_PROXY_URL: 'http://all.example:8080',
+    })
+    expect(proxy).toBe('http://de.example:8080')
+  })
+
+  it('maps a hyphenated slug onto an env-safe name', () => {
+    expect(proxyFor('efl-league-one', { ODDS_PROXY_EFL_LEAGUE_ONE: 'http://x:1' }))
+      .toBe('http://x:1')
+  })
+
+  it('ignores an empty value rather than proxying to nowhere', () => {
+    expect(proxyFor('pinnacle', { ODDS_PROXY_PINNACLE: '   ' })).toBeUndefined()
   })
 })
