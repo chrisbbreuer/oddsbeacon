@@ -1,6 +1,7 @@
 import type { BookAdapter } from './adapter'
 import { enabledBooks } from '../../../../config/odds'
 import { draftkings } from './draftkings'
+import { pinnacle } from './pinnacle'
 
 /**
  * The adapter registry.
@@ -22,6 +23,7 @@ import { draftkings } from './draftkings'
  * rather than looping on an empty fetch.
  */
 const ADAPTERS: BookAdapter[] = [
+  pinnacle,
   draftkings,
 ]
 

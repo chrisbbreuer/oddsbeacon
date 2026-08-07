@@ -63,6 +63,31 @@ export function decimalFromProbability(prob: number): number {
 }
 
 /** Convert decimal odds to an American/moneyline number, e.g. +138 / −145. */
+/**
+ * American odds to decimal.
+ *
+ * The inverse of {@link toAmericanNumber}, needed because not every book
+ * quotes decimally — Pinnacle's API returns American integers, and the
+ * whole pipeline downstream of a provider is decimal.
+ *
+ * There is no such thing as American odds between -100 and +100: the
+ * notation cannot express a price there, so a value inside that band is a
+ * malformed quote rather than a very short one. Returning 0 lets the
+ * caller drop it, which is what `writePrices` does with anything <= 1.
+ */
+export function fromAmericanNumber(american: number): number {
+  if (!Number.isFinite(american))
+    return 0
+
+  if (american >= 100)
+    return 1 + american / 100
+
+  if (american <= -100)
+    return 1 + 100 / Math.abs(american)
+
+  return 0
+}
+
 export function toAmericanNumber(decimal: number): number {
   if (!Number.isFinite(decimal) || decimal <= 1)
     return 0

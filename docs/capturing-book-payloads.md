@@ -89,7 +89,7 @@ BetOnline 2× against 1× for a recreational book.
 
 | Book | Where | Notes |
 | --- | --- | --- |
-| **`pinnacle`** | [pinnacle.com](https://www.pinnacle.com) → any in-season league | **Start here.** The sharpest public line and the best single de-vig anchor. Historically has a clean JSON API behind the site. Also publishes limits, which fills `Odd.limitAmount`. |
+| **`pinnacle`** | [pinnacle.com](https://www.pinnacle.com) | **Adapter written, disabled.** Clean JSON API at `guest.api.arcadia.pinnacle.com`, and it publishes stake limits — almost no book does. But it **geo-blocks the United States** with an explicit `{"reason":"location"}` 403. That is a regulatory restriction on who may use the service, not an anti-bot check, so it stays off rather than being routed around. Flip `enabled` in `config/odds.ts` from a jurisdiction Pinnacle serves. |
 | **`circa`** | [circasports.com](https://www.circasports.com) | Sharp, US, high limits. Smaller site, likely a simpler payload. |
 | **`betonlineag`** | [betonline.ag](https://www.betonline.ag) | Offshore, no geo gate in most places, so likely the easiest of the three to capture. |
 
@@ -126,6 +126,24 @@ usually in the same response, but confirm before assuming.
 | **`williamhill`** | [williamhill.com](https://sports.williamhill.com) | See the Caesars note — likely shared platform. |
 | **`unibet`** | [unibet.co.uk](https://www.unibet.co.uk) | Kindred group platform, shared with several other brands. |
 | **`bet365`** | [bet365.com](https://www.bet365.com) | **Leave until last.** Already marked `transport: 'browser'` in `config/odds.ts` because it is the one book expected to resist a plain fetch — heavy obfuscation and session binding. If the capture turns out to be unusable, the honest outcome is to drop it from the config rather than ship a flaky adapter. |
+
+## Geo-blocks are not the same as anti-bot checks
+
+Worth separating, because both arrive as a 403.
+
+A user-agent or header check is a site preferring not to be read by
+scripts. DraftKings does this, and the adapter sets a browser user agent —
+documented in its header map rather than buried.
+
+A **geo-block is a statement about who may use the service at all**, and
+for a bookmaker it is usually a licensing condition. Pinnacle answers a US
+request with `{"reason":"location","detail":"Access from United States is
+prohibited"}`. Routing around that is a materially different decision, and
+it is not one to make silently in a header map — so the Pinnacle adapter
+ships disabled with the finding recorded next to the switch.
+
+If a capture succeeds from your browser but the adapter 403s, check the
+response body before assuming it is fingerprinting. Ours said so plainly.
 
 ## A note on what capturing means
 

@@ -107,17 +107,20 @@ describe('sportEnabled', () => {
 describe('enabledBooks', () => {
   it('returns only the books with an adapter switched on', () => {
     const slugs = enabledBooks().map(b => b.slug)
-    expect(slugs).toContain('pinnacle')
     expect(slugs).toContain('draftkings')
     // Not yet written, so not yet claimed as coverage.
     expect(slugs).not.toContain('bet365')
+    // Written and tested, but Pinnacle geo-blocks the United States
+    // outright — a regulatory restriction rather than an anti-bot one, so
+    // it stays off until the deployment is somewhere it may be read.
+    expect(slugs).not.toContain('pinnacle')
   })
 
   it('drops a book named in the env kill switch', () => {
-    process.env.ODDS_BOOKS_DISABLED = 'pinnacle'
+    process.env.ODDS_BOOKS_DISABLED = 'draftkings'
     const slugs = enabledBooks().map(b => b.slug)
-    expect(slugs).not.toContain('pinnacle')
-    expect(slugs).toContain('draftkings')
+    expect(slugs).not.toContain('draftkings')
+    expect(slugs).toContain('circa')
   })
 
   it('tolerates whitespace and casing in the kill switch', () => {

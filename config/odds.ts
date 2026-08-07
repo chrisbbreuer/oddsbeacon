@@ -109,7 +109,17 @@ const BOOKS: BookBudget[] = [
   // margin, high limit, and it welcomes winning bettors, which is what
   // makes its price an estimate of probability rather than of where the
   // public money sits.
-  { slug: 'pinnacle', enabled: true, transport: 'json', requestsPerSecond: 4, regions: ['eu'] },
+  // Disabled, and not because the adapter is unfinished — it is written and
+  // tested against real payloads. Pinnacle geo-blocks the United States
+  // explicitly: the API answers `{"reason":"location","detail":"Access
+  // from United States is prohibited"}` with a 403. That is a regulatory
+  // restriction on who may use the service, not an anti-bot measure, and
+  // routing around it is a different decision from setting a user agent.
+  //
+  // Enable this only from a jurisdiction Pinnacle serves. It is the sharpest
+  // line available and weighted 4x for that reason, so it is worth the
+  // deployment being somewhere it can legitimately be read.
+  { slug: 'pinnacle', enabled: false, transport: 'json', requestsPerSecond: 4, regions: ['eu'] },
   { slug: 'circa', enabled: true, transport: 'json', requestsPerSecond: 2, regions: ['us'] },
   { slug: 'betonlineag', enabled: true, transport: 'json', requestsPerSecond: 2, regions: ['us'] },
 
