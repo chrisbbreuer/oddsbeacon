@@ -150,6 +150,38 @@ const SPEC = {
         },
       },
     },
+    '/events/{id}/markets': {
+      get: {
+        summary: 'Which bookmakers offer which markets on an event',
+        description:
+          'What each book *offers*, as opposed to what it is currently pricing. The two differ in the case '
+          + 'that matters: a book that pulled a market and a book that never had it both show no prices through '
+          + '/events/{id}, and only the first is a market closing. `lastSeenAt` is what separates them.',
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: {
+          200: { description: 'Coverage, grouped by bookmaker' },
+          404: { description: 'No coverage recorded for that event', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+        },
+      },
+    },
+    '/historical/odds': {
+      get: {
+        summary: 'The board as it stood at a given instant',
+        description:
+          'Reconstructed rather than looked up: price history is a change log, so a row exists only where a '
+          + 'price moved and the board at an instant is the latest observation at or before it, per selection '
+          + 'and book. A timestamp in the future is refused rather than quietly answered with the current board.',
+        parameters: [
+          { name: 'date', in: 'query', required: true, description: 'ISO-8601 instant to reconstruct at.', schema: { type: 'string', format: 'date-time' } },
+          COMMON_PARAMS.sport,
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 100, maximum: 500 } },
+        ],
+        responses: {
+          200: { description: 'Quotes as they stood' },
+          422: { description: 'Missing or invalid date', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+        },
+      },
+    },
     '/edges': {
       get: {
         summary: 'Selections whose best price beats de-vigged fair value',

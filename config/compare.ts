@@ -160,8 +160,8 @@ const THE_ODDS_API: Comparison = {
       us: true,
       them: true,
       verified: true,
-      evidence: 'OddsSnapshot — appended on every price change',
-      note: 'Theirs costs 10× a live request. Ours is the same data our own model trains on.',
+      evidence: 'OddsSnapshot + /api/v1/historical/odds',
+      note: 'Theirs costs 10× a live request, which is fair — storing it is a real cost for them. It is close to free for us only because the fair-value model needs the history anyway.',
     },
     {
       feature: 'Scores and results',
@@ -189,7 +189,7 @@ const THE_ODDS_API: Comparison = {
       us: false,
       them: false,
       verified: false,
-      note: 'Their snapshots are 5-minute. Ours is built for seconds but the engine is not shipped yet — this row goes green when it is.',
+      note: 'Their historical snapshots are 5-minute. Our loop polls per league at second-level cadence and is shipped — but a loop with no book adapters behind it polls nothing, so this stays a dash until the first adapter lands.',
     },
     {
       feature: 'Arbitrage across books, computed for you',
