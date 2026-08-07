@@ -1,6 +1,6 @@
-# Deploying Prin.tel
+# Deploying PredictHQ
 
-Prin.tel is a standard Stacks app plus a realtime broadcast server and a
+PredictHQ is a standard Stacks app plus a realtime broadcast server and a
 scheduled ingestion loop. Build and ship it with Buddy.
 
 ## Environment
@@ -11,7 +11,9 @@ Set these in `.env` (production values in `.env.production`):
 | --- | --- |
 | `APP_URL` | Public domain. A custom domain enables HTTPS pretty URLs in dev via rpx. |
 | `DB_CONNECTION` / `DB_DATABASE_PATH` | `sqlite` for local; Postgres/MySQL for prod (see `config/database.ts`). |
-| `ODDS_API_KEY` | Enables the live TheOddsAPI provider. Unset → synthetic line mover. |
+| `ODDS_API_KEY` | The **fallback** odds provider. Asked only about leagues our own book adapters returned nothing for, so its request count falls to near zero. Unset with no adapters → synthetic line mover. |
+| `ODDS_BOOKS_DISABLED` | Comma-separated book slugs to stop polling immediately, without a deploy. The fast switch; the `enabled` flags in `config/odds.ts` are the slow one. |
+| `ODDS_USER_AGENT` | Overrides the user agent the book adapters identify themselves with. Named rather than disguised by default. |
 | `BROADCAST_HOST` / `BROADCAST_PORT` | Realtime (ts-broadcasting) server bind (default `0.0.0.0:6001`). |
 | `BROADCAST_SCHEME` | `ws` locally, `wss` in production (behind TLS). |
 | `BROADCAST_REDIS_ENABLED` + `REDIS_*` | Required when the API/ingest run in **separate** processes from the broadcast server so broadcasts fan out across them. See `config/realtime.ts`. |
@@ -38,6 +40,22 @@ Production runs three roles (see `config/realtime.ts`, `app/Scheduler.ts`):
    is `SyncOrders`, every minute: until an order has been read back from
    the venue, the position cap, the bankroll check, and the daily loss
    limit are all working from what was true at placement.
+4. **Odds watcher** — `./buddy odds:watch`, the realtime price loop. Cron's
+   floor is one minute and a game in play needs seconds, so this is a
+   long-lived process rather than a scheduled job. It polls each league at
+   the cadence of its most urgent event (in-play, imminent, near, far — see
+   `config/odds.ts`) and writes only prices that moved.
+
+   It is deliberately **optional**: the five-minute `RunPipeline` still
+   ingests prices, so the board keeps moving without it. What the watcher
+   adds is the cadence a live market and the placement staleness guard
+   need. Run it under a supervisor that restarts it — a price loop that has
+   stopped should stop loudly, not limp.
+
+```bash
+./buddy odds:watch          # the loop
+./buddy odds:watch --once   # a single pass, for checking a deploy
+```
 
 With all three in one process the in-memory broadcaster suffices; when they
 scale to separate processes/instances, enable the Redis adapter so a

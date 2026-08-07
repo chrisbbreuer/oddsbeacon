@@ -2,6 +2,7 @@ import type { CLI } from '@stacksjs/types'
 import process from 'node:process'
 import { log } from '@stacksjs/cli'
 import { ExitCode } from '@stacksjs/types'
+import { allAdapters, booksWithoutAdapters } from '../Services/odds/books'
 import { auditVitessMigrations, keyspaceIsSharded } from '../Services/schema'
 
 /**
@@ -126,6 +127,28 @@ export default function (cli: CLI) {
       // announces itself the first time a feature is used; a table that
       // cannot allocate an id announces itself the first time someone
       // writes to it, which on this deployment means mid-trade.
+      // The native feed. An enabled book with no adapter behind it is
+      // silently absent from the board, which looks exactly like a book
+      // that had nothing to quote — and a deployment with no adapters at
+      // all runs `odds:watch` as a process that can never poll anything.
+      const adapters = allAdapters()
+      const missingAdapters = booksWithoutAdapters()
+
+      console.log('')
+      if (adapters.length === 0) {
+        console.log(`  ${isProduction ? '·' : '·'} No native book adapters are written yet`)
+        console.log('     Every price comes from the fallback provider, or from the simulator.')
+      }
+      else {
+        console.log(`  ✓ ${adapters.length} native book adapter${adapters.length === 1 ? '' : 's'}`)
+      }
+
+      if (missingAdapters.length > 0) {
+        console.log(`  · ${missingAdapters.length} book${missingAdapters.length === 1 ? ' is' : 's are'} enabled with no adapter written`)
+        console.log(`     ${missingAdapters.join(', ')}`)
+        console.log('     These contribute nothing until an adapter exists, and their absence is indistinguishable from a quiet book.')
+      }
+
       const sharded = keyspaceIsSharded()
       const schemaProblems = process.env.DB_CONNECTION === 'vitess' ? auditVitessMigrations() : []
 

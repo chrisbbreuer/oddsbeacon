@@ -1,6 +1,6 @@
-# Prin.tel
+# PredictHQ
 
-**Prediction Intel.** Prin.tel reads the public tape on Kalshi and Polymarket,
+**Prediction Intel.** PredictHQ reads the public tape on Kalshi and Polymarket,
 scores who keeps buying the side that wins, and turns that into positions — with
 every automated decision backed by evidence drawn from our own data.
 
@@ -15,7 +15,10 @@ its signal is flow rather than identity. Both land in the same normalized shape.
 
 **Odds board.** Sportsbook prices sit next to prediction-market implied
 probabilities, so the best available price on each outcome — and any cross-book
-arbitrage — is visible on one screen.
+arbitrage — is visible on one screen. Books are read directly rather than
+through a paid aggregator, on a cadence set by how close each game is: seconds
+for one in play, ten minutes for one next week. A paid feed remains configured
+as a fallback for leagues our own adapters do not cover.
 
 **Automated positions.** A strategy states what it will trade and how much. The
 decision engine proposes, the evidence behind the proposal is recorded next to it,
@@ -46,7 +49,7 @@ generates an `APP_KEY`. Afterwards:
 ./buddy dev
 ```
 
-The dev server serves the app at `https://printel.localhost` behind a reverse
+The dev server serves the app at `https://predicthq.localhost` behind a reverse
 proxy that issues a local certificate, with `http://localhost:3000` as a direct
 fallback.
 
@@ -55,7 +58,7 @@ fallback.
 | Path | What lives here |
 | --- | --- |
 | `app/Models/` | Bookmakers, markets, selections, odds, prediction markets, traders, trades |
-| `app/Services/odds/` | Sportsbook odds providers (TheOddsAPI, synthetic) |
+| `app/Services/odds/` | The native feed: one adapter per book, the aggregator, the fallback, and the realtime engine |
 | `app/Services/prediction-markets/` | Kalshi + Polymarket clients and smart-money analytics |
 | `app/Actions/` | Query and command handlers, reused by routes, events, and the CLI |
 | `app/Jobs/` | Scheduled ingestion and broadcast jobs |
@@ -99,7 +102,7 @@ Every Buddy command takes `--help`, and `./buddy --help` lists them all.
 
 ## What this is, and is not
 
-Prin.tel is analysis tooling. It surfaces prices, order flow, and historical
+PredictHQ is analysis tooling. It surfaces prices, order flow, and historical
 accuracy, and it can place orders on venues you have connected with your own
 credentials. It does not know what a position is worth to you, and nothing it
 produces is financial advice.
