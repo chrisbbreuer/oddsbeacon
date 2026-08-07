@@ -1,0 +1,262 @@
+<script server>
+/**
+ * PredictHQ: one competitor comparison.
+ *
+ * Routed as /compare/<slug>. stx injects route params into the server
+ * scope, so `competitor` below is the path segment.
+ *
+ * The record comes from `config/compare.ts` — the page holds no claims of
+ * its own. That is deliberate: a comparison page makes assertions about
+ * someone else's product as well as ours, and the half that rots silently
+ * is ours. Keeping the claims in config with a `verified` flag means an
+ * unshipped feature renders as "planned" rather than as a tick.
+ *
+ * The matrix and FAQ are built into markup here rather than looped in the
+ * template. A nested @foreach whose body is a single attributed element
+ * compiles to a client-side `@for`, which has no access to server data and
+ * renders empty with no error — the same trap `pricing.stx` documents. The
+ * input is the static config above, never user input.
+ */
+import { comparisonFor, comparisons } from '../../../config/compare'
+
+const slug = typeof competitor === 'string' ? competitor : ''
+const entry = comparisonFor(slug)
+
+const navActive = 'compare'
+
+const found = entry !== null
+const name = entry?.name ?? ''
+const headline = entry?.headline ?? 'Comparison not found'
+const positioning = entry?.positioning ?? ''
+const betterWhen = entry?.betterWhen ?? ''
+const betterForUs = entry?.betterForUs ?? ''
+const pricingTheirs = entry?.pricing ?? ''
+const pricingOurs = entry?.pricingOurs ?? ''
+
+/** Rows where we do something they do not, and we can prove it. */
+const advantages = (entry?.rows ?? []).filter(row => row.us && row.verified && !row.them)
+
+/** Rows where they currently win. Shown, not buried. */
+const theirAdvantages = (entry?.rows ?? []).filter(row => row.them && !row.us)
+
+function mark(has, verified) {
+  if (!has)
+    return '<span class="dash" aria-label="no">—</span>'
+  if (!verified)
+    return '<span class="planned" aria-label="planned">planned</span>'
+  return '<span class="tick" aria-label="yes">✓</span>'
+}
+
+function escape(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+/** The feature matrix, as one block of markup. */
+function matrixHtml(rows, theirName) {
+  const head = `<thead><tr>
+    <th class="py-3 pr-4 font-bold text-left text-sm">Feature</th>
+    <th class="px-3 py-3 font-bold text-center text-sm" style="width:7rem">PredictHQ</th>
+    <th class="px-3 py-3 font-bold text-center text-sm" style="width:9rem">${escape(theirName)}</th>
+  </tr></thead>`
+
+  const body = rows.map((row) => {
+    const note = row.note
+      ? `<p class="mt-1 leading-relaxed text-xs muted">${escape(row.note)}</p>`
+      : ''
+    const evidence = row.evidence
+      ? `<p class="mt-1 font-mono text-xs evidence">${escape(row.evidence)}</p>`
+      : ''
+
+    return `<tr class="border-t bd">
+      <td class="py-4 pr-4 align-top">
+        <span class="font-semibold text-sm">${escape(row.feature)}</span>
+        ${note}
+        ${evidence}
+      </td>
+      <td class="px-3 py-4 text-center align-top">${mark(row.us, row.verified)}</td>
+      <td class="px-3 py-4 text-center align-top">${mark(row.them, true)}</td>
+    </tr>`
+  }).join('')
+
+  return `${head}<tbody>${body}</tbody>`
+}
+
+function listHtml(rows) {
+  if (rows.length === 0)
+    return '<li class="muted">Nothing in this category.</li>'
+
+  return rows
+    .map(row => `<li class="flex gap-2.5 items-start"><span class="mt-0.5 font-bold tick">✓</span><span class="muted">${escape(row.feature)}</span></li>`)
+    .join('')
+}
+
+function faqHtml(items) {
+  return items
+    .map(item => `<div class="py-5 border-t bd">
+      <h3 class="font-bold text-base">${escape(item.question)}</h3>
+      <p class="mt-2 leading-relaxed text-sm muted">${escape(item.answer)}</p>
+    </div>`)
+    .join('')
+}
+
+/** Cross-links. The internal linking is where the SEO actually compounds. */
+function othersHtml(currentSlug) {
+  return comparisons
+    .filter(other => other.slug !== currentSlug)
+    .map(other => `<a href="/compare/${escape(other.slug)}" class="px-4 py-2 font-semibold text-sm rounded-lg soft">vs ${escape(other.name)}</a>`)
+    .join('')
+}
+
+/**
+ * Whether any row on this page is actually marked planned.
+ *
+ * The legend is built from what the table contains rather than from what
+ * the template can render. Explaining a symbol the reader will not find is
+ * a small thing, but it is the same category of error as the rest of this
+ * page's claims — describing something that is not there.
+ */
+const hasPlanned = (entry?.rows ?? []).some(row => row.us && !row.verified)
+
+const matrix = found ? matrixHtml(entry.rows, entry.name) : ''
+const advantagesList = found ? listHtml(advantages) : ''
+const theirList = found ? listHtml(theirAdvantages) : ''
+const faq = found ? faqHtml(entry.faq) : ''
+const others = othersHtml(slug)
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('tokens')
+    <meta name="description" content="{{ headline }} An honest feature comparison, including where {{ name }} is the better choice.">
+    <title>PredictHQ vs {{ name }}</title>
+    <style>
+      [x-cloak] { display: none !important; }
+      * { box-sizing: border-box; }
+      a { color: inherit; text-decoration: none; }
+      .tick { color: var(--accent-strong); font-weight: 800; }
+      .dash { color: var(--muted); }
+      .planned {
+        color: var(--muted);
+        font-size: .7rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+      .evidence { color: var(--muted); opacity: .75; }
+      /* The matrix is the widest thing on the page. It scrolls inside its
+         own box so the document body never scrolls sideways on a phone. */
+      .matrix-scroll { overflow-x: auto; }
+      .matrix { border-collapse: collapse; min-width: 34rem; width: 100%; }
+    </style>
+  </head>
+
+  <body
+    x-data="{
+      menu: false,
+      theme: predicthqTheme.current(),
+      toggleTheme() { this.theme = predicthqTheme.toggle() },
+      toggleMenu() { this.menu = !this.menu },
+    }"
+  >
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 py-12 sm:px-6 max-w-4xl sm:py-16">
+        @if (found)
+          <a href="/compare" class="font-semibold text-sm muted">← All comparisons</a>
+
+          <h1 class="display font-black leading-[1.08] mt-4 text-3xl tracking-tight sm:text-5xl">
+            {{ headline }}
+          </h1>
+
+          <p class="mt-5 max-w-2xl leading-relaxed text-lg muted">
+            {{ positioning }}
+          </p>
+
+          <!-- The concession first, deliberately. A comparison with no
+               honest "they are better when" gets discounted wholesale. -->
+          <div class="grid gap-4 sm:grid-cols-2 mt-10">
+            <div class="p-6 rounded-2xl card">
+              <h2 class="font-black text-sm tracking-wide uppercase muted">Choose {{ name }} when</h2>
+              <p class="mt-3 leading-relaxed text-sm">{{ betterWhen }}</p>
+            </div>
+            <div class="p-6 rounded-2xl card" style="border-color:var(--accent)">
+              <h2 class="font-black text-sm tracking-wide uppercase muted">Choose PredictHQ when</h2>
+              <p class="mt-3 leading-relaxed text-sm">{{ betterForUs }}</p>
+            </div>
+          </div>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">What we have that they do not</h2>
+          <ul class="grid gap-2.5 sm:grid-cols-2 mt-5 text-sm">
+            {!! advantagesList !!}
+          </ul>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">Where {{ name }} is ahead</h2>
+          <p class="mt-2 text-sm muted">Listed because you would find out anyway, and better from us.</p>
+          <ul class="grid gap-2.5 sm:grid-cols-2 mt-5 text-sm">
+            {!! theirList !!}
+          </ul>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">Feature by feature</h2>
+          <p class="mt-2 max-w-2xl text-sm muted">
+            A tick on our side means it is shipped and the file that backs it is named.
+            A dash means we do not do it.
+            @if (hasPlanned)
+              <span class="planned">planned</span> means we intend it and have not shipped it.
+            @endif
+          </p>
+          <div class="mt-5 matrix-scroll">
+            <table class="matrix">
+              {!! matrix !!}
+            </table>
+          </div>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">Pricing</h2>
+          <div class="grid gap-4 sm:grid-cols-2 mt-5">
+            <div class="p-6 rounded-2xl soft">
+              <h3 class="font-bold text-sm">{{ name }}</h3>
+              <p class="mt-2 leading-relaxed text-sm muted">{{ pricingTheirs }}</p>
+            </div>
+            <div class="p-6 rounded-2xl soft">
+              <h3 class="font-bold text-sm">PredictHQ</h3>
+              <p class="mt-2 leading-relaxed text-sm muted">{{ pricingOurs }}</p>
+            </div>
+          </div>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">Questions</h2>
+          <div class="mt-5">
+            {!! faq !!}
+          </div>
+
+          <div class="flex flex-wrap gap-3 items-center p-6 mt-14 rounded-2xl card">
+            <div class="mr-auto">
+              <h2 class="display font-black text-xl tracking-tight">See it on live markets</h2>
+              <p class="mt-1 text-sm muted">The board is public. No card, no signup to look.</p>
+            </div>
+            <a href="/" class="inline-flex items-center px-5 h-11 font-bold text-sm rounded-lg btn btn-primary">Open the board</a>
+            <a href="/pricing" class="inline-flex items-center px-5 h-11 font-bold text-sm rounded-lg btn">See pricing</a>
+          </div>
+
+          <h2 class="display font-black mt-14 text-2xl tracking-tight">Other comparisons</h2>
+          <div class="flex flex-wrap gap-2.5 mt-5">
+            {!! others !!}
+          </div>
+        @else
+          <h1 class="display font-black text-3xl tracking-tight">No such comparison</h1>
+          <p class="mt-4 leading-relaxed muted">
+            We have not written this one. Here is what we do have:
+          </p>
+          <div class="flex flex-wrap gap-2.5 mt-6">
+            {!! others !!}
+          </div>
+        @endif
+      </main>
+    </div>
+  </body>
+</html>

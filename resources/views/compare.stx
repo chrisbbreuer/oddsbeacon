@@ -1,0 +1,103 @@
+<script server>
+/**
+ * PredictHQ: the comparison index.
+ *
+ * One card per competitor, each linking to its own page. The set comes
+ * from `config/compare.ts` so this page cannot list a comparison that does
+ * not exist, and cannot miss one that does.
+ *
+ * The honest-concession line from each record is shown here, not just on
+ * the detail page. A comparison index that only shows our side of each
+ * argument is the thing readers have learned to discount.
+ */
+import { comparisons } from '../../config/compare'
+
+const navActive = 'compare'
+
+// Bind the import to a local before the template touches it. A bare
+// imported binding is not iterable from an @foreach in this scope, and it
+// fails at render rather than at import.
+const entries = comparisons.map(entry => ({
+  slug: entry.slug,
+  name: entry.name,
+  headline: entry.headline,
+  betterWhen: entry.betterWhen,
+  // The count is the useful summary: how many rows we actually win.
+  wins: entry.rows.filter(row => row.us && row.verified && !row.them).length,
+  rowCount: entry.rows.length,
+}))
+</script>
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('tokens')
+    <meta name="description" content="How PredictHQ compares to The Odds API, OddsJam, OpticOdds — and to building it yourself. Including where each of them is the better choice.">
+    <title>PredictHQ: compare</title>
+    <style>
+      [x-cloak] { display: none !important; }
+      * { box-sizing: border-box; }
+      a { color: inherit; text-decoration: none; }
+      .compare-card { transition: border-color .15s ease, transform .15s ease; }
+      .compare-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+      @media (prefers-reduced-motion: reduce) {
+        .compare-card { transition: none; }
+        .compare-card:hover { transform: none; }
+      }
+    </style>
+  </head>
+
+  <body
+    x-data="{
+      menu: false,
+      theme: predicthqTheme.current(),
+      toggleTheme() { this.theme = predicthqTheme.toggle() },
+      toggleMenu() { this.menu = !this.menu },
+    }"
+  >
+    <div class="app">
+      @include('nav')
+
+      <main class="mx-auto px-4 py-12 sm:px-6 max-w-6xl sm:py-16">
+        <div class="max-w-2xl">
+          <h1 class="display font-black leading-[1.08] text-3xl tracking-tight sm:text-5xl">
+            How PredictHQ compares
+          </h1>
+          <p class="mt-4 leading-relaxed text-lg muted">
+            Honest comparisons, including the cases where the other tool is the better choice.
+            Every claim about our own side is checkable against the code that backs it.
+          </p>
+        </div>
+
+        <div class="grid gap-5 sm:grid-cols-2 mt-10">
+          @foreach (entries as entry)
+            <a href="/compare/{{ entry.slug }}" class="flex flex-col p-6 rounded-2xl card compare-card">
+              <h2 class="display font-black text-xl tracking-tight">
+                PredictHQ vs {{ entry.name }}
+              </h2>
+
+              <p class="mt-3 leading-relaxed text-sm muted">
+                {{ entry.headline }}
+              </p>
+
+              <p class="mt-4 pl-3 leading-relaxed text-sm border-l bd muted">
+                <span class="font-bold">When they win:</span> {{ entry.betterWhen }}
+              </p>
+
+              <span class="mt-5 font-bold text-sm accent">
+                Read the comparison →
+              </span>
+            </a>
+          @endforeach
+        </div>
+
+        <p class="mt-12 max-w-2xl text-sm muted">
+          Something wrong or out of date on one of these? Tell us and we will fix it — a
+          comparison page that overstates its own side is worth less than no page at all.
+        </p>
+      </main>
+    </div>
+  </body>
+</html>

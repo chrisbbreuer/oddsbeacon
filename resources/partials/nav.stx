@@ -18,6 +18,7 @@ const NAV_LINKS = [
   { href: '/markets', key: 'markets', label: 'Smart money', router: false },
   { href: '/community', key: 'community', label: 'Community', router: false },
   { href: '/features', key: 'features', label: 'Features', router: false },
+  { href: '/compare', key: 'compare', label: 'Compare', router: false },
   { href: '/pricing', key: 'pricing', label: 'Pricing', router: false },
 ]
 </script>
