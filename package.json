@@ -69,9 +69,9 @@
     "sqlite": "^3.47.2"
   },
   "dependencies": {
-    "@stacksjs/stx": "^0.2.153",
-    "bun-plugin-stx": "^0.2.153",
-    "bun-query-builder": "^0.2.22",
+    "@stacksjs/stx": "^0.2.166",
+    "bun-plugin-stx": "^0.2.166",
+    "bun-query-builder": "^0.2.25",
     "stacks": "^0.70.292",
     "ts-charts": "github:stacksjs/ts-charts",
     "ts-web-scraper": "^0.1.10",
